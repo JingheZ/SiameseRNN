@@ -42,7 +42,7 @@ def get_orders_visit_info(data_med, data_proc):
     visit_info_proc = data_proc[['ptid', 'vid', 'anon_adm_date', 'anon_dis_date', 'VisitDXs', 'cdrIPorOP', 'timeline']]
     visit_info_orders = pd.concat((visit_info_med, visit_info_proc), axis=1)
     visit_info_orders = visit_info_orders.drop_duplicates()
-    with open('orders_visit_info.pickle', 'wb') as f:
+    with open('./data/orders_visit_info.pickle', 'wb') as f:
         pickle.dump(visit_info_orders, f)
     f.close()
     # return visit_info_orders
@@ -53,7 +53,7 @@ def get_orders_pt_info(data_med, data_proc):
     pt_info_proc = data_proc[['ptid', 'age', 'sex']]
     pt_info_orders = pd.concat((pt_info_med, pt_info_proc), axis=1)
     pt_info_orders = pt_info_orders.drop_duplicates()
-    with open('orders_pt_info.pickle', 'wb') as f:
+    with open('./data/orders_pt_info.pickle', 'wb') as f:
         pickle.dump(pt_info_orders, f)
     f.close()
     # return pt_info_orders
@@ -84,7 +84,7 @@ if __name__ == '__main__':
                              'anon_adm_date', 'anon_dis_date', 'cdrIPorOP']
     data_proc, visit_proc, all_procs = process_orders(filename, colnames_proc, selected_colnames_proc, ['PROC_ID', 'PROC_NAME'])
 
-    with open('all_dx_meds_procs.pickle', 'wb') as f:
+    with open('./data/all_dx_meds_procs.pickle', 'wb') as f:
         pickle.dump([all_dxs, all_meds, all_procs], f)
     f.close()
 
@@ -101,15 +101,16 @@ if __name__ == '__main__':
     print('Number of distinct visits in dx data but not in order data: %i' % len(vid_diff_dx2order))
 
     # ============================== Save data ========================================================
-    with open('dxs_data.pickle', 'wb') as f:
+    with open('./data/dxs_data.pickle', 'wb') as f:
         pickle.dump(data_dx, f)
     f.close()
 
-    with open('med_orders.pickle', 'wb') as f:
+    with open('./data/med_orders.pickle', 'wb') as f:
         pickle.dump(data_med[['ptid', 'vid', 'Med_Pharm_Cls']], f)
     f.close()
 
-    with open('proc_orders.pickle', 'wb') as f:
+    with open('./data/proc_orders.pickle', 'wb') as f:
         pickle.dump(data_proc[['ptid', 'vid', 'PROC_ID']], f)
     f.close()
     print('Done!')
+    
