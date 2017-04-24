@@ -236,6 +236,7 @@ def readfromcsv(filename):
 
 
 def readfrompickle(filename):
+    #read
     with open(filename, 'rb') as f:
         results = pickle.load(f)
     return results
