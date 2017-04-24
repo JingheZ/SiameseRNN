@@ -37,7 +37,7 @@ def process_orders(filename, colnames, colnames_selected, item_colname):
         all_items = data[item_colname].drop_duplicates()
     else:
         all_items = data[item_colname[0]].unique()
-    visits = data_med['vid'].unique()
+    visits = data['vid'].unique()
     return data, visits, all_items
 
 
