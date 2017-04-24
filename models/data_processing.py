@@ -112,5 +112,5 @@ if __name__ == '__main__':
     with open('./data/proc_orders.pickle', 'wb') as f:
         pickle.dump(data_proc[['ptid', 'vid', 'PROC_ID']], f)
     f.close()
-    print('Done!')
     
+    print('Done!')
