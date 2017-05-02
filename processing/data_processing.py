@@ -103,6 +103,9 @@ if __name__ == '__main__':
     print('Number of distinct visits in order data: %i' % len(vid_orders))
     print('Number of distinct visits in order data but not in dx data: %i' % len(vid_diff_order2dx))
     print('Number of distinct visits in dx data but not in order data: %i' % len(vid_diff_dx2order))
+    with open('./data/visits_not_in_dxs.pickle', 'wb') as f:
+        pickle.dump(vid_diff_order2dx, f)
+    f.close()
 
     # ============================== Save data to pickle ========================================================
     with open('./data/dxs_data.pickle', 'wb') as f:
@@ -118,3 +121,9 @@ if __name__ == '__main__':
     f.close()
     
     print('Done!')
+
+    # ================================ load data back and analyze the visit in orders but not appearing in dxs ======
+    # with open('./data/dxs_data.pickle', 'rb') as f:
+    #     data_dx = pickle.load(f)
+    # f.close()
+    # dxs_visits = data_dx[['ptid', 'vid']].drop_duplicates()
