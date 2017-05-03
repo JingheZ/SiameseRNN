@@ -225,6 +225,10 @@ if __name__ == '__main__':
     visit_ranks_dict = create_visit_ranks(visits_v3)
     # create dict of dict for patient, that the keys are vid and value is rank
     visit_ranks_reverse, visit_ranks_reverse_flattened = create_visit_ranks_reverse(visit_ranks_dict)
+    with open('./data/visit_ranks.pickle', 'wb') as f:
+        pickle.dump([visit_ranks_reverse, visit_ranks_reverse_flattened], f)
+    f.close()
+
     # create a dict of all patients which flattens the above dict
     visit_ranks_df = pd.DataFrame.from_dict(visit_ranks_reverse_flattened, dtype=object, orient='index')
     visit_ranks_df['vid'] = visit_ranks_df.index
