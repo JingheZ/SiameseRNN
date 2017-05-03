@@ -63,6 +63,41 @@ def get_orders_pt_info(data_med, data_proc):
     # return pt_info_orders
 
 
+def create_visit_ranks(data):
+    # create a dict for each patient, key is the rank of the visit, value are the vids
+    visit_ranks = {}
+    previous_ptid = ''
+    j = 0
+    previous_adm_time = 0
+    for i in data.index:
+        ptid = data['ptid'].loc[i]
+        adm_time = data['anon_adm_date_y'].loc[i]
+        if ptid != previous_ptid:
+            j = 0
+            visit_ranks[ptid] = {0: []}
+            previous_adm_time = adm_time
+        if adm_time != previous_adm_time:
+            j += 1
+            visit_ranks[ptid][j] = []
+        visit_ranks[ptid][j].append(data['vid'].loc[i])
+        previous_adm_time = adm_time
+        previous_ptid = ptid
+    return visit_ranks
+
+
+def create_visit_ranks_reverse(visit_ranks):
+    # reverse the dict in visit_rank, the key-value are exchanged
+    visit_ranks_r = {}
+    visit_ranks_r_flatten = {}
+    for k, v in visit_ranks.items():
+        visit_ranks_r[k] = {}
+        for k0, v0 in v.items():
+            for v00 in v0:
+                visit_ranks_r[k][v00] = k0
+                visit_ranks_r_flatten[v00] = k0
+    return visit_ranks_r, visit_ranks_r_flatten
+
+
 if __name__ == '__main__':
     # ============================ DX Data =================================================
     filename = './data/2016_04apr_13_ALL_Diagnoses.dat'
@@ -113,17 +148,96 @@ if __name__ == '__main__':
     f.close()
 
     with open('./data/med_orders.pickle', 'wb') as f:
-        pickle.dump(data_med[['ptid', 'vid', 'Med_Pharm_Cls']], f)
+        pickle.dump(data_med[['ptid', 'vid', 'Med_Pharm_Cls', 'anon_adm_date']], f)
     f.close()
 
     with open('./data/proc_orders.pickle', 'wb') as f:
-        pickle.dump(data_proc[['ptid', 'vid', 'PROC_ID']], f)
+        pickle.dump(data_proc[['ptid', 'vid', 'PROC_ID', 'anon_adm_date']], f)
     f.close()
     
     print('Done!')
 
     # ================================ load data back and analyze the visit in orders but not appearing in dxs ======
-    # with open('./data/dxs_data.pickle', 'rb') as f:
-    #     data_dx = pickle.load(f)
-    # f.close()
-    # dxs_visits = data_dx[['ptid', 'vid']].drop_duplicates()
+    with open('./data/dxs_data.pickle', 'rb') as f:
+        data_dx = pickle.load(f)
+    f.close()
+    dxs_visits = data_dx[['ptid', 'vid']].drop_duplicates()
+
+    with open('./data/orders_visit_info.pickle', 'rb') as f:
+        visit_info_orders = pickle.load(f)
+    f.close()
+
+    with open('./data/visits_not_in_dxs.pickle', 'rb') as f:
+        vid_diff_order2dx = pickle.load(f)
+    f.close()
+
+    orders_visits = visit_info_orders[['ptid', 'vid']].drop_duplicates()
+
+    visits_not_in_dxs = orders_visits[orders_visits['vid'].isin(vid_diff_order2dx)] # 1661 rows with vid and ptid, where these vid not appeared in dxs data
+    pts_with_visits_not_in_dxs = set(visits_not_in_dxs['ptid'].values) # 1201 patients with visits not appeared in dxs data
+    orders_pts_with_visits_not_in_dxs = orders_visits[orders_visits['ptid'].isin(pts_with_visits_not_in_dxs)]
+    # 1661 visits, hence all these 1201 patients have no other records with dxs info in the dx data;
+    # so just need to remove these 1201 patients from med and proc order data
+
+    visit_info_orders_updated = visit_info_orders[~visit_info_orders['ptid'].isin(pts_with_visits_not_in_dxs)]
+    with open('./data/orders_visit_info_updated.pickle', 'wb') as f:
+        pickle.dump(visit_info_orders_updated, f)
+    f.close()
+
+    # ================================ Analyze sequence lengths and how many visits before hospitalization ==========
+    with open('./data/orders_visit_info_updated.pickle', 'rb') as f:
+        visit_info_orders_updated = pickle.load(f)
+    f.close()
+    del visit_info_orders_updated['timeline']
+    # remove patients with negative visit discharge
+    visits = visit_info_orders_updated
+    pts_negative_disch = visits[visits['anon_dis_date'] < 0]
+    pts_negative_disch = set(pts_negative_disch['ptid'].values) # remove 81489 patients with negative discharge time
+    visits = visits[~visits['ptid'].isin(pts_negative_disch)].drop_duplicates() # 298,479 patients
+    visits = visits.sort(['ptid', 'vid', 'anon_adm_date']).drop_duplicates()
+    pt_ids = list(set(visits['ptid'].values)) # 298,479 patients
+
+    # process the admission time and visit id:
+    # OP visits with the same ids, give the earliest admission time to that visit;
+    # then, visits with different ids but same times are used as same visit
+    visit_adm_time = visits[['vid', 'anon_adm_date']].groupby('vid').min()
+    visit_adm_time['vid'] = visit_adm_time.index
+    visits_v2 = pd.merge(left=visits, right=visit_adm_time, how='inner', left_on='vid', right_on='vid')
+    del visits_v2['anon_adm_date_x']
+    del visits_v2['anon_dis_date']
+    del visits_v2['VisitDXs']
+    visits_v2['cdrIPorOP'] = visits_v2['cdrIPorOP'].map({'OP': 'OP', 'IP': 'IP', 'OBS': 'OP'})
+    visits_v2 = visits_v2.sort(['ptid', 'anon_adm_date_y', 'vid']).drop_duplicates()
+
+    # select pts with at least two visits
+    counts = visits_v2[['ptid', 'anon_adm_date_y']].drop_duplicates().groupby('ptid').count() # 298479 visits
+    counts2 = counts[counts['anon_adm_date_y'] >= 2] # 156,224 patients
+    visits_v3 = visits_v2[visits_v2['ptid'].isin(counts2.index)].drop_duplicates()
+    visits_v3 = visits_v3.sort(['ptid', 'anon_adm_date_y'])
+    # duplicated visits which each visit has more than one visit, take it as an inpatient visit
+    vids_multiple_visit_type = set(visits_v3[visits_v3.duplicated('vid')]['vid'])
+    visits_v3.ix[visits_v3['vid'].isin(vids_multiple_visit_type), 'cdrIPorOP'] = 'IP'
+    visits_v3 = visits_v3.drop_duplicates()
+    with open('./data/visits_v3.pickle', 'wb') as f:
+        pickle.dump(visits_v3, f)
+    f.close()
+    # create a dict of all patients, in each patient data, there is also a dict of ranks containing the visit ids
+    visit_ranks_dict = create_visit_ranks(visits_v3)
+    # create dict of dict for patient, that the keys are vid and value is rank
+    visit_ranks_reverse, visit_ranks_reverse_flattened = create_visit_ranks_reverse(visit_ranks_dict)
+    # create a dict of all patients which flattens the above dict
+    visit_ranks_df = pd.DataFrame.from_dict(visit_ranks_reverse_flattened, dtype=object, orient='index')
+    visit_ranks_df['vid'] = visit_ranks_df.index
+    visit_ranks_df.columns = ['rank', 'vid']
+    visits_v4 = pd.merge(left=visits_v3, right=visit_ranks_df, how='inner', left_on='vid', right_on='vid')
+    visits_v4 = visits_v4.sort(['ptid', 'rank'])
+    with open('./data/visits_v4.pickle', 'wb') as f:
+        pickle.dump(visits_v4, f)
+    f.close()
+
+    IPvisits = visits_v4[visits_v4['cdrIPorOP'] == 'IP'] # 45995 patients with inhospital visits
+    IPvisits2 = IPvisits[IPvisits['rank'] > 1]  # 19406 patients with inhospital visits after two visits
+    IPvisits1 = IPvisits[IPvisits['rank'] > 0]  # 26907 patients with inhospital visits after the first visits
+    IPvisits0 = IPvisits[IPvisits['rank'] == 0]  # 28106 patients with inhospital visits is the first visit
+    IPvisits_only0 = IPvisits0[~IPvisits0['ptid'].isin(set(IPvisits1['ptid'].values))] # 19381 patients with inpatient visits in the first visit
+
