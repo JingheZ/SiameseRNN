@@ -146,15 +146,17 @@ if __name__ == '__main__':
     with open('./data/dxs_data.pickle', 'wb') as f:
         pickle.dump(data_dx, f)
     f.close()
+    data_dx.to_csv('./data/dxs_data.csv', index=False)
 
     with open('./data/med_orders.pickle', 'wb') as f:
         pickle.dump(data_med[['ptid', 'vid', 'Med_Pharm_Cls', 'anon_adm_date']], f)
     f.close()
+    data_med[['ptid', 'vid', 'Med_Pharm_Cls', 'anon_adm_date']].to_csv('./data/med_orders.csv', index=False)
 
     with open('./data/proc_orders.pickle', 'wb') as f:
         pickle.dump(data_proc[['ptid', 'vid', 'PROC_ID', 'anon_adm_date']], f)
     f.close()
-    
+    data_proc[['ptid', 'vid', 'PROC_ID', 'anon_adm_date']].to_csv('./data/proc_orders.csv', index=False)
     print('Done!')
 
     # ================================ load data back and analyze the visit in orders but not appearing in dxs ======
@@ -244,6 +246,38 @@ if __name__ == '__main__':
     IPvisits1 = IPvisits[IPvisits['rank'] > 0]  # 26907 patients with inhospital visits after the first visits
     IPvisits0 = IPvisits[IPvisits['rank'] == 0]  # 28106 patients with inhospital visits is the first visit
     IPvisits_only0 = IPvisits0[~IPvisits0['ptid'].isin(set(IPvisits1['ptid'].values))] # 19381 patients with inpatient visits in the first visit
+
+    visits_v5 = visits_v4[['ptid', 'rank', 'anon_adm_date_y']]
+
+
+    # ====================== Remove the unused pts from the orders and dx data =====================
+    ptids = list(visit_ranks_reverse.keys())
+    data_dx.columns = ['ptid', 'vid', 'itemid', 'pdx']
+    data_dx = data_dx[data_dx['ptid'].isin(ptids)]
+
+    data_med.columns = ['ptid', 'vid', 'itemid', 'adm_date']
+    data_med = data_med[data_med['ptid'].isin(ptids)]
+
+    data_proc.columns = ['ptid', 'vid', 'itemid', 'adm_date']
+    data_proc = data_proc[data_proc['ptid'].isin(ptids)]
+
+    with open('./data/dxs_data_v2.pickle', 'wb') as f:
+        pickle.dump(data_dx, f)
+    f.close()
+    data_dx.to_csv('./data/dxs_data_v2.csv', index=False)
+
+    with open('./data/med_orders_v2.pickle', 'wb') as f:
+        pickle.dump(data_med[['ptid', 'vid', 'itemid']], f)
+    f.close()
+    data_med[['ptid', 'vid', 'itemid']].to_csv('./data/med_orders_v2.csv', index=False)
+
+    with open('./data/proc_orders_v2.pickle', 'wb') as f:
+        pickle.dump(data_proc[['ptid', 'vid', 'itemid']], f)
+    f.close()
+    data_proc[['ptid', 'vid', 'itemid']].to_csv('./data/proc_orders_v2.csv', index=False)
+
+
+
     # hence, if predict hospialization with at least one visit as prior info, there are 26907 patients,
     # and 156224 - 26907 pts in negative class
     # But need to work on the time window, to exclude some info before the prediction window
