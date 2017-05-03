@@ -240,4 +240,11 @@ if __name__ == '__main__':
     IPvisits1 = IPvisits[IPvisits['rank'] > 0]  # 26907 patients with inhospital visits after the first visits
     IPvisits0 = IPvisits[IPvisits['rank'] == 0]  # 28106 patients with inhospital visits is the first visit
     IPvisits_only0 = IPvisits0[~IPvisits0['ptid'].isin(set(IPvisits1['ptid'].values))] # 19381 patients with inpatient visits in the first visit
+    # hence, if predict hospialization with at least one visit as prior info, there are 26907 patients,
+    # and 156224 - 26907 pts in negative class
+    # But need to work on the time window, to exclude some info before the prediction window
+    # also need to study the prediction window and how to structure it as a semi-supervised learning method
 
+    # To do:
+    # 1. extract the dxs, meds, procedures to learn a vector representation
+    
