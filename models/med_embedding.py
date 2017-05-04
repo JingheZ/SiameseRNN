@@ -9,11 +9,12 @@ Learn medical embedding
 
 """
 
-from gensim.models import Word2Vec#, Doc2Vec
-# from glove import Glove: using glove, there is a decay for word distances
 import pickle
 import pandas as pd
 import os
+import time
+from gensim.models import Word2Vec#, Doc2Vec
+# from glove import Glove: using glove, there is a decay for word distances
 
 
 def process_doc_data(filenames):
@@ -69,11 +70,11 @@ def get_doc_lengths(docs):
 
 if __name__ == '__main__':
     # ============== get visit doc data for embedding =============
-    filenames = ['./data/dxs_data_v2.pickle', './data/med_orders_v2.pickle', './data/proc_orders_v2.pickle']
-    visit_docs = process_doc_data(filenames)  # 923707 visits (docs)
-    with open('./data/visit_docs.pickle', 'wb') as f:
-        pickle.dump(visit_docs, f)
-    f.close()
+    # filenames = ['./data/dxs_data_v2.pickle', './data/med_orders_v2.pickle', './data/proc_orders_v2.pickle']
+    # visit_docs = process_doc_data(filenames)  # 923707 visits (docs)
+    # with open('./data/visit_docs.pickle', 'wb') as f:
+    #     pickle.dump(visit_docs, f)
+    # f.close()
 
     # ============ learn embedding for med codes ==========================
     # analyze lengths of the docs
@@ -93,12 +94,18 @@ if __name__ == '__main__':
     iter = 10
     sg = 1 # skip-gram:1; cbow: 0
     model_path = 'w2v_size' + str(size) + '_window' + str(window) + '_sg' + str(sg)
-    if os.path.exists(model_path):
-        model = Word2Vec.load(model_path)
-    else:
-        model = Word2Vec(docs, size=size, window=window, min_count=min_count, workers=workers, sg=sg, iter=iter)
-        model.save(model_path)
+    # if os.path.exists(model_path):
+    #     model = Word2Vec.load(model_path)
+    # else:
+    a = time.time()
+    model = Word2Vec(docs, size=size, window=window, min_count=min_count, workers=workers, sg=sg, iter=iter)
+    model.save(model_path)
+    b = time.time()
     vocab = list(model.wv.vocab.keys())
     c = vocab[1]
-    model.most_similar(c)
+    sims = model.most_similar(c)
+    print('training time (mins): %.3f' % ((b - a) / 60))
+    print(c)
+    print(sims)
+
 
