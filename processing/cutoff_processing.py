@@ -137,4 +137,4 @@ if __name__ == '__main__':
     vids = set(visits2_1yr['vid'].values)
     filenames = ['./data/dxs_data_v2.pickle', './data/med_orders_v2.pickle', './data/proc_orders_v2.pickle']
     process_doc_data_sep(filenames, vids, visit_lengths)
-    
+
