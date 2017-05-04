@@ -1,1 +1,1 @@
-# SiameseRNN
+# Representation Learning with Multi-Channel CNN with Attention
