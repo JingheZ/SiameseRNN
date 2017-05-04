@@ -68,6 +68,15 @@ def get_visit_type(data, vlen):
     return vtype
 
 
+def get_pt_demographics(ptids):
+    with open('./data/orders_pt_info.pickle', 'rb') as f:
+        pt_info = pickle.load(f)
+    f.close()
+    pt_info2 = pt_info[pt_info['ptid'].isin(ptids)]
+    pt_info2['gender'] = pt_info2['sex'].map({'M': 0, 'F': 1})
+    pt_info2.to_csv('./data/hospitalization_1st_year_pt_demographics.csv', index=False)
+
+
 if __name__ == '__main__':
     with open('./data/visits_v4.pickle', 'rb') as f:
         visits = pickle.load(f)
@@ -97,12 +106,12 @@ if __name__ == '__main__':
     ptids_ip = set(visit_ip['ptid'].values)
     # negative class pts
     ptids_nonip = set(ptids).difference(ptids_ip) #24029 pts
-    with open('./data/hospitalization_pos_neg_ptids.pickle', 'wb') as f:
-        pickle.dump([list(ptids_ip), list(ptids_nonip)], f)
+    ptids_both = set(ptids).union(ptids_ip) # 30780 pts
+    with open('./data/hospitalization_both_pos_neg_ptids.pickle', 'wb') as f:
+        pickle.dump([list(ptids_both), list(ptids_ip), list(ptids_nonip)], f)
     f.close()
 
     # get the first year data for training
-    ptids_both = set(ptids).union(ptids_ip)
     visits2 = visits[visits['ptid'].isin(ptids_both)]
     visits2_1yr = visits2[visits2['adm_day'] <= 365]
     with open('./data/hospitalization_1st_year_data.pickle', 'wb') as f:
@@ -121,8 +130,11 @@ if __name__ == '__main__':
         pickle.dump(visit_types, f)
     f.close()
 
+    # get patient demographics
+    get_pt_demographics(ptids_both)
+
     # get the dx, med, proc of these visits separately
     vids = set(visits2_1yr['vid'].values)
     filenames = ['./data/dxs_data_v2.pickle', './data/med_orders_v2.pickle', './data/proc_orders_v2.pickle']
     process_doc_data_sep(filenames, vids, visit_lengths)
-
+    
