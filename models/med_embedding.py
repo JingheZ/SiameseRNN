@@ -9,7 +9,8 @@ Learn medical embedding
 
 """
 
-from gensim.models import Word2Vec, Doc2Vec
+from gensim.models import Word2Vec#, Doc2Vec
+from glove import Glove
 import pickle
 import pandas as pd
 import os
@@ -53,46 +54,47 @@ def get_items_in_visit(data, doc, vdoc):
     return vdoc
 
 
+def get_doc_lengths(docs):
+    lengths = []
+    for i in docs:
+        lengths.append(len(i))
+    lengths = pd.Series(lengths)
+    return lengths
 
 
-def med_embedding_model(docs, size, window, min_count, workers, sg, iter):
-    docs = list(docs.values())
-    model = Word2Vec(docs, size=size, window=window, min_count=min_count, workers=workers, sg=sg, iter=iter)
-    return model
+# def med_embedding_model(docs, size, window, min_count, workers, sg, iter):
+#     model = Word2Vec(docs, size=size, window=window, min_count=min_count, workers=workers, sg=sg, iter=iter)
+#     return model
 
 
 if __name__ == '__main__':
+    # ============== get visit doc data for embedding =============
     filenames = ['./data/dxs_data_v2.pickle', './data/med_orders_v2.pickle', './data/proc_orders_v2.pickle']
-    visit_docs = process_doc_data(filenames)
+    visit_docs = process_doc_data(filenames)  # 923707 visits (docs)
     with open('./data/visit_docs.pickle', 'wb') as f:
         pickle.dump(visit_docs, f)
     f.close()
 
-    visit_docs2 = {}
-    for k, v in visit_docs.items():
-        visit_docs2[k] = []
-        for v0 in v:
-            visit_docs2[k].append(str(v0))
+    # ============ learn embedding for med codes ==========================
+    # analyze lengths of the docs
+    docs = list(visit_docs.values())
+    lengths = get_doc_lengths(docs)
+    lengths.describe()
+    lengths.quantile(0.65) # 10
 
-    with open('./data/visit_docs.pickle', 'wb') as f:
-        pickle.dump(visit_docs, f)
-    f.close()
-
-    # ============ learn embedding for dx ==========================
-    with open('./data/visit_docs.pickle', 'rb') as f:
-        doc = pickle.load(f)
-    f.close()
-    size = 150
-    window = 5
+    size = 100
+    window = 10
     min_count = 50
     workers = 28
-    iter = 20
-    sg = 0 # skip-gram:1; cbow: 0
-    model_path = 'w2v_dx_size' + str(size) + '_window' + str(window) + '_sg' + str(sg)
+    iter = 5
+    sg = 1 # skip-gram:1; cbow: 0
+    model_path = 'w2v_size' + str(size) + '_window' + str(window) + '_sg' + str(sg)
     if os.path.exists(model_path):
         model = Word2Vec.load(model_path)
     else:
-        model = med_embedding_model(doc, size, window, min_count, workers, sg, iter)
+        model = Word2Vec(docs, size=size, window=window, min_count=min_count, workers=workers, sg=sg, iter=iter)
         model.save(model_path)
     vocab = list(model.wv.vocab.keys())
+    c = vocab[1]
+    model.most_similar(c)
 
