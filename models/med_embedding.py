@@ -10,7 +10,7 @@ Learn medical embedding
 """
 
 from gensim.models import Word2Vec#, Doc2Vec
-# from glove import Glove
+# from glove import Glove: using glove, there is a decay for word distances
 import pickle
 import pandas as pd
 import os
@@ -77,16 +77,20 @@ if __name__ == '__main__':
 
     # ============ learn embedding for med codes ==========================
     # analyze lengths of the docs
+
+    with open('./data/visit_docs.pickle', 'rb') as f:
+        visit_docs = pickle.load(f)
+
     docs = list(visit_docs.values())
     lengths = get_doc_lengths(docs)
     lengths.describe()
-    lengths.quantile(0.65) # 10
+    lengths.quantile(0.995) # 903; there are 4618 docs have longer weights than this
 
     size = 100
-    window = 10
-    min_count = 50
+    window = 903
+    min_count = 100
     workers = 28
-    iter = 5
+    iter = 10
     sg = 1 # skip-gram:1; cbow: 0
     model_path = 'w2v_size' + str(size) + '_window' + str(window) + '_sg' + str(sg)
     if os.path.exists(model_path):
