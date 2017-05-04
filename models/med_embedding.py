@@ -10,7 +10,7 @@ Learn medical embedding
 """
 
 from gensim.models import Word2Vec#, Doc2Vec
-from glove import Glove
+# from glove import Glove
 import pickle
 import pandas as pd
 import os
