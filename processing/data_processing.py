@@ -207,8 +207,11 @@ if __name__ == '__main__':
     visit_adm_time = visits[['vid', 'anon_adm_date']].groupby('vid').min()
     visit_adm_time['vid'] = visit_adm_time.index
     visits_v2 = pd.merge(left=visits, right=visit_adm_time, how='inner', left_on='vid', right_on='vid')
+    visit_dis_time = visits[['vid', 'anon_dis_date']].groupby('vid').max()
+    visit_dis_time['vid'] = visit_dis_time.index
+    visits_v2 = pd.merge(left=visits_v2, right=visit_dis_time, how='inner', left_on='vid', right_on='vid')
     del visits_v2['anon_adm_date_x']
-    del visits_v2['anon_dis_date']
+    del visits_v2['anon_dis_date_x']
     del visits_v2['VisitDXs']
     visits_v2['cdrIPorOP'] = visits_v2['cdrIPorOP'].map({'OP': 'OP', 'IP': 'IP', 'OBS': 'OP'})
     visits_v2 = visits_v2.sort(['ptid', 'anon_adm_date_y', 'vid']).drop_duplicates()
@@ -249,8 +252,7 @@ if __name__ == '__main__':
     IPvisits0 = IPvisits[IPvisits['rank'] == 0]  # 28106 patients with inhospital visits is the first visit
     IPvisits_only0 = IPvisits0[~IPvisits0['ptid'].isin(set(IPvisits1['ptid'].values))] # 19381 patients with inpatient visits in the first visit
 
-    visits_v5 = visits_v4[['ptid', 'rank', 'anon_adm_date_y']]
-
+    # visits_v5 = visits_v4[['ptid', 'rank', 'anon_adm_date_y', 'anon_dis_date_y']]
 
     # ====================== Remove the unused pts from the orders and dx data =====================
     ptids = list(visit_ranks_reverse.keys())
@@ -277,8 +279,6 @@ if __name__ == '__main__':
         pickle.dump(data_proc[['ptid', 'vid', 'itemid']], f)
     f.close()
     data_proc[['ptid', 'vid', 'itemid']].to_csv('./data/proc_orders_v2.csv', index=False)
-
-
 
     # hence, if predict hospialization with at least one visit as prior info, there are 26907 patients,
     # and 156224 - 26907 pts in negative class
