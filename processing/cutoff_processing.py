@@ -27,21 +27,31 @@ def process_doc_data_sep(filenames, vids, vlen):
     vdoc_dx = get_items_in_visit(data_dx, visit_ranks_reverse, vids, vlen)
     vdoc_med = get_items_in_visit(data_med, visit_ranks_reverse, vids, vlen)
     vdoc_proc = get_items_in_visit(data_proc, visit_ranks_reverse, vids, vlen)
-    return vdoc_dx, vdoc_med, vdoc_proc
+
+    with open('./data/hospitalization_1st_year_visit_dxs.pickle', 'wb') as f:
+        pickle.dump(vdoc_dx, f)
+    f.close()
+    with open('./data/hospitalization_1st_year_visit_meds.pickle', 'wb') as f:
+        pickle.dump(vdoc_med, f)
+    f.close()
+    with open('./data/hospitalization_1st_year_visit_procs.pickle', 'wb') as f:
+        pickle.dump(vdoc_proc, f)
+    f.close()
+    # return vdoc_dx, vdoc_med, vdoc_proc
 
 
-def get_items_in_visit(data0, doc, vids):
+def get_items_in_visit(data0, doc, vids, vlen):
     data = data0[data0['vid'].isin(vids)]
     vdoc = {}
     for i in data.index:
         pid = data['ptid'].loc[i]
         vid = data['vid'].loc[i]
         item = data['itemid'].loc[i]
-        rk = doc[pid][vid]
-        k = pid + '#' + str(rk)
-        if not vdoc.__contains__(k):
-            vdoc[k] = []
-        vdoc[k].append(str(item))
+        rank = doc[pid][vid]
+        if not vdoc.__contains__(pid):
+            length = vlen['rank'].loc[pid] + 1
+            vdoc[pid] = [[] for x in range(length)]
+        vdoc[pid][rank].append(str(item))
     return vdoc
 
 
@@ -111,6 +121,8 @@ if __name__ == '__main__':
         pickle.dump(visit_types, f)
     f.close()
 
+    # get the dx, med, proc of these visits separately
     vids = set(visits2_1yr['vid'].values)
     filenames = ['./data/dxs_data_v2.pickle', './data/med_orders_v2.pickle', './data/proc_orders_v2.pickle']
+    process_doc_data_sep(filenames, vids, visit_lengths)
 
