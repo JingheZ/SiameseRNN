@@ -123,6 +123,8 @@ if __name__ == '__main__':
                              'anon_adm_date', 'anon_dis_date', 'cdrIPorOP']
     data_proc, visit_proc, all_procs = process_orders(filename, colnames_proc, selected_colnames_proc, ['PROC_ID', 'PROC_NAME'])
 
+
+
     with open('./data/all_dx_meds_procs.pickle', 'wb') as f:
         pickle.dump([all_dxs, all_meds, all_procs], f)
     f.close()

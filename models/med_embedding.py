@@ -70,15 +70,19 @@ def get_doc_lengths(docs):
 
 if __name__ == '__main__':
     # ============== get visit doc data for embedding =============
-    # filenames = ['./data/dxs_data_v2.pickle', './data/med_orders_v2.pickle', './data/proc_orders_v2.pickle']
-    # visit_docs = process_doc_data(filenames)  # 923707 visits (docs)
-    # with open('./data/visit_docs.pickle', 'wb') as f:
-    #     pickle.dump(visit_docs, f)
-    # f.close()
+    filenames = ['./data/dxs_data_v2.pickle', './data/med_orders_v2.pickle', './data/proc_orders_v2.pickle']
+    visit_docs = process_doc_data(filenames)  # 923707 visits (docs)
+    with open('./data/visit_docs.pickle', 'wb') as f:
+        pickle.dump(visit_docs, f)
+    f.close()
+
+    # ============== get the proc id and names ====================
+    proc_names = pd.read_csv('./data/proc_id_name.csv', dtype=object)
+    proc_names.index = proc_names['PROC_ID']
+    del proc_names['PROC_ID']
 
     # ============ learn embedding for med codes ==========================
     # analyze lengths of the docs
-
     with open('./data/visit_docs.pickle', 'rb') as f:
         visit_docs = pickle.load(f)
 
@@ -93,7 +97,7 @@ if __name__ == '__main__':
     workers = 28
     iter = 10
     sg = 1 # skip-gram:1; cbow: 0
-    model_path = 'w2v_size' + str(size) + '_window' + str(window) + '_sg' + str(sg)
+    model_path = './results/w2v_size' + str(size) + '_window' + str(window) + '_sg' + str(sg)
     # if os.path.exists(model_path):
     #     model = Word2Vec.load(model_path)
     # else:
@@ -101,10 +105,10 @@ if __name__ == '__main__':
     model = Word2Vec(docs, size=size, window=window, min_count=min_count, workers=workers, sg=sg, iter=iter)
     model.save(model_path)
     b = time.time()
+    print('training time (mins): %.3f' % ((b - a) / 60)) # 191 mins
     vocab = list(model.wv.vocab.keys())
     c = vocab[1]
     sims = model.most_similar(c)
-    print('training time (mins): %.3f' % ((b - a) / 60))
     print(c)
     print(sims)
 
