@@ -11,4 +11,4 @@ class CNNmodel(nn.Module):
     def __init__(self):
         super(CNNmodel, self).__init__()
 
-        # 
+        #
