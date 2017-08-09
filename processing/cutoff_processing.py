@@ -1,5 +1,5 @@
 """
-Define a cutoff, observation window (one-year) and prediction window (two-year)
+Define a cutoff, observation window (one-year) and prediction window (one-year)
 """
 
 import pickle
