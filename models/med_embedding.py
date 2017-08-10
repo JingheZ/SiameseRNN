@@ -77,7 +77,9 @@ if __name__ == '__main__':
     f.close()
 
     # ============== get the proc id and names ====================
-    proc_names = pd.read_csv('./data/proc_id_name.csv', dtype=object)
+    with open('./data/all_procs.pickle', 'rb') as f:
+        proc_names = pickle.load(f)
+    f.close()
     proc_names.index = proc_names['PROC_ID']
     del proc_names['PROC_ID']
 
