@@ -91,13 +91,13 @@ if __name__ == '__main__':
     docs = list(visit_docs.values())
     lengths = get_doc_lengths(docs)
     lengths.describe()
-    lengths.quantile(0.995) # 903; there are 4618 docs have longer weights than this
+    lengths.quantile(0.995) # 886;
 
     size = 100
-    window = 903
+    window = 886
     min_count = 100
     workers = 28
-    iter = 10
+    iter = 5
     sg = 1 # skip-gram:1; cbow: 0
     model_path = './results/w2v_size' + str(size) + '_window' + str(window) + '_sg' + str(sg)
     # if os.path.exists(model_path):

@@ -228,6 +228,7 @@ if __name__ == '__main__':
     with open('./data/visits_v3.pickle', 'wb') as f:
         pickle.dump(visits_v3, f)
     f.close()
+
     # create a dict of all patients, in each patient data, there is also a dict of ranks containing the visit ids
     visit_ranks_dict = create_visit_ranks(visits_v3)
     # create dict of dict for patient, that the keys are vid and value is rank
