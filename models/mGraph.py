@@ -172,8 +172,8 @@ if __name__ == '__main__':
 
     # find patients with at least four years of complete visits
     # 1. first visit date = 0
-    # 2. one year of observation window and four years of prediction window
-    thres = 60 * 24 * 365 * 5
+    # 2. one year of observation window and three years of prediction window
+    thres = 60 * 24 * 365 * 4
     data_control = find_visit_gaps_control(data, ptids_dm, thres)
 
     # select the visits of target and control groups:
