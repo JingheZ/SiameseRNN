@@ -10,6 +10,15 @@ select the patients data according to the patient ids from both med and procedur
 import pickle
 import pandas as pd
 import numpy as np
+from sklearn.feature_selection import chi2, SelectKBest
+from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier
+from sklearn import metrics
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+import xgboost as xgb
+import random
+from sklearn.model_selection import StratifiedShuffleSplit, ShuffleSplit
+from sklearn.utils import shuffle
 
 
 def getCode(element, CCS_dict):
@@ -116,12 +125,13 @@ def find_patient_counts(data):
     x2 = data[data['first_dm_date'] >= 180 * 24 * 60]
     print('Number of patients with first DM after 180 days % i:')
     print(len(set(x2['ptid'])))
-    x3 = data[data['first_dm_date'].between(90 * 24 * 60, 455 * 24 * 60)]
+    x3 = data[data['gap_dm'].between(90 * 24 * 60, 455 * 24 * 60)]
     print('Number of patients with first DM between 90 and 455 days % i:')
     print(len(set(x3['ptid'])))
-    x4 = data[data['first_dm_date'].between(180 * 24 * 60, 635 * 24 * 60)]
+    x4 = data[data['gap_dm'].between(180 * 24 * 60, 635 * 24 * 60)]
     print('Number of patients with first DM between 180 and 455 days % i:')
     print(len(set(x4['ptid'])))
+    return list(set(x1['ptid']))
 
 
 def find_visit_gaps_control(data, target_ids, thres):
@@ -137,6 +147,121 @@ def find_visit_gaps_control(data, target_ids, thres):
     data = data[~data['ptid'].isin(target_ids)]
     print('%i patients' % len(set(data['ptid'])))
     return data
+
+
+def get_counts_by_class(df, y, thres=50):
+    def filter_rare_columns(data, thres):
+        cols = data.columns
+        num = len(data)
+        cols_updated = []
+        for i in cols:
+            ct = data[i].value_counts(dropna=False)[0]
+            if num - ct > thres:
+                cols_updated.append(i)
+        data = data[cols_updated]
+        return data
+    df = df[['ptid', 'vid', 'dxcat']].drop_duplicates()
+    counts = df[['ptid', 'dxcat']].groupby(['ptid', 'dxcat']).size().unstack('dxcat').fillna(0)
+    counts = filter_rare_columns(counts, thres)
+    counts['response'] = y
+    return counts
+
+
+def feature_selection_prelim(data, k):
+    cols = data.columns
+    X = data[cols[:-1]]
+    y = data['response']
+    feature_model = SelectKBest(chi2, k=k)
+    X_new = feature_model.fit_transform(X, y)
+    features = np.array(cols)[feature_model.get_support()]
+    # y = np.array(y.tolist())
+    X_new = X[features]
+    return X_new, y, features
+
+
+def make_prediction(train_x, train_y, test_x, test_y, s, param):
+    clf = None
+    if s == 'svm':
+        # clf = SVC(kernel=param[0], class_weight='balanced')
+        clf = SVC(kernel=param[0])
+    elif s == 'rf':
+        # clf = RandomForestClassifier(n_estimators=param[0], criterion='entropy', class_weight='balanced')
+        clf = RandomForestClassifier(n_estimators=param[0], criterion='entropy')
+    elif s == 'lda':
+        clf = LinearDiscriminantAnalysis()
+    elif s == 'xgb':
+        param_dist = {'objective': 'binary:logistic', 'n_estimators': param[0], 'learning_rate': param[1]}
+        xgb.XGBClassifier(**param_dist)
+    clf.fit(train_x, train_y)
+    pred = clf.predict(test_x)
+    result = metrics.classification_report(test_y, pred)
+    auc = metrics.roc_auc_score(test_y, pred)
+    return pred, result, auc
+
+
+def split_train_test(X, y):
+    sss = StratifiedShuffleSplit(n_splits=1, test_size=0.3, random_state=1)
+    train_x = []
+    train_y = []
+    test_x = []
+    test_y = []
+    X = X.values
+    y = y.values
+    for train_index, test_index in sss.split(X, y):
+        train_x, test_x = X[train_index], X[test_index]
+        train_y, test_y = y[train_index], y[test_index]
+    return train_x, train_y, test_x, test_y
+
+
+def create_train_validate_test_sets_positive(X):
+    rs = ShuffleSplit(n_splits=1, train_size=0.7, test_size=.3,
+                      random_state=0)
+    train_index = list(list(rs.split(X))[0][0])
+    test_index = list(list(rs.split(X))[0][1])
+    train_ids = list(X[train_index])
+    test_ids = list(X[test_index])
+    with open('./data/train_test_ptids_positive.pickle', 'wb') as f:
+        pickle.dump([train_ids, test_ids], f)
+    return train_ids, test_ids
+
+
+def create_train_validate_test_sets_negative(X, size, test_ratio, train_ratio=1):
+    random.shuffle(X)
+    train_ids = random.sample(X, int(size * 0.7 * train_ratio))
+    X2 = list(set(X).difference(set(train_ids)))
+    test_ids = random.sample(X2, int(size * 0.3 * test_ratio))
+    with open('./data/train_test_ptids_negative.pickle', 'wb') as f:
+        pickle.dump([train_ids, test_ids], f)
+    return train_ids, test_ids
+
+
+def create_experiment_data(X, y, train_ids, test_ids):
+    train_x = X.ix[train_ids]
+    train_y = y.ix[train_ids]
+    train_x, train_y = shuffle(train_x, train_y)
+    test_x = X.ix[test_ids]
+    test_y = y.ix[test_ids]
+
+    train_x = train_x.values
+    train_y = train_y.values
+    test_x = test_x.values
+    test_y = test_y.values
+    return train_x, train_y, test_x, test_y
+
+
+def experiments(train_x, train_y, test_x, test_y):
+    pred_svm, result_svm, auc_svm = make_prediction(train_x, train_y, test_x, test_y, 'svm', ['rbf'])
+    print('SVM performance - AUC:%.3f' % auc_svm)
+    print(result_svm)
+    pred_lda, result_lda, auc_lda = make_prediction(train_x, train_y, test_x, test_y, 'lda', '')
+    print('LDA performance - AUC:%.3f' % auc_lda)
+    print(result_lda)
+    pred_rf, result_rf, auc_rf = make_prediction(train_x, train_y, test_x, test_y, 'rf', [100])
+    print('RF performance - AUC:%.3f' % auc_rf)
+    print(result_rf)
+    # pred_xgb, result_xgb, auc_xgb = make_prediction(train_x, train_y, test_x, test_y, 'lda', [100, 0.1])
+    # print('XGB performance - AUC:%.3f' % auc_xgb)
+    # print(result_xgb)
 
 
 if __name__ == '__main__':
@@ -156,8 +281,11 @@ if __name__ == '__main__':
     data = merge_visit_and_dx(data_dx2, visits)
     # find patients with diabetes: dxcat = '49' or '50'
     data_dm, ptids_dm = find_visit_gaps(data, ['49', '50'])
-    find_patient_counts(data_dm)
-
+    ptids_dm2 = find_patient_counts(data_dm)
+    data_dm2 = data_dm[data_dm['ptid'].isin(ptids_dm2)]
+    # get the visits in the observation window of the target patients
+    data_dm3 = data_dm2[data_dm2['gap_dm'].between(90 * 24 * 60, 455 * 24 * 60)]
+    ptids_dm3 = set(data_dm3['ptid']) # 5664 pts
     # # find patients with CHF: dxcat = '108'
     # data_chf = find_visit_gaps(data, ['108'])
     # find_patient_counts(data_chf)
@@ -173,7 +301,31 @@ if __name__ == '__main__':
     # find patients with at least four years of complete visits
     # 1. first visit date = 0
     # 2. one year of observation window and three years of prediction window
-    thres = 60 * 24 * 365 * 4
+    thres = 60 * 24 * 365 * 3
     data_control = find_visit_gaps_control(data, ptids_dm, thres)
+    data_control2 = data_control[data_control['adm_date'] <= 24 * 60 * 365]
+    data_control3 = data_control2[data_control2['dis_date'] <= 24 * 60 * 365]
+    ptids_control = set(data_control3['ptid']) # 47899 pts
 
-    # select the visits of target and control groups:
+    # get the counts of dxcats of patients
+    counts_dm = get_counts_by_class(data_dm3, 1, 57)
+    counts_control = get_counts_by_class(data_control3, 0, 479)
+    counts = counts_dm.append(counts_control).fillna(0)
+    counts.to_csv('./data/dm_control_counts.csv')
+
+    counts_x, counts_y, features = feature_selection_prelim(counts, 50)
+    # use actual ratio in training and testing:
+    train_x, train_y, test_x, test_y = split_train_test(counts_x, counts_y)
+
+    # use balanced data in training but actual ratio in testing
+    train_ids_pos, test_ids_pos = create_train_validate_test_sets_positive(np.array(list(ptids_dm3)))
+    test_ratio = len(ptids_control) / len(ptids_dm3)
+    train_ids_neg, test_ids_neg = create_train_validate_test_sets_negative(list(ptids_control), len(ptids_dm3), test_ratio, train_ratio=1)
+    train_ids = train_ids_pos + train_ids_neg
+    test_ids = test_ids_pos + test_ids_neg
+    train_x, train_y, test_x, test_y = create_experiment_data(counts_x, counts_y, train_ids, test_ids)
+
+    # build training model and make predictions
+    experiments(train_x, train_y, test_x, test_y)
+
+
