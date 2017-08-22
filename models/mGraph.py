@@ -148,29 +148,6 @@ def find_visit_gaps_control(data, target_ids, thres):
     return data
 
 
-def get_counts_by_class(df, y, c, thres=50):
-    def filter_rare_columns(data, thres):
-        cols = data.columns
-        num = len(data)
-        cols_updated = []
-        for i in cols:
-            ct = data[i].value_counts(dropna=False)[0]
-            if num - ct > thres:
-                cols_updated.append(i)
-        data = data[cols_updated]
-        return data
-    if c == '':
-        df = df[['ptid', 'vid', 'dxcat']].drop_duplicates()
-        counts = df[['ptid', 'dxcat']].groupby(['ptid', 'dxcat']).size().unstack('dxcat').fillna(0)
-        counts = filter_rare_columns(counts, thres)
-    else:
-        df = df[['ptid', 'vid', 'dxcat', c]].drop_duplicates()
-        counts = df[['ptid', 'dxcat', c]].groupby(['ptid', 'dxcat']).size().unstack(['dxcat', c]).fillna(0)
-        counts = filter_rare_columns(counts, thres)
-    counts['response'] = y
-    return counts
-
-
 def feature_selection_prelim(data, k):
     cols = data.columns
     X = data[cols[:-1]]
@@ -219,7 +196,7 @@ def tune_proba_threshold(pred_proba, y, b):
 
 
 def make_prediction_and_tuning(train_x, train_y, test_x, test_y, param):
-    clf = RandomForestClassifier(n_estimators=param[0], criterion='entropy', n_jobs=10, random_state=0)
+    clf = RandomForestClassifier(n_estimators=param[0], criterion='entropy', n_jobs=param[1], random_state=0)
     # clf = None
     # if s == 'svm':
     #     clf = SVC(kernel=param[0], class_weight='balanced', probability=True)
@@ -238,7 +215,7 @@ def make_prediction_and_tuning(train_x, train_y, test_x, test_y, param):
     pred_train = clf.predict_proba(train_x)
     pred_test = clf.predict_proba(test_x)
     pred_proba = [i[1] for i in pred_test]
-    threshold, tuning = tune_proba_threshold(pred_train, train_y, param[1]) # 2.5
+    threshold, tuning = tune_proba_threshold(pred_train, train_y, param[2]) # 2.5
     pred = [1 if p > threshold else 0 for p in pred_proba]
     result = metrics.classification_report(test_y, pred)
     auc = metrics.roc_auc_score(test_y, pred)
@@ -315,6 +292,45 @@ def experiments(train_x, train_y, test_x, test_y):
     # print(result_xgb)
 
 
+def get_counts_by_class(df, y, c, thres=50):
+    def filter_rare_columns(data, thres):
+        cols = data.columns
+        num = len(data)
+        cols_updated = []
+        for i in cols:
+            ct = data[i].value_counts(dropna=False)[0]
+            if num - ct > thres:
+                cols_updated.append(i)
+        data = data[cols_updated]
+        return data
+
+    def create_subwindows(df, c=1):
+        cols = df.columns
+        if 'gap_dm' in cols:
+            df = df[['ptid', 'vid', 'dxcat', 'gap_dm']].drop_duplicates()
+            vals = [max(1, 12 - int((x / 24 / 60 - 90) / 30)) for x in df['gap_dm']]
+            df['subw'] = [int((x - 1) / c) for x in vals]
+        else:
+            df = df[['ptid', 'vid', 'dxcat', 'adm_date']].drop_duplicates()
+            vals = [min(int(x / 24 / 60 / 30), 11) for x in df['adm_date']]
+            df['subw'] = [int(x / c) for x in vals]
+        return df
+
+    if c == 0:
+        df = df[['ptid', 'vid', 'dxcat']].drop_duplicates()
+        counts = df[['ptid', 'dxcat']].groupby(['ptid', 'dxcat']).size().unstack('dxcat').fillna(0)
+        counts = filter_rare_columns(counts, thres)
+    else:
+        df = create_subwindows(df, c)
+        counts = df[['ptid', 'dxcat', 'subw']].groupby(['ptid', 'dxcat', 'subw']).size().unstack(['dxcat'])
+        counts.reset_index(inplace=True)
+        for j in range(max(0, int(12/c) - 1)):
+            
+        counts = filter_rare_columns(counts, thres)
+    counts['response'] = y
+    return counts
+
+
 if __name__ == '__main__':
     # ============================ DX Data =================================================
     with open('./data/visits_v4.pickle', 'rb') as f:
@@ -365,12 +381,15 @@ if __name__ == '__main__':
     counts.columns = ['cat' + i for i in counts.columns[:-1]] + ['response']
     counts.to_csv('./data/dm_control_counts.csv')
 
-    # get counts and do preliminary feature selection
-    counts_x, counts_y, features = feature_selection_prelim(counts, 50)
+    # # get counts and do preliminary feature selection
+    # counts_x, counts_y, features = feature_selection_prelim(counts, 50)
     # ============== Baseline 1: frequency =====================================
     # use actual ratio in training and testing:
+
+    counts_x = counts[counts.columns[:-1]]
+    counts_y = counts['response']
     train_x, train_y, test_x, test_y = split_train_test(counts_x, counts_y)
-    pred, result, auc = make_prediction_and_tuning(train_x, train_y, test_x, test_y, [1000, 2])
+    pred, result, auc = make_prediction_and_tuning(train_x, train_y, test_x, test_y, [1000, 15, 2])
     #
     # # use balanced data in training but actual ratio in testing
     # train_ids_pos, test_ids_pos = create_train_validate_test_sets_positive(np.array(list(ptids_dm3)))
@@ -385,6 +404,3 @@ if __name__ == '__main__':
 
     # ============= baseline 2: frequency in sub-window ===================================
     # every season: get the counts and then append
-    features0 = [ft.split('cat')[1] for ft in features]
-    data = data[data['dxcat'].isin(features0)]
-    counts = get_counts_by_class(data, ,0)
