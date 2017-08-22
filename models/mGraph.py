@@ -1,5 +1,3 @@
-from fileinput import filename
-
 __author__ = 'jinghe'
 
 '''
@@ -15,11 +13,12 @@ from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
 from sklearn import metrics
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-import xgboost as xgb
+from sklearn import neighbors
+# import xgboost as xgb
 import random
 from sklearn.model_selection import StratifiedShuffleSplit, ShuffleSplit
 from sklearn.utils import shuffle
-
+from operator import itemgetter
 
 def getCode(element, CCS_dict):
     element = str(element)
@@ -182,20 +181,64 @@ def feature_selection_prelim(data, k):
 def make_prediction(train_x, train_y, test_x, test_y, s, param):
     clf = None
     if s == 'svm':
-        # clf = SVC(kernel=param[0], class_weight='balanced')
-        clf = SVC(kernel=param[0])
+        clf = SVC(kernel=param[0], class_weight='balanced')
+        # clf = SVC(kernel=param[0])
     elif s == 'rf':
-        # clf = RandomForestClassifier(n_estimators=param[0], criterion='entropy', class_weight='balanced')
-        clf = RandomForestClassifier(n_estimators=param[0], criterion='entropy')
+        clf = RandomForestClassifier(n_estimators=param[0], criterion='entropy', class_weight='balanced')
+        # clf = RandomForestClassifier(n_estimators=param[0], criterion='entropy')
     elif s == 'lda':
         clf = LinearDiscriminantAnalysis()
-    elif s == 'xgb':
-        param_dist = {'objective': 'binary:logistic', 'n_estimators': param[0], 'learning_rate': param[1]}
-        xgb.XGBClassifier(**param_dist)
+    elif s == 'knn':
+        clf = neighbors.KNeighborsClassifier(param[0], weights='distance')
+    # elif s == 'xgb':
+    #     param_dist = {'objective': 'binary:logistic', 'n_estimators': param[0], 'learning_rate': param[1]}
+    #     xgb.XGBClassifier(**param_dist)
     clf.fit(train_x, train_y)
     pred = clf.predict(test_x)
     result = metrics.classification_report(test_y, pred)
     auc = metrics.roc_auc_score(test_y, pred)
+    return pred, result, auc
+
+
+def tune_proba_threshold(pred_proba, y, b):
+    pred_proba = [i[1] for i in pred_proba]
+    results = []
+    for t in np.arange(0, 1, 0.01):
+        res = [1 if p > t else 0 for p in pred_proba]
+        f1 = metrics.fbeta_score(y, res, beta=b)
+        results.append((t, f1))
+        # auc = metrics.roc_auc_score(y, res)
+        # results.append((t, auc))
+    threshold = max(results, key=itemgetter(1))[0]
+    return threshold, results
+
+
+def make_prediction_and_tuning(train_x, train_y, test_x, test_y, param):
+    clf = RandomForestClassifier(n_estimators=param[0], criterion='entropy', n_jobs=10, random_state=0)
+    # clf = None
+    # if s == 'svm':
+    #     clf = SVC(kernel=param[0], class_weight='balanced', probability=True)
+    #     # clf = SVC(kernel=param[0])
+    # elif s == 'rf':
+    #     clf = RandomForestClassifier(n_estimators=param[0], criterion='entropy', class_weight='balanced')
+    #     # clf = RandomForestClassifier(n_estimators=param[0], criterion='entropy')
+    # elif s == 'lda':
+    #     clf = LinearDiscriminantAnalysis()
+    # elif s == 'knn':
+    #     clf = neighbors.KNeighborsClassifier(param[0], weights='distance')
+    # # elif s == 'xgb':
+    # #     param_dist = {'objective': 'binary:logistic', 'n_estimators': param[0], 'learning_rate': param[1]}
+    # #     xgb.XGBClassifier(**param_dist)
+    clf.fit(train_x, train_y)
+    pred_train = clf.predict_proba(train_x)
+    pred_test = clf.predict_proba(test_x)
+    pred_proba = [i[1] for i in pred_test]
+    threshold, tuning = tune_proba_threshold(pred_train, train_y, 3) # 2.5
+    pred = [1 if p > threshold else 0 for p in pred_proba]
+    result = metrics.classification_report(test_y, pred)
+    auc = metrics.roc_auc_score(test_y, pred)
+    print(auc)
+    print(result)
     return pred, result, auc
 
 
@@ -256,6 +299,9 @@ def experiments(train_x, train_y, test_x, test_y):
     pred_lda, result_lda, auc_lda = make_prediction(train_x, train_y, test_x, test_y, 'lda', '')
     print('LDA performance - AUC:%.3f' % auc_lda)
     print(result_lda)
+    pred_knn, result_knn, auc_knn = make_prediction(train_x, train_y, test_x, test_y, 'knn', [10])
+    print('KNN performance - AUC:%.3f' % auc_knn)
+    print(result_knn)
     pred_rf, result_rf, auc_rf = make_prediction(train_x, train_y, test_x, test_y, 'rf', [100])
     print('RF performance - AUC:%.3f' % auc_rf)
     print(result_rf)
@@ -311,21 +357,22 @@ if __name__ == '__main__':
     counts_dm = get_counts_by_class(data_dm3, 1, 57)
     counts_control = get_counts_by_class(data_control3, 0, 479)
     counts = counts_dm.append(counts_control).fillna(0)
+    counts.columns = ['cat' + i for i in counts.columns[:-1]] + ['response']
     counts.to_csv('./data/dm_control_counts.csv')
 
+    # get counts and do preliminary feature selection
     counts_x, counts_y, features = feature_selection_prelim(counts, 50)
     # use actual ratio in training and testing:
     train_x, train_y, test_x, test_y = split_train_test(counts_x, counts_y)
-
-    # use balanced data in training but actual ratio in testing
-    train_ids_pos, test_ids_pos = create_train_validate_test_sets_positive(np.array(list(ptids_dm3)))
-    test_ratio = len(ptids_control) / len(ptids_dm3)
-    train_ids_neg, test_ids_neg = create_train_validate_test_sets_negative(list(ptids_control), len(ptids_dm3), test_ratio, train_ratio=1)
-    train_ids = train_ids_pos + train_ids_neg
-    test_ids = test_ids_pos + test_ids_neg
-    train_x, train_y, test_x, test_y = create_experiment_data(counts_x, counts_y, train_ids, test_ids)
+    #
+    # # use balanced data in training but actual ratio in testing
+    # train_ids_pos, test_ids_pos = create_train_validate_test_sets_positive(np.array(list(ptids_dm3)))
+    # test_ratio = len(ptids_control) / len(ptids_dm3)
+    # train_ids_neg, test_ids_neg = create_train_validate_test_sets_negative(list(ptids_control), len(ptids_dm3), test_ratio, train_ratio=1)
+    # train_ids = train_ids_pos + train_ids_neg
+    # test_ids = test_ids_pos + test_ids_neg
+    # train_x, train_y, test_x, test_y = create_experiment_data(counts_x, counts_y, train_ids, test_ids)
 
     # build training model and make predictions
     experiments(train_x, train_y, test_x, test_y)
-
 
