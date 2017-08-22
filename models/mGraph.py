@@ -233,7 +233,7 @@ def make_prediction_and_tuning(train_x, train_y, test_x, test_y, param):
     pred_train = clf.predict_proba(train_x)
     pred_test = clf.predict_proba(test_x)
     pred_proba = [i[1] for i in pred_test]
-    threshold, tuning = tune_proba_threshold(pred_train, train_y, 3) # 2.5
+    threshold, tuning = tune_proba_threshold(pred_train, train_y, 1.5) # 2.5
     pred = [1 if p > threshold else 0 for p in pred_proba]
     result = metrics.classification_report(test_y, pred)
     auc = metrics.roc_auc_score(test_y, pred)
