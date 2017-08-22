@@ -148,7 +148,7 @@ def find_visit_gaps_control(data, target_ids, thres):
     return data
 
 
-def get_counts_by_class(df, y, thres=50):
+def get_counts_by_class(df, y, c, thres=50):
     def filter_rare_columns(data, thres):
         cols = data.columns
         num = len(data)
@@ -159,9 +159,14 @@ def get_counts_by_class(df, y, thres=50):
                 cols_updated.append(i)
         data = data[cols_updated]
         return data
-    df = df[['ptid', 'vid', 'dxcat']].drop_duplicates()
-    counts = df[['ptid', 'dxcat']].groupby(['ptid', 'dxcat']).size().unstack('dxcat').fillna(0)
-    counts = filter_rare_columns(counts, thres)
+    if c == '':
+        df = df[['ptid', 'vid', 'dxcat']].drop_duplicates()
+        counts = df[['ptid', 'dxcat']].groupby(['ptid', 'dxcat']).size().unstack('dxcat').fillna(0)
+        counts = filter_rare_columns(counts, thres)
+    else:
+        df = df[['ptid', 'vid', 'dxcat', c]].drop_duplicates()
+        counts = df[['ptid', 'dxcat', c]].groupby(['ptid', 'dxcat']).size().unstack(['dxcat', c]).fillna(0)
+        counts = filter_rare_columns(counts, thres)
     counts['response'] = y
     return counts
 
@@ -233,7 +238,7 @@ def make_prediction_and_tuning(train_x, train_y, test_x, test_y, param):
     pred_train = clf.predict_proba(train_x)
     pred_test = clf.predict_proba(test_x)
     pred_proba = [i[1] for i in pred_test]
-    threshold, tuning = tune_proba_threshold(pred_train, train_y, 3) # 2.5
+    threshold, tuning = tune_proba_threshold(pred_train, train_y, param[1]) # 2.5
     pred = [1 if p > threshold else 0 for p in pred_proba]
     result = metrics.classification_report(test_y, pred)
     auc = metrics.roc_auc_score(test_y, pred)
@@ -361,10 +366,11 @@ if __name__ == '__main__':
     counts.to_csv('./data/dm_control_counts.csv')
 
     # get counts and do preliminary feature selection
-    counts_x, counts_y, features = feature_selection_prelim(counts, 100)
+    counts_x, counts_y, features = feature_selection_prelim(counts, 50)
+    # ============== Baseline 1: frequency =====================================
     # use actual ratio in training and testing:
     train_x, train_y, test_x, test_y = split_train_test(counts_x, counts_y)
-    pred, result, auc = make_prediction_and_tuning(train_x, train_y, test_x, test_y, [1000])
+    pred, result, auc = make_prediction_and_tuning(train_x, train_y, test_x, test_y, [1000, 2])
     #
     # # use balanced data in training but actual ratio in testing
     # train_ids_pos, test_ids_pos = create_train_validate_test_sets_positive(np.array(list(ptids_dm3)))
@@ -374,6 +380,11 @@ if __name__ == '__main__':
     # test_ids = test_ids_pos + test_ids_neg
     # train_x, train_y, test_x, test_y = create_experiment_data(counts_x, counts_y, train_ids, test_ids)
 
-    # build training model and make predictions
-    experiments(train_x, train_y, test_x, test_y)
+    # # build training model and make predictions
+    # experiments(train_x, train_y, test_x, test_y)
 
+    # ============= baseline 2: frequency in sub-window ===================================
+    # every season: get the counts and then append
+    features0 = [ft.split('cat')[1] for ft in features]
+    data = data[data['dxcat'].isin(features0)]
+    counts = get_counts_by_class(data, ,0)
