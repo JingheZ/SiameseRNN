@@ -233,7 +233,7 @@ def make_prediction_and_tuning(train_x, train_y, test_x, test_y, param):
     pred_train = clf.predict_proba(train_x)
     pred_test = clf.predict_proba(test_x)
     pred_proba = [i[1] for i in pred_test]
-    threshold, tuning = tune_proba_threshold(pred_train, train_y, 1.5) # 2.5
+    threshold, tuning = tune_proba_threshold(pred_train, train_y, 3) # 2.5
     pred = [1 if p > threshold else 0 for p in pred_proba]
     result = metrics.classification_report(test_y, pred)
     auc = metrics.roc_auc_score(test_y, pred)
@@ -361,9 +361,10 @@ if __name__ == '__main__':
     counts.to_csv('./data/dm_control_counts.csv')
 
     # get counts and do preliminary feature selection
-    counts_x, counts_y, features = feature_selection_prelim(counts, 50)
+    counts_x, counts_y, features = feature_selection_prelim(counts, 100)
     # use actual ratio in training and testing:
     train_x, train_y, test_x, test_y = split_train_test(counts_x, counts_y)
+    pred, result, auc = make_prediction_and_tuning(train_x, train_y, test_x, test_y, [1000])
     #
     # # use balanced data in training but actual ratio in testing
     # train_ids_pos, test_ids_pos = create_train_validate_test_sets_positive(np.array(list(ptids_dm3)))
