@@ -224,20 +224,6 @@ def make_prediction_and_tuning(train_x, train_y, test_x, test_y, param):
     return pred, result, auc
 
 
-def split_train_test(X, y):
-    sss = StratifiedShuffleSplit(n_splits=1, test_size=0.3, random_state=1)
-    train_x = []
-    train_y = []
-    test_x = []
-    test_y = []
-    X = X.values
-    y = y.values
-    for train_index, test_index in sss.split(X, y):
-        train_x, test_x = X[train_index], X[test_index]
-        train_y, test_y = y[train_index], y[test_index]
-    return train_x, train_y, test_x, test_y
-
-
 def create_train_validate_test_sets_positive(X):
     rs = ShuffleSplit(n_splits=1, train_size=0.7, test_size=.3,
                       random_state=0)
@@ -292,7 +278,7 @@ def experiments(train_x, train_y, test_x, test_y):
     # print(result_xgb)
 
 
-def get_counts_by_class(df, y, c, thres=50):
+def get_counts_by_class(df, y, thres=50):
     def filter_rare_columns(data, thres):
         cols = data.columns
         num = len(data)
@@ -303,7 +289,14 @@ def get_counts_by_class(df, y, c, thres=50):
                 cols_updated.append(i)
         data = data[cols_updated]
         return data
+    df = df[['ptid', 'vid', 'dxcat']].drop_duplicates()
+    counts = df[['ptid', 'dxcat']].groupby(['ptid', 'dxcat']).size().unstack('dxcat').fillna(0)
+    counts = filter_rare_columns(counts, thres)
+    counts['response'] = y
+    return counts
 
+
+def get_counts_subwindow(df, y, vars, c):
     def create_subwindows(df, c=1):
         cols = df.columns
         if 'gap_dm' in cols:
@@ -316,20 +309,41 @@ def get_counts_by_class(df, y, c, thres=50):
             df['subw'] = [int(x / c) for x in vals]
         return df
 
-    if c == 0:
-        df = df[['ptid', 'vid', 'dxcat']].drop_duplicates()
-        counts = df[['ptid', 'dxcat']].groupby(['ptid', 'dxcat']).size().unstack('dxcat').fillna(0)
-        counts = filter_rare_columns(counts, thres)
-    else:
-        df = create_subwindows(df, c)
-        counts = df[['ptid', 'dxcat', 'subw']].groupby(['ptid', 'dxcat', 'subw']).size().unstack(['dxcat'])
-        counts.reset_index(inplace=True)
-        for j in range(max(0, int(12/c) - 1)):
-            
-        counts = filter_rare_columns(counts, thres)
-    counts['response'] = y
-    return counts
+    def get_counts_one_window(counts0, j):
+        cts = counts0[counts0['subw'] == j]
+        del cts['subw']
+        cts.columns = ['ptid'] + ['t' + str(j) + '_' + 'cat' + k for k in cts.columns[1:]]
+        return cts
 
+    df = df[df['dxcat'].isin(vars)]
+    df = create_subwindows(df, c)
+    counts0 = df[['ptid', 'dxcat', 'subw']].groupby(['ptid', 'dxcat', 'subw']).size().unstack('dxcat')
+    counts0.reset_index(inplace=True)
+    dt = get_counts_one_window(counts0, 0)
+    for j in range(1, max(0, int(12/c))):
+        cts = get_counts_one_window(counts0, j)
+        dt = pd.merge(dt, cts, on='ptid', how='outer')
+    dt['response'] = y
+    dt.index = dt['ptid']
+    del dt['ptid']
+    dt.fillna(0, inplace=True)
+    return dt
+
+
+def split_train_test_ptids(y, test_sz=0.2):
+    ptids = np.array(y.index.tolist())
+    sss = StratifiedShuffleSplit(n_splits=1, test_size=test_sz, random_state=1)
+    train_ids = []
+    test_ids = []
+    for train_index, test_index in sss.split(ptids, np.array(y)):
+        train_ids, test_ids = ptids[train_index], ptids[test_index]
+    return train_ids, test_ids
+
+
+def split_train_test_sets(train_ids, test_ids, X, y):
+    train_x, test_x = X.ix[train_ids], X.ix[test_ids]
+    train_y, test_y = y.ix[train_ids], y.ix[test_ids]
+    return train_x, train_y, test_x, test_y
 
 if __name__ == '__main__':
     # ============================ DX Data =================================================
@@ -378,9 +392,15 @@ if __name__ == '__main__':
     counts_dm = get_counts_by_class(data_dm3, 1, 57)
     counts_control = get_counts_by_class(data_control3, 0, 479)
     counts = counts_dm.append(counts_control).fillna(0)
+    prelim_features = set(counts.columns[:-1])
     counts.columns = ['cat' + i for i in counts.columns[:-1]] + ['response']
     counts.to_csv('./data/dm_control_counts.csv')
-
+    # get training and testing ptids
+    y = counts['response']
+    train_ids, test_ids = split_train_test_ptids(y, 0.2)
+    with open('./data/train_test_ptids.pickle', 'wb') as f:
+        pickle.dump([train_ids, test_ids], f)
+    f.close()
     # # get counts and do preliminary feature selection
     # counts_x, counts_y, features = feature_selection_prelim(counts, 50)
     # ============== Baseline 1: frequency =====================================
@@ -388,7 +408,8 @@ if __name__ == '__main__':
 
     counts_x = counts[counts.columns[:-1]]
     counts_y = counts['response']
-    train_x, train_y, test_x, test_y = split_train_test(counts_x, counts_y)
+
+    train_x, train_y, test_x, test_y = split_train_test_sets(train_ids, test_ids, counts_x, counts_y)
     pred, result, auc = make_prediction_and_tuning(train_x, train_y, test_x, test_y, [1000, 15, 2])
     #
     # # use balanced data in training but actual ratio in testing
@@ -404,3 +425,14 @@ if __name__ == '__main__':
 
     # ============= baseline 2: frequency in sub-window ===================================
     # every season: get the counts and then append
+    counts_sub_dm = get_counts_subwindow(data_dm3, 1, prelim_features, 3)
+    counts_sub_control = get_counts_subwindow(data_control3, 0, prelim_features, 3)
+    counts_sub = counts_sub_dm.append(counts_sub_control).fillna(0)
+
+    counts_sub_x = counts_sub[counts_sub.columns[1:]]
+    counts_sub_y = counts_sub['response']
+    train_x, train_y, test_x, test_y = split_train_test_sets(train_ids, test_ids, counts_sub_x, counts_sub_y)
+    train_x.to_csv('./data/counts_sub_x_train.csv', index=False)
+    train_y.to_csv('./data/counts_sub_y_train.csv', index=False)
+    test_x.to_csv('./data/counts_sub_x_test.csv', index=False)
+    test_y.to_csv('./data/counts_sub_y_test.csv', index=False)
