@@ -389,10 +389,18 @@ if __name__ == '__main__':
     ptids_control = set(data_control3['ptid']) # 47899 pts
 
     # get the counts of dxcats of patients
-    counts_dm = get_counts_by_class(data_dm3, 1, 57)
-    counts_control = get_counts_by_class(data_control3, 0, 479)
+    counts_dm = get_counts_by_class(data_dm3, 1, 5664 * 0.05)
+    counts_control = get_counts_by_class(data_control3, 0, 47899 * 0.05)
     counts = counts_dm.append(counts_control).fillna(0)
     prelim_features = set(counts.columns[:-1])
+
+    # filter out the rows with excluded features
+    data_dm4 = data_dm3[data_dm3['dxcat'].isin(prelim_features)]
+    data_control4 = data_control3[data_control3['dxcat'].isin(prelim_features)]
+    counts_dm = get_counts_by_class(data_dm4, 1, 0)
+    counts_control = get_counts_by_class(data_control4, 0, 0)
+    counts = counts_dm.append(counts_control).fillna(0)
+
     counts.columns = ['cat' + i for i in counts.columns[:-1]] + ['response']
     counts.to_csv('./data/dm_control_counts.csv')
     # get training and testing ptids
@@ -401,6 +409,8 @@ if __name__ == '__main__':
     with open('./data/train_test_ptids.pickle', 'wb') as f:
         pickle.dump([train_ids, test_ids], f)
     f.close()
+    pd.Series(train_ids).to_csv('./data/train_ids.csv', index=False)
+    pd.Series(test_ids).to_csv('./data/test_ids.csv', index=False)
     # # get counts and do preliminary feature selection
     # counts_x, counts_y, features = feature_selection_prelim(counts, 50)
     # ============== Baseline 1: frequency =====================================
@@ -409,8 +419,8 @@ if __name__ == '__main__':
     counts_x = counts[counts.columns[:-1]]
     counts_y = counts['response']
 
-    train_x, train_y, test_x, test_y = split_train_test_sets(train_ids, test_ids, counts_x, counts_y)
-    pred, result, auc = make_prediction_and_tuning(train_x, train_y, test_x, test_y, [1000, 15, 2])
+    train_x0, train_y0, test_x0, test_y0 = split_train_test_sets(train_ids, test_ids, counts_x, counts_y)
+    pred0, result0, auc0 = make_prediction_and_tuning(train_x0, train_y0, test_x0, test_y0, [1000, 15, 2])
     #
     # # use balanced data in training but actual ratio in testing
     # train_ids_pos, test_ids_pos = create_train_validate_test_sets_positive(np.array(list(ptids_dm3)))
@@ -428,11 +438,9 @@ if __name__ == '__main__':
     counts_sub_dm = get_counts_subwindow(data_dm3, 1, prelim_features, 3)
     counts_sub_control = get_counts_subwindow(data_control3, 0, prelim_features, 3)
     counts_sub = counts_sub_dm.append(counts_sub_control).fillna(0)
+    counts_sub.to_csv('./data/counts_sub.csv')
 
-    counts_sub_x = counts_sub[counts_sub.columns[1:]]
+    counts_sub_x = counts_sub[counts_sub.columns[:-1]]
     counts_sub_y = counts_sub['response']
-    train_x, train_y, test_x, test_y = split_train_test_sets(train_ids, test_ids, counts_sub_x, counts_sub_y)
-    train_x.to_csv('./data/counts_sub_x_train.csv', index=False)
-    train_y.to_csv('./data/counts_sub_y_train.csv', index=False)
-    test_x.to_csv('./data/counts_sub_x_test.csv', index=False)
-    test_y.to_csv('./data/counts_sub_y_test.csv', index=False)
+    train_x1, train_y1, test_x1, test_y1 = split_train_test_sets(train_ids, test_ids, counts_sub_x, counts_sub_y)
+    pred1, result1, auc1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, [1000, 15, 2])
