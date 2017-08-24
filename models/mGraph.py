@@ -197,7 +197,7 @@ def tune_proba_threshold_pred(pred_proba, y, test_pred_proba, test_y, b):
     pred = [1 if p > threshold else 0 for p in test_pred_proba]
     perfm = metrics.classification_report(test_y, pred)
     auc = metrics.roc_auc_score(test_y, pred)
-    return threshold, perfm, auc
+    return threshold, perfm, auc, pred
 
 
 def make_prediction_and_tuning(train_x, train_y, test_x, test_y, features, param):
@@ -208,18 +208,18 @@ def make_prediction_and_tuning(train_x, train_y, test_x, test_y, features, param
     train_pred_proba = [i[1] for i in pred_train]
     test_pred_proba = [i[1] for i in pred_test]
     # threshold tuning with f measure
-    threshold_f, perfm_f, auc_f = tune_proba_threshold_pred(train_pred_proba, train_y, test_pred_proba, test_y, param[2])
+    threshold_f, perfm_f, auc_f, pred_f = tune_proba_threshold_pred(train_pred_proba, train_y, test_pred_proba, test_y, param[2])
     print('Threshold tuned with f measure, AUC: %.3f' % auc_f)
     print(perfm_f)
     # threshold tuning with auc
-    threshold_a, perfm_a, auc_a = tune_proba_threshold_pred(train_pred_proba, train_y, test_pred_proba, test_y, 'auc')
+    threshold_a, perfm_a, auc_a, pred_a = tune_proba_threshold_pred(train_pred_proba, train_y, test_pred_proba, test_y, 'auc')
     print('Threshold tuned with AUC, AUC: %.3f' % auc_a)
     print(perfm_a)
     # get the list of feature importance
     wts = clf.feature_importances_
     fts_wts = list(zip(features, wts))
     fts_wts_sorted = sorted(fts_wts, key=itemgetter(1), reverse=True)
-    return clf, fts_wts_sorted
+    return clf, fts_wts_sorted, [threshold_f, pred_f], [threshold_a, pred_a]
 
 
 def create_train_validate_test_sets_positive(X):
@@ -299,11 +299,11 @@ def get_counts_subwindow(df, y, vars, c):
         cols = df.columns
         if 'gap_dm' in cols:
             df = df[['ptid', 'vid', 'dxcat', 'gap_dm']].drop_duplicates()
-            vals = [max(1, 12 - int((x / 24 / 60 - 90) / 30)) for x in df['gap_dm']]
+            vals = [max(1, 18 - int((x / 24 / 60 - 90) / 30)) for x in df['gap_dm']]
             df['subw'] = [int((x - 1) / c) for x in vals]
         else:
             df = df[['ptid', 'vid', 'dxcat', 'adm_date']].drop_duplicates()
-            vals = [min(int(x / 24 / 60 / 30), 11) for x in df['adm_date']]
+            vals = [min(int(x / 24 / 60 / 30), 17) for x in df['adm_date']]
             df['subw'] = [int(x / c) for x in vals]
         return df
 
@@ -318,7 +318,7 @@ def get_counts_subwindow(df, y, vars, c):
     counts0 = df[['ptid', 'dxcat', 'subw']].groupby(['ptid', 'dxcat', 'subw']).size().unstack('dxcat')
     counts0.reset_index(inplace=True)
     dt = get_counts_one_window(counts0, 0)
-    for j in range(1, max(0, int(12/c))):
+    for j in range(1, max(0, int(18/c))):
         cts = get_counts_one_window(counts0, j)
         dt = pd.merge(dt, cts, on='ptid', how='outer')
     dt['response'] = y
@@ -363,11 +363,11 @@ if __name__ == '__main__':
     ptids_dm2 = find_patient_counts(data_dm)
     data_dm2 = data_dm[data_dm['ptid'].isin(ptids_dm2)]
     # get the visits in the observation window of the target patients
-    data_dm3 = data_dm2[data_dm2['gap_dm'].between(180 * 24 * 60, 545 * 24 * 60)]
-    ptids_dm3 = set(data_dm3['ptid']) # 4547 pts
+    data_dm3 = data_dm2[data_dm2['gap_dm'].between(180 * 24 * 60, 730 * 24 * 60)]
+    ptids_dm3 = set(data_dm3['ptid']) # 5041 pts
     # # find patients with CHF: dxcat = '108'
-    # data_chf = find_visit_gaps(data, ['108'])
-    # find_patient_counts(data_chf)
+    # data_chf, ptids_chf = find_visit_gaps(data, ['108'])
+    # ptids_chf2 = find_patient_counts(data_chf)
     #
     # # find patients with CKD: dxcat = '158'
     # data_ckd = find_visit_gaps(data, ['158'])
@@ -379,19 +379,19 @@ if __name__ == '__main__':
 
     # find patients with at least four years of complete visits
     # 1. first visit date = 0
-    # 2. one year of observation window and three years of prediction window
+    # 2. one and a half year of observation window and three years of prediction window
     thres = 60 * 24 * 365 * 4
     data_control = find_visit_gaps_control(data, ptids_dm, thres)
-    data_control2 = data_control[data_control['adm_date'] <= 24 * 60 * 365]
-    data_control3 = data_control2[data_control2['dis_date'] <= 24 * 60 * 365]
-    ptids_control = set(data_control3['ptid']) # 29708 pts
+    data_control2 = data_control[data_control['adm_date'] <= 24 * 60 * 545]
+    data_control3 = data_control2[data_control2['dis_date'] <= 24 * 60 * 545]
+    ptids_control = set(data_control3['ptid']) # 29752 pts
 
     # get the counts of dxcats of patients
     # counts_dm = get_counts_by_class(data_dm3, 1, 5664 * 0.05)
-    counts_dm = get_counts_by_class(data_dm3, 1, 4547 * 0.05)
-    counts_control = get_counts_by_class(data_control3, 0, 29708 * 0.05)
+    counts_dm = get_counts_by_class(data_dm3, 1, 5041 * 0.05)
+    counts_control = get_counts_by_class(data_control3, 0, 29752 * 0.05)
     counts = counts_dm.append(counts_control).fillna(0)
-    prelim_features = set(counts.columns[:-1]) #34
+    prelim_features = set(counts.columns[:-1]) #40
 
     # filter out the rows with excluded features
     data_dm4 = data_dm3[data_dm3['dxcat'].isin(prelim_features)]
@@ -419,7 +419,7 @@ if __name__ == '__main__':
     counts_y = counts['response']
     features0 = counts.columns.tolist()[:-1]
     train_x0, train_y0, test_x0, test_y0 = split_train_test_sets(train_ids, test_ids, counts_x, counts_y)
-    clf0, features_wts0 = make_prediction_and_tuning(train_x0, train_y0, test_x0, test_y0, features0, [1000, 15, 2])
+    clf0, features_wts0, results_by_f0, results_by_auc0 = make_prediction_and_tuning(train_x0, train_y0, test_x0, test_y0, features0, [1000, 15, 5])
     #
     # # use balanced data in training but actual ratio in testing
     # train_ids_pos, test_ids_pos = create_train_validate_test_sets_positive(np.array(list(ptids_dm3)))
@@ -443,7 +443,7 @@ if __name__ == '__main__':
     counts_sub_y = counts_sub['response']
     features1 = counts_sub.columns.tolist()[:-1]
     train_x1, train_y1, test_x1, test_y1 = split_train_test_sets(train_ids, test_ids, counts_sub_x, counts_sub_y)
-    clf1, features_wts1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features1, [1000, 15, 2])
+    clf1, features_wts1, results_by_f1, results_by_auc1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features1, [1000, 15, 5])
 
     # ============= Proposed: frequency in sub-window and selected by sgl===================================
     features2_all = pd.read_csv('./data/SGL_coefs.csv')
@@ -460,7 +460,7 @@ if __name__ == '__main__':
             counts_sgl_x = counts_sub[features2]
             counts_sgl_y = counts_sub['response']
             train_x2, train_y2, test_x2, test_y2 = split_train_test_sets(train_ids, test_ids, counts_sgl_x, counts_sgl_y)
-            clf2, features_wts2 = make_prediction_and_tuning(train_x2, train_y2, test_x2, test_y2, features2, [1000, 15, 4])
+            clf2, features_wts2, results_by_f2, results_by_auc2 = make_prediction_and_tuning(train_x2, train_y2, test_x2, test_y2, features2, [1000, 15, 2])
         else:
             print('No feature is selected in SGL!')
 
