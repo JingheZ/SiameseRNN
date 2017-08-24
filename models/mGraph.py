@@ -446,12 +446,22 @@ if __name__ == '__main__':
     clf1, features_wts1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features1, [1000, 15, 4])
 
     # ============= Proposed: frequency in sub-window and selected by sgl===================================
-    features2 = pd.read_csv('./data/selected_features.csv')
-    features2 = features2.values.flatten().tolist()
-    counts_sgl_x = counts_sub[features2]
-    counts_sgl_y = counts_sub['response']
-    train_x2, train_y2, test_x2, test_y2 = split_train_test_sets(train_ids, test_ids, counts_sgl_x, counts_sgl_y)
-    clf2, features_wts2 = make_prediction_and_tuning(train_x2, train_y2, test_x2, test_y2, features2, [1000, 15, 4])
-
+    features2_all = pd.read_csv('./data/SGL_coefs.csv')
+    del features2_all['Unnamed: 0']
+    data_cols = counts_sub.columns
+    feature_names_sgl = []
+    for i in features2_all.columns:
+        print(i)
+        features2_inds = features2_all[i]
+        features2 = [data_cols[j] for j in features2_inds.index if features2_inds.loc[j] != 0]
+        feature_names_sgl.append(features2)
+        if len(features2) > 0:
+            print('%i features are selected in SGL' % len(features2))
+            counts_sgl_x = counts_sub[features2]
+            counts_sgl_y = counts_sub['response']
+            train_x2, train_y2, test_x2, test_y2 = split_train_test_sets(train_ids, test_ids, counts_sgl_x, counts_sgl_y)
+            clf2, features_wts2 = make_prediction_and_tuning(train_x2, train_y2, test_x2, test_y2, features2, [1000, 15, 4])
+        else:
+            print('No feature is selected in SGL!')
 
 
