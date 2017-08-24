@@ -6,6 +6,8 @@ To do:
 2. Padding
 3. Build CNN model (multi-channel vs. single-channel)
 
+
+mGraph results:
 # Baseline 1:
 Threshold tuned with f measure, AUC: 0.561
              precision    recall  f1-score   support
