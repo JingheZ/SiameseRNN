@@ -419,7 +419,7 @@ if __name__ == '__main__':
     counts_y = counts['response']
     features0 = counts.columns.tolist()[:-1]
     train_x0, train_y0, test_x0, test_y0 = split_train_test_sets(train_ids, test_ids, counts_x, counts_y)
-    clf0, features_wts0 = make_prediction_and_tuning(train_x0, train_y0, test_x0, test_y0, features0, [1000, 15, 4])
+    clf0, features_wts0 = make_prediction_and_tuning(train_x0, train_y0, test_x0, test_y0, features0, [1000, 15, 2])
     #
     # # use balanced data in training but actual ratio in testing
     # train_ids_pos, test_ids_pos = create_train_validate_test_sets_positive(np.array(list(ptids_dm3)))
@@ -443,7 +443,7 @@ if __name__ == '__main__':
     counts_sub_y = counts_sub['response']
     features1 = counts_sub.columns.tolist()[:-1]
     train_x1, train_y1, test_x1, test_y1 = split_train_test_sets(train_ids, test_ids, counts_sub_x, counts_sub_y)
-    clf1, features_wts1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features1, [1000, 15, 4])
+    clf1, features_wts1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features1, [1000, 15, 2])
 
     # ============= Proposed: frequency in sub-window and selected by sgl===================================
     features2_all = pd.read_csv('./data/SGL_coefs.csv')
