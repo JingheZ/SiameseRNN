@@ -365,8 +365,8 @@ if __name__ == '__main__':
     ptids_dm2 = find_patient_counts(data_dm)
     data_dm2 = data_dm[data_dm['ptid'].isin(ptids_dm2)]
     # get the visits in the observation window of the target patients
-    data_dm3 = data_dm2[data_dm2['gap_dm'].between(90 * 24 * 60, 455 * 24 * 60)]
-    ptids_dm3 = set(data_dm3['ptid']) # 5664 pts
+    data_dm3 = data_dm2[data_dm2['gap_dm'].between(180 * 24 * 60, 545 * 24 * 60)]
+    ptids_dm3 = set(data_dm3['ptid']) # 4547 pts
     # # find patients with CHF: dxcat = '108'
     # data_chf = find_visit_gaps(data, ['108'])
     # find_patient_counts(data_chf)
@@ -389,10 +389,11 @@ if __name__ == '__main__':
     ptids_control = set(data_control3['ptid']) # 47899 pts
 
     # get the counts of dxcats of patients
-    counts_dm = get_counts_by_class(data_dm3, 1, 5664 * 0.05)
+    # counts_dm = get_counts_by_class(data_dm3, 1, 5664 * 0.05)
+    counts_dm = get_counts_by_class(data_dm3, 1, 4547 * 0.05)
     counts_control = get_counts_by_class(data_control3, 0, 47899 * 0.05)
     counts = counts_dm.append(counts_control).fillna(0)
-    prelim_features = set(counts.columns[:-1])
+    prelim_features = set(counts.columns[:-1]) #33
 
     # filter out the rows with excluded features
     data_dm4 = data_dm3[data_dm3['dxcat'].isin(prelim_features)]
