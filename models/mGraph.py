@@ -552,7 +552,7 @@ if __name__ == '__main__':
         del features3_all['Unnamed: 0']
         feature_names_sgl = []
         for i in features3_all.columns:
-            print('The %i-th lambda:' % i)
+            # print('The %i-th lambda:' % i)
             features3_inds = features3_all[i]
             features3 = [data_cols[j] for j in features3_inds.index if features3_inds.loc[j] != 0]
             feature_names_sgl.append(features3)
