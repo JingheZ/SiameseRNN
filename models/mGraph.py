@@ -417,12 +417,12 @@ def tsne(data):
     return data2
 
 
-def viz_tsne(data, response):
+def viz_tsne(data, response, s):
     df = pd.DataFrame(data)
     df.columns = ['x', 'y']
     df['z'] = response
     sns.lmplot('x', 'y', data=df, fit_reg=False, hue="z", scatter_kws={"marker": "o", "s": 10})
-    plt.title('Scatter Plot of Patient Populations')
+    plt.title('Scatter Plot of Patient Populations:' + s)
     plt.xlabel('x')
     plt.ylabel('y')
     return df
@@ -565,14 +565,22 @@ if __name__ == '__main__':
 
 
     # ============= Add t-sne for visualization ==========================================================
-    output_train_tsne0 = viz_tsne(train_x0)
-    output_test_tsne0 = viz_tsne(train_x0)
 
-    output_train_tsne1 = viz_tsne(train_x1)
-    output_test_tsne1 = viz_tsne(train_x1)
+    train_tsne0 = tsne(train_x0)
+    test_tsne0 = tsne(test_x0)
+    train_tsne1 = tsne(train_x1)
+    test_tsne1 = tsne(test_x1)
+    train_tsne2 = tsne(train_x2)
+    test_tsne2 = tsne(test_x2)
 
-    output_train_tsne2 = viz_tsne(train_x2)
-    output_test_tsne2 = viz_tsne(train_x2)
+    output_train_tsne0 = viz_tsne(train_tsne0, train_y0, 'baseline-0-train')
+    output_test_tsne0 = viz_tsne(test_tsne0, test_y0, 'baseline-0-test')
 
-    # output_train_tsne3 = viz_tsne(train_x3)
-    # output_test_tsne3 = viz_tsne(train_x3)
+    output_train_tsne1 = viz_tsne(train_tsne1, train_y1, 'baseline-1-train')
+    output_test_tsne1 = viz_tsne(test_tsne1, test_y1, 'baseline-1-test')
+
+    output_train_tsne2 = viz_tsne(train_tsne2, train_y2, 'baseline-2-train')
+    output_test_tsne2 = viz_tsne(test_tsne2, test_y2, 'baseline-2-test')
+
+    # output_train_tsne3 = viz_tsne(train_x3, train_y3, 'baseline-3-train')
+    # output_test_tsne3 = viz_tsne(test_x3, test_y3, 'baseline-3-test')
