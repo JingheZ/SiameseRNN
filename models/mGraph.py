@@ -20,6 +20,8 @@ from sklearn.model_selection import StratifiedShuffleSplit, ShuffleSplit
 from sklearn.utils import shuffle
 from operator import itemgetter
 from sklearn.manifold import TSNE
+import matplotlib.pyplot as plt
+
 
 def getCode(element, CCS_dict):
     element = str(element)
@@ -209,11 +211,11 @@ def make_prediction_and_tuning(train_x, train_y, test_x, test_y, features, param
     test_pred_proba = [i[1] for i in pred_test]
     # threshold tuning with f measure
     threshold_f, perfm_f, auc_f, pred_f = tune_proba_threshold_pred(train_pred_proba, train_y, test_pred_proba, test_y, param[2])
-    print('Threshold tuned with f measure, AUC: %.3f' % auc_f)
+    print('Threshold %.3f tuned with f measure, AUC: %.3f' % (threshold_f, auc_f))
     print(perfm_f)
     # threshold tuning with auc
     threshold_a, perfm_a, auc_a, pred_a = tune_proba_threshold_pred(train_pred_proba, train_y, test_pred_proba, test_y, 'auc')
-    print('Threshold tuned with AUC, AUC: %.3f' % auc_a)
+    print('Threshold %.3f tuned with AUC, AUC: %.3f' % (threshold_a, auc_a))
     print(perfm_a)
     # get the list of feature importance
     wts = clf.feature_importances_
@@ -294,19 +296,24 @@ def get_counts_by_class(df, y, thres=50):
     return counts
 
 
-def get_counts_subwindow(df, y, vars, c):
-    def create_subwindows(df, c=1):
-        cols = df.columns
+def create_subwindows(df, c=1):
+    cols = df.columns
+    if c > 0:
         if 'gap_dm' in cols:
             df = df[['ptid', 'vid', 'dxcat', 'gap_dm']].drop_duplicates()
             vals = [max(1, 18 - int((x / 24 / 60 - 90) / 30)) for x in df['gap_dm']]
             df['subw'] = [int((x - 1) / c) for x in vals]
         else:
-            df = df[['ptid', 'vid', 'dxcat', 'adm_date']].drop_duplicates()
+            df = df[['ptid', 'dxcat', 'adm_date']].drop_duplicates()
             vals = [min(int(x / 24 / 60 / 30), 17) for x in df['adm_date']]
             df['subw'] = [int(x / c) for x in vals]
-        return df
+    else:
+        df.sort(['ptid', 'adm_date', 'dxcat'], ascending=[1, 1, 1], inplace=True)
+        df = df[['ptid', 'dxcat', 'adm_date']].drop_duplicates()
+    return df
 
+
+def get_counts_subwindow(df, y, vars, c):
     def get_counts_one_window(counts0, j):
         cts = counts0[counts0['subw'] == j]
         del cts['subw']
@@ -342,6 +349,73 @@ def split_train_test_sets(train_ids, test_ids, X, y):
     train_x, test_x = X.ix[train_ids], X.ix[test_ids]
     train_y, test_y = y.ix[train_ids], y.ix[test_ids]
     return train_x, train_y, test_x, test_y
+
+
+def create_sequence(df, ptids, s):
+    df = create_subwindows(df, 0)
+    df = df[df['ptid'].isin(ptids)]
+    df['dxcat'] = df['dxcat'].astype(int)
+    # df.sort(['ptid', 'adm_date', 'dxcat'], ascending=[1, 1, 1], inplace=True)
+    df2 = df.groupby(['ptid', 'adm_date'])['dxcat'].apply(tuple)
+    df3 = df2.reset_index()
+    df4 = df3.groupby(['ptid'])['dxcat'].apply(list)
+    df4.to_csv('./data/seq_' + s + '.txt', header=None, index=False, sep=' ', mode='a')
+    # # to replace redundant strings in linux:
+    # sed -i 's/,)/)/g' ./data/seq_dm_train.txt
+    # sed -i 's/"//g' ./data/seq_dm_train.txt
+    # sed -i 's/\[//g' ./data/seq_dm_train.txt
+    # sed -i 's/\]//g' ./data/seq_dm_train.txt
+    # sed -i 's/),/ -1/g' ./data/seq_dm_train.txt
+    # sed -i 's/(//g' ./data/seq_dm_train.txt
+    # sed -i 's/,//g' ./data/seq_dm_train.txt
+    # sed -i 's/)/ -2/g' ./data/seq_dm_train.txt
+
+    # sed -i 's/,)/)/g' ./data/seq_control_train.txt
+    # sed -i 's/"//g' ./data/seq_control_train.txt
+    # sed -i 's/\[//g' ./data/seq_control_train.txt
+    # sed -i 's/\]//g' ./data/seq_control_train.txt
+    # sed -i 's/),/ -1/g' ./data/seq_control_train.txt
+    # sed -i 's/(//g' ./data/seq_control_train.txt
+    # sed -i 's/,//g' ./data/seq_control_train.txt
+    # sed -i 's/)/ -2/g' ./data/seq_control_train.txt
+    return df3
+
+
+def get_seq_item_counts(seq_dm, seq_control, cooccur_list, mvisit_list):
+    # get items occurred at the same time
+    def get_count_one_itemset(seq, c1, c2):
+        ct1 = [1 if c1 in it and c2 in it else 0 for it in seq['dxcat'].values.tolist()]
+        seq['cat' + str(c1) + '_' + str(c2)] = ct1
+        count1 = seq[['ptid', 'cat' + str(c1) + '_' + str(c2)]].groupby('ptid').sum()
+        return count1
+    seq = pd.concat([seq_dm[['ptid', 'dxcat']], seq_control[['ptid', 'dxcat']]], axis=0)
+    count_ab = get_count_one_itemset(seq, cooccur_list[0][0], cooccur_list[0][1])
+    for a, b in cooccur_list[1:]:
+        countb = get_count_one_itemset(seq, a, b)
+        count_ab = pd.concat([count_ab, countb], axis=1)
+
+    # get same item occurred in different visits
+    def get_count_two_visits(seq, c):
+        ct1 = [1 if c in it else 0 for it in seq['dxcat'].values.tolist()]
+        seq['var'] = ct1
+        seq = seq[seq['var'] > 0]
+        count1 = seq[['ptid', 'var']].groupby('ptid').count()
+        count1['cat' + str(c) + 'to' + str(c)] = [i * (i - 1) * 0.5 for i in count1['var'].values]
+        del count1['var']
+        return count1
+    count_cd = get_count_two_visits(seq, mvisit_list[0])
+    for c in mvisit_list[1:]:
+        countc = get_count_two_visits(seq, c)
+        count_cd = pd.concat([count_cd, countc], axis=1)
+    count_abcd = pd.concat([count_ab, count_cd], axis=1)
+    return count_abcd
+
+
+def tsne(data):
+    model = TSNE(n_components=2, random_state=0)
+    data2 = model.fit_transform(data)
+    return data2
+
 
 if __name__ == '__main__':
     # ============================ DX Data =================================================
@@ -420,17 +494,6 @@ if __name__ == '__main__':
     features0 = counts.columns.tolist()[:-1]
     train_x0, train_y0, test_x0, test_y0 = split_train_test_sets(train_ids, test_ids, counts_x, counts_y)
     clf0, features_wts0, results_by_f0, results_by_auc0 = make_prediction_and_tuning(train_x0, train_y0, test_x0, test_y0, features0, [1000, 15, 5])
-    #
-    # # use balanced data in training but actual ratio in testing
-    # train_ids_pos, test_ids_pos = create_train_validate_test_sets_positive(np.array(list(ptids_dm3)))
-    # test_ratio = len(ptids_control) / len(ptids_dm3)
-    # train_ids_neg, test_ids_neg = create_train_validate_test_sets_negative(list(ptids_control), len(ptids_dm3), test_ratio, train_ratio=1)
-    # train_ids = train_ids_pos + train_ids_neg
-    # test_ids = test_ids_pos + test_ids_neg
-    # train_x, train_y, test_x, test_y = create_experiment_data(counts_x, counts_y, train_ids, test_ids)
-
-    # # build training model and make predictions
-    # experiments(train_x, train_y, test_x, test_y)
 
     # ============= baseline 2: frequency in sub-window ===================================
     # every season: get the counts and then append
@@ -444,6 +507,30 @@ if __name__ == '__main__':
     features1 = counts_sub.columns.tolist()[:-1]
     train_x1, train_y1, test_x1, test_y1 = split_train_test_sets(train_ids, test_ids, counts_sub_x, counts_sub_y)
     clf1, features_wts1, results_by_f1, results_by_auc1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features1, [1000, 15, 5])
+
+    # ============== baseline 3: mining sequence patterns =============================================
+    # get the sequence by sub-windows
+    seq_dm = create_sequence(data_dm4, train_ids, 'dm_train')
+    seq_control = create_sequence(data_control4, train_ids, 'control_train')
+    # load the selected features using sequential pattern mining SPADE
+    features2_dm = pd.read_csv('./data/result_dm.txt', delimiter=' -1', header=None)
+    # features2_control = pd.read_csv('./data/result_control.txt', delimiter=' -1', header=None)
+    # merge the features selected to get the selected single features
+    features2a = features2_dm[0].values.tolist()[:-2] + ['167', '663']
+    features2a_names = ['response'] + ['cat' + i for i in features2a]
+    counts_bps = counts[features2a_names]
+
+    cooccur_list = [[258, 259], [53, 98], [256, 259], [212, 259], [256, 258], [167, 258], [204, 211]]
+    mvisit_list = [259, 133, 98, 258, 211, 205]
+    counts_bpsb = get_seq_item_counts(seq_dm, seq_control, cooccur_list, mvisit_list)
+    counts_bps = pd.concat([counts, counts_bpsb], axis=1).fillna(0)
+    # To do: need to add 258 -> 167
+    counts_bps_y = counts_bps['response']
+    counts_bps_x = counts_bps
+    del counts_bps_x['response']
+    features2 = counts_bps_x.columns.tolist()
+    train_x2, train_y2, test_x2, test_y2 = split_train_test_sets(train_ids, test_ids, counts_bps_x, counts_bps_y)
+    clf2, features_wts2, results_by_f2, results_by_auc2 = make_prediction_and_tuning(train_x2, train_y2, test_x2, test_y2, features2, [1000, 15, 5])
 
     # ============= Proposed: frequency in sub-window and selected by sgl===================================
     features2_all = pd.read_csv('./data/SGL_coefs.csv')
@@ -465,3 +552,16 @@ if __name__ == '__main__':
             print('No feature is selected in SGL!')
 
 
+
+    # ============= Add t-sne for visualization ==========================================================
+    output_train_tsne0 = tsne(train_x0)
+    output_test_tsne0 = tsne(train_x0)
+
+    output_train_tsne1 = tsne(train_x1)
+    output_test_tsne1 = tsne(train_x1)
+
+    output_train_tsne2 = tsne(train_x2)
+    output_test_tsne2 = tsne(train_x2)
+
+    # output_train_tsne3 = tsne(train_x3)
+    # output_test_tsne3 = tsne(train_x3)
