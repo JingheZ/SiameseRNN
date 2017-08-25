@@ -22,6 +22,7 @@ from operator import itemgetter
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn.decomposition import PCA
 
 def getCode(element, CCS_dict):
     element = str(element)
@@ -417,7 +418,13 @@ def tsne(data):
     return data2
 
 
-def viz_tsne(data, response, s):
+def pca(data):
+    model = PCA(n_components=2, random_state=0)
+    data2 = model.fit_transform(data)
+    return data2
+
+
+def viz_samples(data, response, s):
     df = pd.DataFrame(data)
     df.columns = ['x', 'y']
     df['z'] = response
@@ -551,21 +558,21 @@ if __name__ == '__main__':
         features3_all = pd.read_csv('./data/sgl_coefs_alpha' + str(int(a * 10)) + '.csv')
         del features3_all['Unnamed: 0']
         feature_names_sgl = []
-        for i in features3_all.columns:
+        for i in features3_all.columns[:5]:
             # print('The %i-th lambda:' % i)
             features3_inds = features3_all[i]
-            features3 = [data_cols[j] for j in features3_inds.index if features3_inds.loc[j] != 0]
+            features3 = [data_cols[j] for j in features3_inds.index if features3_inds.loc[j] > 0]
             feature_names_sgl.append(features3)
             if len(features3) > 0:
-                print('%i features are selected in SGL' % len(features2))
-                counts_sgl_x = counts_sub[features2]
+                print('%i features are selected in SGL' % len(features3))
+                counts_sgl_x = counts_sub[features3]
                 counts_sgl_y = counts_sub['response']
                 train_x3, train_y3, test_x3, test_y3 = split_train_test_sets(train_ids, test_ids, counts_sgl_x, counts_sgl_y)
-                clf3, features_wts3, results_by_f3, results_by_auc3 = make_prediction_and_tuning(train_x3, train_y3, test_x3, test_y3, features3, [1000, 15, 2])
+                clf3, features_wts3, results_by_f3, results_by_auc3 = make_prediction_and_tuning(train_x3, train_y3, test_x3, test_y3, features3, [1000, 15, 4])
             else:
                 print('No feature is selected in SGL!')
 
-    # ============= Add t-sne for visualization ==========================================================
+    # ============= Add t-sne or pca for visualization ==========================================================
 
     train_tsne0 = tsne(train_x0)
     test_tsne0 = tsne(test_x0)
@@ -574,14 +581,31 @@ if __name__ == '__main__':
     train_tsne2 = tsne(train_x2)
     test_tsne2 = tsne(test_x2)
 
-    output_train_tsne0 = viz_tsne(train_tsne0, train_y0.values, 'baseline-0-train')
-    output_test_tsne0 = viz_tsne(test_tsne0, test_y0.values, 'baseline-0-test')
+    output_train_tsne0 = viz_samples(train_tsne0, train_y0.values, 'baseline-0-train')
+    output_test_tsne0 = viz_samples(test_tsne0, test_y0.values, 'baseline-0-test')
 
-    output_train_tsne1 = viz_tsne(train_tsne1, train_y1.values, 'baseline-1-train')
-    output_test_tsne1 = viz_tsne(test_tsne1, test_y1.values, 'baseline-1-test')
+    output_train_tsne1 = viz_samples(train_tsne1, train_y1.values, 'baseline-1-train')
+    output_test_tsne1 = viz_samples(test_tsne1, test_y1.values, 'baseline-1-test')
 
-    output_train_tsne2 = viz_tsne(train_tsne2, train_y2.values, 'baseline-2-train')
-    output_test_tsne2 = viz_tsne(test_tsne2, test_y2.values, 'baseline-2-test')
+    output_train_tsne2 = viz_samples(train_tsne2, train_y2.values, 'baseline-2-train')
+    output_test_tsne2 = viz_samples(test_tsne2, test_y2.values, 'baseline-2-test')
 
     # output_train_tsne3 = viz_tsne(train_x3, train_y3, 'baseline-3-train')
     # output_test_tsne3 = viz_tsne(test_x3, test_y3, 'baseline-3-test')
+
+    train_pca0 = pca(train_x0)
+    test_pca0 = pca(test_x0)
+    train_pca1 = pca(train_x1)
+    test_pca1 = pca(test_x1)
+    train_pca2 = pca(train_x2)
+    test_pca2 = pca(test_x2)
+
+    output_train_pca0 = viz_samples(train_pca0, train_y0.values, 'baseline-0-train')
+    output_test_pca0 = viz_samples(test_pca0, test_y0.values, 'baseline-0-test')
+
+    output_train_pca1 = viz_samples(train_pca1, train_y1.values, 'baseline-1-train')
+    output_test_pca1 = viz_samples(test_pca1, test_y1.values, 'baseline-1-test')
+
+    output_train_pca2 = viz_samples(train_pca2, train_y2.values, 'baseline-2-train')
+    output_test_pca2 = viz_samples(test_pca2, test_y2.values, 'baseline-2-test')
+
