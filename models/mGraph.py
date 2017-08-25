@@ -544,25 +544,26 @@ if __name__ == '__main__':
     clf2, features_wts2, results_by_f2, results_by_auc2 = make_prediction_and_tuning(train_x2, train_y2, test_x2, test_y2, features2, [1000, 15, 5])
 
     # ============= Proposed: frequency in sub-window and selected by sgl===================================
-    features2_all = pd.read_csv('./data/SGL_coefs.csv')
-    del features2_all['Unnamed: 0']
     data_cols = counts_sub.columns
-    feature_names_sgl = []
-    for i in features2_all.columns:
-        print(i)
-        features2_inds = features2_all[i]
-        features2 = [data_cols[j] for j in features2_inds.index if features2_inds.loc[j] != 0]
-        feature_names_sgl.append(features2)
-        if len(features2) > 0:
-            print('%i features are selected in SGL' % len(features2))
-            counts_sgl_x = counts_sub[features2]
-            counts_sgl_y = counts_sub['response']
-            train_x2, train_y2, test_x2, test_y2 = split_train_test_sets(train_ids, test_ids, counts_sgl_x, counts_sgl_y)
-            clf2, features_wts2, results_by_f2, results_by_auc2 = make_prediction_and_tuning(train_x2, train_y2, test_x2, test_y2, features2, [1000, 15, 2])
-        else:
-            print('No feature is selected in SGL!')
-
-
+    alphas = np.arange(0, 1.1, 0.1)
+    for a in alphas:
+        print('When alpha = %.1f:' % a)
+        features3_all = pd.read_csv('./data/sgl_coefs_alpha' + str(int(a * 10)) + '.csv')
+        del features3_all['Unnamed: 0']
+        feature_names_sgl = []
+        for i in features3_all.columns:
+            print('The %i-th lambda:' % i)
+            features3_inds = features3_all[i]
+            features3 = [data_cols[j] for j in features3_inds.index if features3_inds.loc[j] != 0]
+            feature_names_sgl.append(features3)
+            if len(features3) > 0:
+                print('%i features are selected in SGL' % len(features2))
+                counts_sgl_x = counts_sub[features2]
+                counts_sgl_y = counts_sub['response']
+                train_x3, train_y3, test_x3, test_y3 = split_train_test_sets(train_ids, test_ids, counts_sgl_x, counts_sgl_y)
+                clf3, features_wts3, results_by_f3, results_by_auc3 = make_prediction_and_tuning(train_x3, train_y3, test_x3, test_y3, features3, [1000, 15, 2])
+            else:
+                print('No feature is selected in SGL!')
 
     # ============= Add t-sne for visualization ==========================================================
 
