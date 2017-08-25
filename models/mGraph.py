@@ -21,7 +21,7 @@ from sklearn.utils import shuffle
 from operator import itemgetter
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
-
+import seaborn as sns
 
 def getCode(element, CCS_dict):
     element = str(element)
@@ -417,6 +417,17 @@ def tsne(data):
     return data2
 
 
+def viz_tsne(data, response):
+    df = pd.DataFrame(data)
+    df.columns = ['x', 'y']
+    df['z'] = response
+    sns.lmplot('x', 'y', data=df, fit_reg=False, hue="z", scatter_kws={"marker": "o", "s": 10})
+    plt.title('Scatter Plot of Patient Populations')
+    plt.xlabel('x')
+    plt.ylabel('y')
+    return df
+
+
 if __name__ == '__main__':
     # ============================ DX Data =================================================
     with open('./data/visits_v4.pickle', 'rb') as f:
@@ -554,14 +565,14 @@ if __name__ == '__main__':
 
 
     # ============= Add t-sne for visualization ==========================================================
-    output_train_tsne0 = tsne(train_x0)
-    output_test_tsne0 = tsne(train_x0)
+    output_train_tsne0 = viz_tsne(train_x0)
+    output_test_tsne0 = viz_tsne(train_x0)
 
-    output_train_tsne1 = tsne(train_x1)
-    output_test_tsne1 = tsne(train_x1)
+    output_train_tsne1 = viz_tsne(train_x1)
+    output_test_tsne1 = viz_tsne(train_x1)
 
-    output_train_tsne2 = tsne(train_x2)
-    output_test_tsne2 = tsne(train_x2)
+    output_train_tsne2 = viz_tsne(train_x2)
+    output_test_tsne2 = viz_tsne(train_x2)
 
-    # output_train_tsne3 = tsne(train_x3)
-    # output_test_tsne3 = tsne(train_x3)
+    # output_train_tsne3 = viz_tsne(train_x3)
+    # output_test_tsne3 = viz_tsne(train_x3)
