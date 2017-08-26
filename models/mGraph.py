@@ -476,6 +476,35 @@ def make_predictions(train_x, train_y, test_x, param):
     return test_pred_proba
 
 
+def get_transition_counts(dm, control, vars):
+    dm = create_subwindows(dm, 0)
+    control = create_subwindows(control, 0)
+    df = pd.concat([dm, control], axis=0)
+    df['dxcat'] = df['dxcat'].astype(int)
+    df.sort(['ptid', 'adm_date', 'dxcat'], ascending=[1, 1, 1], inplace=True)
+    df2 = df.groupby(['ptid', 'adm_date'])['dxcat'].apply(list)
+    df3 = df2.reset_index()
+    df4 = df3.groupby(['ptid'])['dxcat'].apply(list)
+    seq_dict = df4.to_dict()
+    vars_pairs = []
+    for var in vars:
+        pairs = [str(var) + 'to' + str(var2) for var2 in vars]
+        vars_pairs += pairs
+    transition_dict = {}
+    for key, val in seq_dict.items():
+        trans = dict.fromkeys(vars_pairs, 0)
+        if len(val) > 1:
+            for i in range(len(val[:-1])):
+                for v2 in val[i + 1:]:
+                    for vv0 in val[i]:
+                        for vv2 in v2:
+                            trans[str(vv0) + 'to' + str(vv2)] += 1
+        transition_dict[key] = list(trans.values())
+    transitions = pd.DataFrame.from_dict(transition_dict, orient='index')
+    transitions.columns = vars_pairs
+    return transitions
+
+
 if __name__ == '__main__':
     # ============================ DX Data =================================================
     with open('./data/visits_v4.pickle', 'rb') as f:
@@ -524,7 +553,7 @@ if __name__ == '__main__':
     counts_dm = get_counts_by_class(data_dm3, 1, 5041 * 0.05)
     counts_control = get_counts_by_class(data_control3, 0, 29752 * 0.05)
     counts = counts_dm.append(counts_control).fillna(0)
-    prelim_features = set(counts.columns[:-1]) #40
+    prelim_features = set(counts.columns[:-1]) #40; 906
 
     # filter out the rows with excluded features
     data_dm4 = data_dm3[data_dm3['dxcat'].isin(prelim_features)]
@@ -569,7 +598,6 @@ if __name__ == '__main__':
     clf1, features_wts1, results_by_f1, results_by_auc1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features1, [1000, 15, 5, 'rf'])
     clf1, features_wts1, results_by_f1, results_by_auc1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features1, [1000, 15, 5, 'lr'])
 
-
     # ============== baseline 3: mining sequence patterns =============================================
     # get the sequence by sub-windows
     seq_dm = create_sequence(data_dm4, train_ids, 'dm_train')
@@ -595,6 +623,18 @@ if __name__ == '__main__':
     train_x2, train_y2, test_x2, test_y2 = split_train_test_sets(train_ids, test_ids, counts_bps_x, counts_bps_y)
     clf2, features_wts2, results_by_f2, results_by_auc2 = make_prediction_and_tuning(train_x2, train_y2, test_x2, test_y2, features2, [1000, 15, 5, 'rf'])
     clf2, features_wts2, results_by_f2, results_by_auc2 = make_prediction_and_tuning(train_x2, train_y2, test_x2, test_y2, features2, [1000, 15, 5, 'lr'])
+
+    # ============== another baseline 4: transitions ====================================================
+    counts_trans = get_transition_counts(data_dm4, data_control4, prelim_features)
+    counts_trans = pd.concat([counts_trans, counts_y], axis=1)
+
+    counts_trans_x = counts_trans[counts_trans.columns[:-1]]
+    counts_trans_y = counts_trans['response']
+    features4 = counts_trans.columns.tolist()[:-1]
+    train_x4, train_y4, test_x4, test_y4 = split_train_test_sets(train_ids, test_ids, counts_trans_x, counts_trans_y)
+    clf4, features_wts4, results_by_f4, results_by_auc4 = make_prediction_and_tuning(train_x4, train_y4, test_x4, test_y4, features4, [1000, 15, 5, 'rf'])
+    clf4, features_wts4, results_by_f4, results_by_auc4 = make_prediction_and_tuning(train_x4, train_y4, test_x4, test_y4, features4, [1000, 15, 5, 'lr'])
+
     # ============= Proposed: frequency in sub-window and selected by sgl===================================
     data_cols = counts_sub.columns
     alphas = np.arange(0, 1.1, 0.1)
@@ -646,6 +686,10 @@ if __name__ == '__main__':
     train_pca2 = pca(train_x2)
     test_pca2 = pca(test_x2)
 
+    output_train_tsne1 = viz_samples(train_pca1, train_y1.values, 'baseline-1-train')
+    output_test_tsne1 = viz_samples(test_pca1, test_y1.values, 'baseline-1-test')
+
+
     output_train_pca0 = viz_samples(train_pca0, train_y0.values, 'baseline-0-train')
     output_test_pca0 = viz_samples(test_pca0, test_y0.values, 'baseline-0-test')
 
@@ -667,10 +711,15 @@ if __name__ == '__main__':
     test_proba2b = make_predictions(train_x2, train_y2, test_x2, [1000, 15, 'lr'])
     test_proba2c = make_predictions(train_x2, train_y2, test_x2, [0.01, 15, 'lr'])
 
+    test_proba3a = make_predictions(train_x4, train_y4, test_x4, [1000, 15, 'rf'])
+    test_proba3b = make_predictions(train_x4, train_y4, test_x4, [1000, 15, 'lr'])
+    test_proba3c = make_predictions(train_x4, train_y4, test_x4, [0.01, 15, 'lr'])
+
     test_proba = pd.DataFrame([test_proba0a, test_proba0b, test_proba0c, test_y0.values.tolist(),
                                test_proba1a, test_proba1b, test_proba1c, test_y1.values.tolist(),
-                               test_proba2a, test_proba2b, test_proba2c, test_y2.values.tolist()])
+                               test_proba2a, test_proba2b, test_proba2c, test_y2.values.tolist(),
+                               test_proba3a, test_proba3b, test_proba3c, test_y4.values.tolist(), ])
     test_proba = test_proba.transpose()
     test_proba.columns = ['b1_rf', 'b1_lr', 'b1_lasso', 'b1_response', 'b2_rf', 'b2_lr', 'b2_lasso', 'b2_response',
-                          'b3_rf', 'b3_lr', 'b3_lasso', 'b3_response']
+                          'b3_rf', 'b3_lr', 'b3_lasso', 'b3_response', 'b4_rf', 'b4_lr', 'b4_lasso', 'b4_response']
     test_proba.to_csv('./data/test_proba.csv', index=False)
