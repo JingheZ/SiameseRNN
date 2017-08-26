@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 from sklearn.feature_selection import chi2, SelectKBest
 from sklearn.svm import SVC
+from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn import metrics
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
@@ -204,25 +205,50 @@ def tune_proba_threshold_pred(pred_proba, y, test_pred_proba, test_y, b):
 
 
 def make_prediction_and_tuning(train_x, train_y, test_x, test_y, features, param):
-    clf = RandomForestClassifier(n_estimators=param[0], criterion='entropy', n_jobs=param[1], random_state=0, class_weight='balanced')
-    clf.fit(train_x, train_y)
-    pred_train = clf.predict_proba(train_x)
-    pred_test = clf.predict_proba(test_x)
-    train_pred_proba = [i[1] for i in pred_train]
-    test_pred_proba = [i[1] for i in pred_test]
-    # threshold tuning with f measure
-    threshold_f, perfm_f, auc_f, pred_f = tune_proba_threshold_pred(train_pred_proba, train_y, test_pred_proba, test_y, param[2])
-    print('Threshold %.3f tuned with f measure, AUC: %.3f' % (threshold_f, auc_f))
-    print(perfm_f)
-    # threshold tuning with auc
-    threshold_a, perfm_a, auc_a, pred_a = tune_proba_threshold_pred(train_pred_proba, train_y, test_pred_proba, test_y, 'auc')
-    print('Threshold %.3f tuned with AUC, AUC: %.3f' % (threshold_a, auc_a))
-    print(perfm_a)
-    # get the list of feature importance
-    wts = clf.feature_importances_
-    fts_wts = list(zip(features, wts))
-    fts_wts_sorted = sorted(fts_wts, key=itemgetter(1), reverse=True)
-    return clf, fts_wts_sorted, [threshold_f, pred_f], [threshold_a, pred_a]
+    if param[3] == 'rf':
+        clf = RandomForestClassifier(n_estimators=param[0], criterion='entropy', n_jobs=param[1], random_state=0, class_weight='balanced')
+        # clf = LogisticRegression(penalty='l1', C=param[0], n_jobs=param[1], random_state=0)
+        clf.fit(train_x, train_y)
+        pred_train = clf.predict_proba(train_x)
+        pred_test = clf.predict_proba(test_x)
+        train_pred_proba = [i[1] for i in pred_train]
+        test_pred_proba = [i[1] for i in pred_test]
+        # threshold tuning with f measure
+        threshold_f, perfm_f, auc_f, pred_f = tune_proba_threshold_pred(train_pred_proba, train_y, test_pred_proba, test_y, param[2])
+        print('Threshold %.3f tuned with f measure, AUC: %.3f' % (threshold_f, auc_f))
+        print(perfm_f)
+        # threshold tuning with auc
+        threshold_a, perfm_a, auc_a, pred_a = tune_proba_threshold_pred(train_pred_proba, train_y, test_pred_proba, test_y, 'auc')
+        print('Threshold %.3f tuned with AUC, AUC: %.3f' % (threshold_a, auc_a))
+        print(perfm_a)
+        # get the list of feature importance
+        # wts = clf.feature_importances_
+        # fts_wts = list(zip(features, wts))
+        # fts_wts_sorted = sorted(fts_wts, key=itemgetter(1), reverse=True)
+        fts_wts = clf.feature_importances_
+    else:
+        clf = LogisticRegression(penalty='l1', C=param[0], n_jobs=param[1], random_state=0)
+        clf.fit(train_x, train_y)
+        pred_train = clf.predict_proba(train_x)
+        pred_test = clf.predict_proba(test_x)
+        train_pred_proba = [i[1] for i in pred_train]
+        test_pred_proba = [i[1] for i in pred_test]
+        # threshold tuning with f measure
+        threshold_f, perfm_f, auc_f, pred_f = tune_proba_threshold_pred(train_pred_proba, train_y, test_pred_proba,
+                                                                        test_y, param[2])
+        print('Threshold %.3f tuned with f measure, AUC: %.3f' % (threshold_f, auc_f))
+        print(perfm_f)
+        # threshold tuning with auc
+        threshold_a, perfm_a, auc_a, pred_a = tune_proba_threshold_pred(train_pred_proba, train_y, test_pred_proba,
+                                                                        test_y, 'auc')
+        print('Threshold %.3f tuned with AUC, AUC: %.3f' % (threshold_a, auc_a))
+        print(perfm_a)
+        # get the list of feature importance
+        # wts = clf.feature_importances_
+        # fts_wts = list(zip(features, wts))
+        # fts_wts_sorted = sorted(fts_wts, key=itemgetter(1), reverse=True)
+        fts_wts = clf.coef_
+    return clf, fts_wts, [threshold_f, pred_f], [threshold_a, pred_a]
 
 
 def create_train_validate_test_sets_positive(X):
@@ -435,6 +461,21 @@ def viz_samples(data, response, s):
     return df
 
 
+def make_predictions(train_x, train_y, test_x, param):
+    if param[2] == 'rf':
+        clf = RandomForestClassifier(n_estimators=param[0], criterion='entropy', n_jobs=param[1], random_state=0, class_weight='balanced')
+        # clf = LogisticRegression(penalty='l1', C=param[0], n_jobs=param[1], random_state=0)
+        clf.fit(train_x, train_y)
+        pred_test = clf.predict_proba(test_x)
+        test_pred_proba = [i[1] for i in pred_test]
+    else:
+        clf = LogisticRegression(penalty='l1', C=param[0], n_jobs=param[1], random_state=0)
+        clf.fit(train_x, train_y)
+        pred_test = clf.predict_proba(test_x)
+        test_pred_proba = [i[1] for i in pred_test]
+    return test_pred_proba
+
+
 if __name__ == '__main__':
     # ============================ DX Data =================================================
     with open('./data/visits_v4.pickle', 'rb') as f:
@@ -511,8 +552,9 @@ if __name__ == '__main__':
     counts_y = counts['response']
     features0 = counts.columns.tolist()[:-1]
     train_x0, train_y0, test_x0, test_y0 = split_train_test_sets(train_ids, test_ids, counts_x, counts_y)
-    clf0, features_wts0, results_by_f0, results_by_auc0 = make_prediction_and_tuning(train_x0, train_y0, test_x0, test_y0, features0, [1000, 15, 5])
-
+    clf0, features_wts0, results_by_f0, results_by_auc0 = make_prediction_and_tuning(train_x0, train_y0, test_x0, test_y0, features0, [1000, 15, 5, 'rf'])
+    clf0, features_wts0, results_by_f0, results_by_auc0 = make_prediction_and_tuning(train_x0, train_y0, test_x0, test_y0, features0, [1000, 15, 5, 'lr'])
+    # auc: 0.575, 0.629
     # ============= baseline 2: frequency in sub-window ===================================
     # every season: get the counts and then append
     counts_sub_dm = get_counts_subwindow(data_dm3, 1, prelim_features, 3)
@@ -524,7 +566,9 @@ if __name__ == '__main__':
     counts_sub_y = counts_sub['response']
     features1 = counts_sub.columns.tolist()[:-1]
     train_x1, train_y1, test_x1, test_y1 = split_train_test_sets(train_ids, test_ids, counts_sub_x, counts_sub_y)
-    clf1, features_wts1, results_by_f1, results_by_auc1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features1, [1000, 15, 5])
+    clf1, features_wts1, results_by_f1, results_by_auc1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features1, [1000, 15, 5, 'rf'])
+    clf1, features_wts1, results_by_f1, results_by_auc1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features1, [1000, 15, 5, 'lr'])
+
 
     # ============== baseline 3: mining sequence patterns =============================================
     # get the sequence by sub-windows
@@ -535,21 +579,22 @@ if __name__ == '__main__':
     # features2_control = pd.read_csv('./data/result_control.txt', delimiter=' -1', header=None)
     # merge the features selected to get the selected single features
     features2a = features2_dm[0].values.tolist()[:-2] + ['167', '663']
-    features2a_names = ['response'] + ['cat' + i for i in features2a]
+    features2a_names = ['cat' + i for i in features2a] + ['response']
     counts_bps = counts[features2a_names]
 
     cooccur_list = [[258, 259], [53, 98], [256, 259], [212, 259], [256, 258], [167, 258], [204, 211]]
     mvisit_list = [259, 133, 98, 258, 211, 205]
     counts_bpsb = get_seq_item_counts(seq_dm, seq_control, cooccur_list, mvisit_list)
-    counts_bps = pd.concat([counts, counts_bpsb], axis=1).fillna(0)
+    counts_bps = pd.concat([counts_bpsb, counts], axis=1).fillna(0)
+    counts_bps.to_csv('./data/counts_bps.csv')
     # To do: need to add 258 -> 167
     counts_bps_y = counts_bps['response']
     counts_bps_x = counts_bps
     del counts_bps_x['response']
     features2 = counts_bps_x.columns.tolist()
     train_x2, train_y2, test_x2, test_y2 = split_train_test_sets(train_ids, test_ids, counts_bps_x, counts_bps_y)
-    clf2, features_wts2, results_by_f2, results_by_auc2 = make_prediction_and_tuning(train_x2, train_y2, test_x2, test_y2, features2, [1000, 15, 5])
-
+    clf2, features_wts2, results_by_f2, results_by_auc2 = make_prediction_and_tuning(train_x2, train_y2, test_x2, test_y2, features2, [1000, 15, 5, 'rf'])
+    clf2, features_wts2, results_by_f2, results_by_auc2 = make_prediction_and_tuning(train_x2, train_y2, test_x2, test_y2, features2, [1000, 15, 5, 'lr'])
     # ============= Proposed: frequency in sub-window and selected by sgl===================================
     data_cols = counts_sub.columns
     alphas = np.arange(0, 1.1, 0.1)
@@ -558,17 +603,18 @@ if __name__ == '__main__':
         features3_all = pd.read_csv('./data/sgl_coefs_alpha' + str(int(a * 10)) + '.csv')
         del features3_all['Unnamed: 0']
         feature_names_sgl = []
-        for i in features3_all.columns[:5]:
+        for i in features3_all.columns:
             # print('The %i-th lambda:' % i)
             features3_inds = features3_all[i]
             features3 = [data_cols[j] for j in features3_inds.index if features3_inds.loc[j] > 0]
             feature_names_sgl.append(features3)
             if len(features3) > 0:
                 print('%i features are selected in SGL' % len(features3))
-                counts_sgl_x = counts_sub[features3]
-                counts_sgl_y = counts_sub['response']
-                train_x3, train_y3, test_x3, test_y3 = split_train_test_sets(train_ids, test_ids, counts_sgl_x, counts_sgl_y)
-                clf3, features_wts3, results_by_f3, results_by_auc3 = make_prediction_and_tuning(train_x3, train_y3, test_x3, test_y3, features3, [1000, 15, 4])
+                # counts_sgl_x = counts_sub[features3]
+                # counts_sgl_y = counts_sub['response']
+                # train_x3, train_y3, test_x3, test_y3 = split_train_test_sets(train_ids, test_ids, counts_sgl_x, counts_sgl_y)
+                # clf3, features_wts3, results_by_f3, results_by_auc3 = make_prediction_and_tuning(train_x3, train_y3, test_x3, test_y3, features3, [1000, 15, 4, 'rf'])
+                # clf3, features_wts3, results_by_f3, results_by_auc3 = make_prediction_and_tuning(train_x3, train_y3, test_x3, test_y3, features3, [1000, 15, 4, 'lr'])
             else:
                 print('No feature is selected in SGL!')
 
@@ -609,3 +655,22 @@ if __name__ == '__main__':
     output_train_pca2 = viz_samples(train_pca2, train_y2.values, 'baseline-2-train')
     output_test_pca2 = viz_samples(test_pca2, test_y2.values, 'baseline-2-test')
 
+    test_proba0a = make_predictions(train_x0, train_y0, test_x0, [1000, 15, 'rf'])
+    test_proba0b = make_predictions(train_x0, train_y0, test_x0, [1000, 15, 'lr'])
+    test_proba0c = make_predictions(train_x0, train_y0, test_x0, [0.01, 15, 'lr'])
+
+    test_proba1a = make_predictions(train_x1, train_y1, test_x1, [1000, 15, 'rf'])
+    test_proba1b = make_predictions(train_x1, train_y1, test_x1, [1000, 15, 'lr'])
+    test_proba1c = make_predictions(train_x1, train_y1, test_x1, [0.01, 15, 'lr'])
+
+    test_proba2a = make_predictions(train_x2, train_y2, test_x2, [1000, 15, 'rf'])
+    test_proba2b = make_predictions(train_x2, train_y2, test_x2, [1000, 15, 'lr'])
+    test_proba2c = make_predictions(train_x2, train_y2, test_x2, [0.01, 15, 'lr'])
+
+    test_proba = pd.DataFrame([test_proba0a, test_proba0b, test_proba0c, test_y0.values.tolist(),
+                               test_proba1a, test_proba1b, test_proba1c, test_y1.values.tolist(),
+                               test_proba2a, test_proba2b, test_proba2c, test_y2.values.tolist()])
+    test_proba = test_proba.transpose()
+    test_proba.columns = ['b1_rf', 'b1_lr', 'b1_lasso', 'b1_response', 'b2_rf', 'b2_lr', 'b2_lasso', 'b2_response',
+                          'b3_rf', 'b3_lr', 'b3_lasso', 'b3_response']
+    test_proba.to_csv('./data/test_proba.csv', index=False)
