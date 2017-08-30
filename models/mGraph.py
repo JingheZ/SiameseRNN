@@ -581,8 +581,8 @@ if __name__ == '__main__':
     counts_y = counts['response']
     features0 = counts.columns.tolist()[:-1]
     train_x0, train_y0, test_x0, test_y0 = split_train_test_sets(train_ids, test_ids, counts_x, counts_y)
-    clf0, features_wts0, results_by_f0, results_by_auc0 = make_prediction_and_tuning(train_x0, train_y0, test_x0, test_y0, features0, [1000, 15, 5, 'rf'])
-    clf0, features_wts0, results_by_f0, results_by_auc0 = make_prediction_and_tuning(train_x0, train_y0, test_x0, test_y0, features0, [1000, 15, 5, 'lr'])
+    clf0, features_wts0, results_by_f0, results_by_auc0 = make_prediction_and_tuning(train_x0, train_y0, test_x0, test_y0, features0, [1000, 15, 2, 'rf'])
+    clf0, features_wts0, results_by_f0, results_by_auc0 = make_prediction_and_tuning(train_x0, train_y0, test_x0, test_y0, features0, [0.01, 15, 2, 'lr'])
     # auc: 0.575, 0.629
     # ============= baseline 2: frequency in sub-window ===================================
     # every season: get the counts and then append
@@ -595,8 +595,8 @@ if __name__ == '__main__':
     counts_sub_y = counts_sub['response']
     features1 = counts_sub.columns.tolist()[:-1]
     train_x1, train_y1, test_x1, test_y1 = split_train_test_sets(train_ids, test_ids, counts_sub_x, counts_sub_y)
-    clf1, features_wts1, results_by_f1, results_by_auc1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features1, [1000, 15, 5, 'rf'])
-    clf1, features_wts1, results_by_f1, results_by_auc1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features1, [1000, 15, 5, 'lr'])
+    clf1, features_wts1, results_by_f1, results_by_auc1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features1, [1000, 15, 2, 'rf'])
+    clf1, features_wts1, results_by_f1, results_by_auc1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features1, [1000, 15, 2, 'lr'])
 
     # ============== baseline 3: mining sequence patterns =============================================
     # get the sequence by sub-windows
@@ -621,8 +621,8 @@ if __name__ == '__main__':
     del counts_bps_x['response']
     features2 = counts_bps_x.columns.tolist()
     train_x2, train_y2, test_x2, test_y2 = split_train_test_sets(train_ids, test_ids, counts_bps_x, counts_bps_y)
-    clf2, features_wts2, results_by_f2, results_by_auc2 = make_prediction_and_tuning(train_x2, train_y2, test_x2, test_y2, features2, [1000, 15, 5, 'rf'])
-    clf2, features_wts2, results_by_f2, results_by_auc2 = make_prediction_and_tuning(train_x2, train_y2, test_x2, test_y2, features2, [1000, 15, 5, 'lr'])
+    clf2, features_wts2, results_by_f2, results_by_auc2 = make_prediction_and_tuning(train_x2, train_y2, test_x2, test_y2, features2, [1000, 15, 2, 'rf'])
+    clf2, features_wts2, results_by_f2, results_by_auc2 = make_prediction_and_tuning(train_x2, train_y2, test_x2, test_y2, features2, [0.02, 15, 2, 'lr'])
 
     # ============== another baseline 4: transitions ====================================================
     counts_trans = get_transition_counts(data_dm4, data_control4, prelim_features)
@@ -632,8 +632,8 @@ if __name__ == '__main__':
     counts_trans_y = counts_trans['response']
     features4 = counts_trans.columns.tolist()[:-1]
     train_x4, train_y4, test_x4, test_y4 = split_train_test_sets(train_ids, test_ids, counts_trans_x, counts_trans_y)
-    clf4, features_wts4, results_by_f4, results_by_auc4 = make_prediction_and_tuning(train_x4, train_y4, test_x4, test_y4, features4, [1000, 15, 5, 'rf'])
-    clf4, features_wts4, results_by_f4, results_by_auc4 = make_prediction_and_tuning(train_x4, train_y4, test_x4, test_y4, features4, [1000, 15, 5, 'lr'])
+    clf4, features_wts4, results_by_f4, results_by_auc4 = make_prediction_and_tuning(train_x4, train_y4, test_x4, test_y4, features4, [1000, 15, 2, 'rf'])
+    clf4, features_wts4, results_by_f4, results_by_auc4 = make_prediction_and_tuning(train_x4, train_y4, test_x4, test_y4, features4, [0.01, 15, 2, 'lr'])
 
     # ============= Proposed: frequency in sub-window and selected by sgl===================================
     data_cols = counts_sub.columns
@@ -646,15 +646,16 @@ if __name__ == '__main__':
         for i in features3_all.columns:
             # print('The %i-th lambda:' % i)
             features3_inds = features3_all[i]
-            features3 = [data_cols[j] for j in features3_inds.index if features3_inds.loc[j] > 0]
+            features3 = [(data_cols[j], features3_inds.loc[j]) for j in features3_inds.index if features3_inds.loc[j] > 0]
+            features3 = sorted(features3, key=itemgetter(1), reverse=True)
             feature_names_sgl.append(features3)
             if len(features3) > 0:
                 print('%i features are selected in SGL' % len(features3))
                 # counts_sgl_x = counts_sub[features3]
                 # counts_sgl_y = counts_sub['response']
                 # train_x3, train_y3, test_x3, test_y3 = split_train_test_sets(train_ids, test_ids, counts_sgl_x, counts_sgl_y)
-                # clf3, features_wts3, results_by_f3, results_by_auc3 = make_prediction_and_tuning(train_x3, train_y3, test_x3, test_y3, features3, [1000, 15, 4, 'rf'])
-                # clf3, features_wts3, results_by_f3, results_by_auc3 = make_prediction_and_tuning(train_x3, train_y3, test_x3, test_y3, features3, [1000, 15, 4, 'lr'])
+                # clf3, features_wts3, results_by_f3, results_by_auc3 = make_prediction_and_tuning(train_x3, train_y3, test_x3, test_y3, features3, [1000, 15, 2, 'rf'])
+                # clf3, features_wts3, results_by_f3, results_by_auc3 = make_prediction_and_tuning(train_x3, train_y3, test_x3, test_y3, features3, [0.01, 15, 2, 'lr'])
             else:
                 print('No feature is selected in SGL!')
 
@@ -689,7 +690,6 @@ if __name__ == '__main__':
     output_train_tsne1 = viz_samples(train_pca1, train_y1.values, 'baseline-1-train')
     output_test_tsne1 = viz_samples(test_pca1, test_y1.values, 'baseline-1-test')
 
-
     output_train_pca0 = viz_samples(train_pca0, train_y0.values, 'baseline-0-train')
     output_test_pca0 = viz_samples(test_pca0, test_y0.values, 'baseline-0-test')
 
@@ -703,9 +703,9 @@ if __name__ == '__main__':
     test_proba0b = make_predictions(train_x0, train_y0, test_x0, [1000, 15, 'lr'])
     test_proba0c = make_predictions(train_x0, train_y0, test_x0, [0.01, 15, 'lr'])
 
-    test_proba1a = make_predictions(train_x1, train_y1, test_x1, [1000, 15, 'rf'])
-    test_proba1b = make_predictions(train_x1, train_y1, test_x1, [1000, 15, 'lr'])
-    test_proba1c = make_predictions(train_x1, train_y1, test_x1, [0.01, 15, 'lr'])
+    test_proba1a = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'rf'])
+    test_proba1b = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'lr'])
+    test_proba1c = make_predictions(train_x3, train_y3, test_x3, [0.01, 15, 'lr'])
 
     test_proba2a = make_predictions(train_x2, train_y2, test_x2, [1000, 15, 'rf'])
     test_proba2b = make_predictions(train_x2, train_y2, test_x2, [1000, 15, 'lr'])
