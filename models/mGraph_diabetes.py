@@ -730,3 +730,6 @@ if __name__ == '__main__':
     test_proba.columns = ['b1_rf', 'b1_lr', 'b1_lasso', 'b1_response', 'b2_rf', 'b2_lr', 'b2_lasso', 'b2_response',
                           'b3_rf', 'b3_lr', 'b3_lasso', 'b3_response', 'b4_rf', 'b4_lr', 'b4_lasso', 'b4_response']
     test_proba.to_csv('./data/test_proba.csv', index=False)
+
+    data_dm4[data_dm4['ptid'] == '769052'].to_csv('./data/example_dmpt.csv') # rf predicted proba: 0.782
+    data_control4[data_control4['ptid']=='1819093'].to_csv('./data/example_controlpt.csv') # rf predicted proba: 0.033
