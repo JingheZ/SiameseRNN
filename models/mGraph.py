@@ -658,6 +658,13 @@ if __name__ == '__main__':
                 # clf3, features_wts3, results_by_f3, results_by_auc3 = make_prediction_and_tuning(train_x3, train_y3, test_x3, test_y3, features3, [0.01, 15, 2, 'lr'])
             else:
                 print('No feature is selected in SGL!')
+    a = 0.8
+    i = features3_all.columns[3]
+    counts_sgl_x = counts_sub[features3]
+    counts_sgl_y = counts_sub['response']
+    train_x3, train_y3, test_x3, test_y3 = split_train_test_sets(train_ids, test_ids, counts_sgl_x, counts_sgl_y)
+    clf3, features_wts3, results_by_f3, results_by_auc3 = make_prediction_and_tuning(train_x3, train_y3, test_x3, test_y3, features3, [1000, 15, 2, 'rf'])
+    clf3, features_wts3, results_by_f3, results_by_auc3 = make_prediction_and_tuning(train_x3, train_y3, test_x3, test_y3, features3, [0.01, 15, 2, 'lr'])
 
     # ============= Add t-sne or pca for visualization ==========================================================
 
