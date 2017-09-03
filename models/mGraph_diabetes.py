@@ -547,7 +547,7 @@ if __name__ == '__main__':
     f.close()
     # find patients with at least four years of complete visits
     # 1. first visit date = 0
-    # 2. one and a half year of observation window and three years of prediction window
+    # 2. one year of observation window and three years of prediction window
     thres = 60 * 24 * 365 * 4
     data_control = find_visit_gaps_control(data, ptids_dm, thres)
     data_control2 = data_control[data_control['adm_date'] <= 24 * 60 * 545]

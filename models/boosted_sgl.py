@@ -48,11 +48,11 @@ def create_subwindows(df, c=1):
     if c > 0:
         if 'gap_dm' in cols:
             df = df[['ptid', 'vid', 'dxcat', 'gap_dm']].drop_duplicates()
-            vals = [max(1, 12 - int((x / 24 / 60 - 90) / 30)) for x in df['gap_dm']]
+            vals = [max(1, 12 - int((x / 24 / 60 - 180) / 30)) for x in df['gap_dm']]
             df['subw'] = [int((x - 1) / c) for x in vals]
         else:
             df = df[['ptid', 'dxcat', 'adm_date']].drop_duplicates()
-            vals = [min(int(x / 24 / 60 / 30), 17) for x in df['adm_date']]
+            vals = [min(int(x / 24 / 60 / 30), 11) for x in df['adm_date']]
             df['subw'] = [int(x / c) for x in vals]
     else:
         df.sort(['ptid', 'adm_date', 'dxcat'], ascending=[1, 1, 1], inplace=True)
