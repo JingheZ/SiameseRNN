@@ -525,8 +525,8 @@ if __name__ == '__main__':
     ptids_dm2 = find_patient_counts(data_dm)
     data_dm2 = data_dm[data_dm['ptid'].isin(ptids_dm2)]
     # get the visits in the observation window of the target patients
-    data_dm3 = data_dm2[data_dm2['gap_dm'].between(180 * 24 * 60, 730 * 24 * 60)]
-    ptids_dm3 = set(data_dm3['ptid']) # 5041 pts
+    data_dm3 = data_dm2[data_dm2['gap_dm'].between(180 * 24 * 60, 540 * 24 * 60)]
+    ptids_dm3 = set(data_dm3['ptid']) # 4534 pts
 
     # find patients with CHF: dxcat = '108'
     data_chf, ptids_chf = find_visit_gaps(data, ['108'], 'chf')
@@ -548,18 +548,17 @@ if __name__ == '__main__':
     # find patients with at least four years of complete visits
     # 1. first visit date = 0
     # 2. one year of observation window and three years of prediction window
-    thres = 60 * 24 * 365 * 4
+    thres = 60 * 24 * 360 * 4
     data_control = find_visit_gaps_control(data, ptids_dm, thres)
-    data_control2 = data_control[data_control['adm_date'] <= 24 * 60 * 545]
-    data_control3 = data_control2[data_control2['dis_date'] <= 24 * 60 * 545]
-    ptids_control = set(data_control3['ptid']) # 29752 pts
+    data_control2 = data_control[data_control['adm_date'] <= 24 * 60 * 360]
+    data_control3 = data_control2[data_control2['dis_date'] <= 24 * 60 * 360]
+    ptids_control = set(data_control3['ptid']) # 30751 pts
 
     # get the counts of dxcats of patients
-    # counts_dm = get_counts_by_class(data_dm3, 1, 5664 * 0.05)
-    counts_dm = get_counts_by_class(data_dm3, 1, 5041 * 0.05)
-    counts_control = get_counts_by_class(data_control3, 0, 29752 * 0.05)
+    counts_dm = get_counts_by_class(data_dm3, 1, len(ptids_dm3) * 0.05)
+    counts_control = get_counts_by_class(data_control3, 0, len(ptids_control) * 0.05)
     counts = counts_dm.append(counts_control).fillna(0)
-    prelim_features = set(counts.columns[:-1]) #40; 906
+    prelim_features = set(counts.columns[:-1]) #34
 
     # filter out the rows with excluded features
     data_dm4 = data_dm3[data_dm3['dxcat'].isin(prelim_features)]
