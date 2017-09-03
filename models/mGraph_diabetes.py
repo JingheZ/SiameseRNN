@@ -527,6 +527,7 @@ if __name__ == '__main__':
     # get the visits in the observation window of the target patients
     data_dm3 = data_dm2[data_dm2['gap_dm'].between(180 * 24 * 60, 730 * 24 * 60)]
     ptids_dm3 = set(data_dm3['ptid']) # 5041 pts
+
     # find patients with CHF: dxcat = '108'
     data_chf, ptids_chf = find_visit_gaps(data, ['108'], 'chf')
     # ptids_chf2 = find_patient_counts(data_chf)
@@ -538,25 +539,12 @@ if __name__ == '__main__':
     # find patients with CKD: dxcat = '127'
     data_copd, ptids_copd = find_visit_gaps(data, ['127'], 'copd')
     # find_patient_counts(data_copd)
-
-    data_dm_ckd = pd.merge(data_dm, data_ckd[['ptid', 'first_ckd_date', 'gap_ckd']], how='inner', left_on='ptid', right_on='ptid')
-    data_dm_ckd.sort(['ptid', 'adm_date'], ascending=[1, 1], inplace=True)
-    data_dm_ckd['gap_dm_ckd'] = data_dm_ckd['first_ckd_date'] - data_dm_ckd['first_dm_date']
-    ptids_dm_ckd = set(data_dm_ckd['ptid']) # 4803 pts
-    d0 = data_dm_ckd[data_dm_ckd['first_ckd_date'] >= 180 * 24 * 60]
-    ptids_dm_ckd0 = set(d0['ptid']) # 1329 pts
-    d1 = d0[d0['gap_dm_ckd'] > (180 + 360) * 24 * 60]
-    ptids_dm_ckd1 = set(d1['ptid']) # 561 pts
-
-
-    len(set(ptids_dm).intersection(set(ptids_chf))) # 3433 pts
-    len(set(ptids_dm).difference(set(ptids_ckd))) # 8643 pts
-    len(set(ptids_ckd).difference(set(ptids_dm))) # 19974 pts
-
-    len(set(ptids_dm).difference(set(ptids_copd)).difference(set(ptids_chf))) # 16161 pts
-    # len(set(ptids_ckd).difference(set(ptids_copd)).difference(set(ptids_dm)).difference(set(ptids_chf))) # 3882 pts
-    len(set(ptids_copd).difference(set(ptids_dm)).difference(set(ptids_chf))) # 7879 pts
-    len(set(ptids_chf).difference(set(ptids_dm)).difference(set(ptids_copd))) # 7879 pts
+    with open('./data/data_dm_ptids.pickle', 'wb') as f:
+        pickle.dump([data_dm, ptids_dm], f)
+    f.close()
+    with open('./data/data_ckd_ptids.pickle', 'wb') as f:
+        pickle.dump([data_ckd, ptids_ckd], f)
+    f.close()
     # find patients with at least four years of complete visits
     # 1. first visit date = 0
     # 2. one and a half year of observation window and three years of prediction window
@@ -565,10 +553,6 @@ if __name__ == '__main__':
     data_control2 = data_control[data_control['adm_date'] <= 24 * 60 * 545]
     data_control3 = data_control2[data_control2['dis_date'] <= 24 * 60 * 545]
     ptids_control = set(data_control3['ptid']) # 29752 pts
-
-    # get the
-
-
 
     # get the counts of dxcats of patients
     # counts_dm = get_counts_by_class(data_dm3, 1, 5664 * 0.05)

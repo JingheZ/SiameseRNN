@@ -25,6 +25,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.decomposition import PCA
 
+
 def getCode(element, CCS_dict):
     element = str(element)
     element = element.replace(".", "")
@@ -328,7 +329,7 @@ def create_subwindows(df, c=1):
     if c > 0:
         if 'gap_dm' in cols:
             df = df[['ptid', 'vid', 'dxcat', 'gap_dm']].drop_duplicates()
-            vals = [max(1, 18 - int((x / 24 / 60 - 90) / 30)) for x in df['gap_dm']]
+            vals = [max(1, 18 - int((x / 24 / 60 - 180) / 30)) for x in df['gap_dm']]
             df['subw'] = [int((x - 1) / c) for x in vals]
         else:
             df = df[['ptid', 'dxcat', 'adm_date']].drop_duplicates()
