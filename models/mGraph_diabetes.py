@@ -110,15 +110,15 @@ def merge_visit_and_dx(data_dx, visits):
     return data
 
 
-def find_visit_gaps(data, dxcats):
+def find_visit_gaps(data, dxcats, s):
     dms = data[data['dxcat'].isin(dxcats)]
     dm_ptids = set(dms['ptid'])
     print('%i patients' % len(set(dms['ptid'])))
     first_dm = dms[['ptid', 'adm_date']].drop_duplicates().groupby('ptid').min()
     first_dm.reset_index(inplace=True)
-    first_dm.columns = ['ptid', 'first_dm_date']
+    first_dm.columns = ['ptid', 'first_' + s + '_date']
     data_v2 = pd.merge(data, first_dm, how='inner', left_on='ptid', right_on='ptid')
-    data_v2['gap_dm'] = data_v2['first_dm_date'] - data_v2['adm_date']
+    data_v2['gap_' + s] = data_v2['first_' + s + '_date'] - data_v2['adm_date']
     return data_v2, dm_ptids
 
 
@@ -521,24 +521,42 @@ if __name__ == '__main__':
 
     data = merge_visit_and_dx(data_dx2, visits)
     # find patients with diabetes: dxcat = '49' or '50'
-    data_dm, ptids_dm = find_visit_gaps(data, ['49', '50'])
+    data_dm, ptids_dm = find_visit_gaps(data, ['49', '50'], 'dm')
     ptids_dm2 = find_patient_counts(data_dm)
     data_dm2 = data_dm[data_dm['ptid'].isin(ptids_dm2)]
     # get the visits in the observation window of the target patients
     data_dm3 = data_dm2[data_dm2['gap_dm'].between(180 * 24 * 60, 730 * 24 * 60)]
     ptids_dm3 = set(data_dm3['ptid']) # 5041 pts
-    # # find patients with CHF: dxcat = '108'
-    # data_chf, ptids_chf = find_visit_gaps(data, ['108'])
+    # find patients with CHF: dxcat = '108'
+    data_chf, ptids_chf = find_visit_gaps(data, ['108'], 'chf')
     # ptids_chf2 = find_patient_counts(data_chf)
-    #
-    # # find patients with CKD: dxcat = '158'
-    # data_ckd = find_visit_gaps(data, ['158'])
+
+    # find patients with CKD: dxcat = '158'
+    data_ckd, ptids_ckd = find_visit_gaps(data, ['158'], 'ckd')
     # find_patient_counts(data_ckd)
-    #
-    # # find patients with CKD: dxcat = '127'
-    # data_copd = find_visit_gaps(data, ['127'])
+
+    # find patients with CKD: dxcat = '127'
+    data_copd, ptids_copd = find_visit_gaps(data, ['127'], 'copd')
     # find_patient_counts(data_copd)
 
+    data_dm_copd = pd.merge(data_dm, data_copd[['ptid', 'first_copd_date', 'gap_copd']], how='inner', left_on='ptid', right_on='ptid')
+    data_dm_copd.sort(['ptid', 'adm_date'], ascending=[1, 1], inplace=True)
+    data_dm_copd['gap_dm_copd'] = data_dm_copd['first_copd_date'] - data_dm_copd['first_dm_date']
+    ptids_dm_copd = set(data_dm_copd['ptid']) # 3433 pts
+    d0 = data_dm_copd[data_dm_copd['first_copd_date'] >= 180 * 24 * 60]
+    ptids_dm_copd0 = set(d0['ptid']) # 1071 pts
+    d1 = d0[d0['gap_dm_copd'] > 360 * 24 * 60]
+    ptids_dm_copd1 = set(d1['ptid']) # 525 pts
+
+
+    len(set(ptids_dm).intersection(set(ptids_chf))) # 3433 pts
+    len(set(ptids_dm).difference(set(ptids_ckd))) # 8643 pts
+    len(set(ptids_ckd).difference(set(ptids_dm))) # 19974 pts
+
+    len(set(ptids_dm).difference(set(ptids_copd)).difference(set(ptids_chf))) # 16161 pts
+    # len(set(ptids_ckd).difference(set(ptids_copd)).difference(set(ptids_dm)).difference(set(ptids_chf))) # 3882 pts
+    len(set(ptids_copd).difference(set(ptids_dm)).difference(set(ptids_chf))) # 7879 pts
+    len(set(ptids_chf).difference(set(ptids_dm)).difference(set(ptids_copd))) # 7879 pts
     # find patients with at least four years of complete visits
     # 1. first visit date = 0
     # 2. one and a half year of observation window and three years of prediction window
@@ -547,6 +565,10 @@ if __name__ == '__main__':
     data_control2 = data_control[data_control['adm_date'] <= 24 * 60 * 545]
     data_control3 = data_control2[data_control2['dis_date'] <= 24 * 60 * 545]
     ptids_control = set(data_control3['ptid']) # 29752 pts
+
+    # get the
+
+
 
     # get the counts of dxcats of patients
     # counts_dm = get_counts_by_class(data_dm3, 1, 5664 * 0.05)
