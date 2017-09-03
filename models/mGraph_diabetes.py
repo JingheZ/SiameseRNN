@@ -539,14 +539,14 @@ if __name__ == '__main__':
     data_copd, ptids_copd = find_visit_gaps(data, ['127'], 'copd')
     # find_patient_counts(data_copd)
 
-    data_dm_copd = pd.merge(data_dm, data_copd[['ptid', 'first_copd_date', 'gap_copd']], how='inner', left_on='ptid', right_on='ptid')
-    data_dm_copd.sort(['ptid', 'adm_date'], ascending=[1, 1], inplace=True)
-    data_dm_copd['gap_dm_copd'] = data_dm_copd['first_copd_date'] - data_dm_copd['first_dm_date']
-    ptids_dm_copd = set(data_dm_copd['ptid']) # 3433 pts
-    d0 = data_dm_copd[data_dm_copd['first_copd_date'] >= 180 * 24 * 60]
-    ptids_dm_copd0 = set(d0['ptid']) # 1071 pts
-    d1 = d0[d0['gap_dm_copd'] > 360 * 24 * 60]
-    ptids_dm_copd1 = set(d1['ptid']) # 525 pts
+    data_dm_ckd = pd.merge(data_dm, data_ckd[['ptid', 'first_ckd_date', 'gap_ckd']], how='inner', left_on='ptid', right_on='ptid')
+    data_dm_ckd.sort(['ptid', 'adm_date'], ascending=[1, 1], inplace=True)
+    data_dm_ckd['gap_dm_ckd'] = data_dm_ckd['first_ckd_date'] - data_dm_ckd['first_dm_date']
+    ptids_dm_ckd = set(data_dm_ckd['ptid']) # 4803 pts
+    d0 = data_dm_ckd[data_dm_ckd['first_ckd_date'] >= 180 * 24 * 60]
+    ptids_dm_ckd0 = set(d0['ptid']) # 1329 pts
+    d1 = d0[d0['gap_dm_ckd'] > (180 + 360) * 24 * 60]
+    ptids_dm_ckd1 = set(d1['ptid']) # 561 pts
 
 
     len(set(ptids_dm).intersection(set(ptids_chf))) # 3433 pts
