@@ -656,21 +656,25 @@ if __name__ == '__main__':
     clf4, features_wts4, results_by_f4, results_by_auc4 = make_prediction_and_tuning(train_x4, train_y4, test_x4, test_y4, features4, [0.01, 15, 2, 'lr'])
 
     # ============= Proposed: frequency in sub-window and selected by sgl===================================
+    counts_sub = pd.read_csv('./data/counts_sub_by3month.csv')
+    counts_sub.index = counts_sub['ptid'].astype(str)
+    del counts_sub['ptid']
     data_cols = counts_sub.columns
     alphas = np.arange(0, 1.1, 0.1)
     for a in alphas:
         print('When alpha = %.1f:' % a)
-        features3_all = pd.read_csv('./data/sgl_coefs_alpha' + str(int(a * 10)) + '.csv')
+        features3_all = pd.read_csv('./data/sgl_coefs_4group_alpha' + str(int(a * 10)) + '_v2.csv')
         del features3_all['Unnamed: 0']
         feature_names_sgl = []
         for i in features3_all.columns:
             # print('The %i-th lambda:' % i)
             features3_inds = features3_all[i]
-            features3 = [(data_cols[j], features3_inds.loc[j]) for j in features3_inds.index if features3_inds.loc[j] > 0]
+            features3 = [(data_cols[j], features3_inds.loc[j]) for j in features3_inds.index if features3_inds.loc[j] != 0]
             features3 = sorted(features3, key=itemgetter(1), reverse=True)
             feature_names_sgl.append(features3)
+            features3_pos = [(data_cols[j], features3_inds.loc[j]) for j in features3_inds.index if features3_inds.loc[j] > 0]
             if len(features3) > 0:
-                print('%i features are selected in SGL' % len(features3))
+                print('%i features are selected in SGL, %i are positive' % (len(features3), len(features3_pos)))
                 # counts_sgl_x = counts_sub[features3]
                 # counts_sgl_y = counts_sub['response']
                 # train_x3, train_y3, test_x3, test_y3 = split_train_test_sets(train_ids, test_ids, counts_sgl_x, counts_sgl_y)
@@ -679,12 +683,20 @@ if __name__ == '__main__':
             else:
                 print('No feature is selected in SGL!')
     a = 0.8
-    i = features3_all.columns[3]
+    features3_all = pd.read_csv('./data/sgl_coefs_4group_alpha' + str(int(a * 10)) + '_v2.csv')
+    del features3_all['Unnamed: 0']
+    i = features3_all.columns[5]
+    features3_inds = features3_all[i]
+    features3 = [data_cols[j] for j in features3_inds.index if features3_inds.loc[j] != 0]
     counts_sgl_x = counts_sub[features3]
     counts_sgl_y = counts_sub['response']
     train_x3, train_y3, test_x3, test_y3 = split_train_test_sets(train_ids, test_ids, counts_sgl_x, counts_sgl_y)
     clf3, features_wts3, results_by_f3, results_by_auc3 = make_prediction_and_tuning(train_x3, train_y3, test_x3, test_y3, features3, [1000, 15, 2, 'rf'])
     clf3, features_wts3, results_by_f3, results_by_auc3 = make_prediction_and_tuning(train_x3, train_y3, test_x3, test_y3, features3, [0.01, 15, 2, 'lr'])
+
+    with open('./data/train_test_ptids.pickle', 'rb') as f:
+        train_ids, test_ids = pickle.load(f)
+    f.close()
 
     # ======================================= collect prediction results =============================
 
@@ -692,9 +704,6 @@ if __name__ == '__main__':
     test_proba0b = make_predictions(train_x0, train_y0, test_x0, [1000, 15, 'lr'])
     test_proba0c = make_predictions(train_x0, train_y0, test_x0, [0.01, 15, 'lr'])
 
-    # test_proba1a = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'rf'])
-    # test_proba1b = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'lr'])
-    # test_proba1c = make_predictions(train_x3, train_y3, test_x3, [0.01, 15, 'lr'])
     test_proba1a = make_predictions(train_x1, train_y1, test_x1, [1000, 15, 'rf'])
     test_proba1b = make_predictions(train_x1, train_y1, test_x1, [1000, 15, 'lr'])
     test_proba1c = make_predictions(train_x1, train_y1, test_x1, [0.01, 15, 'lr'])
@@ -707,13 +716,19 @@ if __name__ == '__main__':
     test_proba3b = make_predictions(train_x4, train_y4, test_x4, [1000, 15, 'lr'])
     test_proba3c = make_predictions(train_x4, train_y4, test_x4, [0.01, 15, 'lr'])
 
+    test_proba4a = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'rf'])
+    test_proba4b = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'lr'])
+    test_proba4c = make_predictions(train_x3, train_y3, test_x3, [0.01, 15, 'lr'])
+
     test_proba = pd.DataFrame([test_proba0a, test_proba0b, test_proba0c, test_y0.values.tolist(),
                                test_proba1a, test_proba1b, test_proba1c, test_y1.values.tolist(),
                                test_proba2a, test_proba2b, test_proba2c, test_y2.values.tolist(),
-                               test_proba3a, test_proba3b, test_proba3c, test_y4.values.tolist(), ])
+                               test_proba3a, test_proba3b, test_proba3c, test_y4.values.tolist(),
+                               test_proba4a, test_proba4b, test_proba4c, test_y3.values.tolist()])
     test_proba = test_proba.transpose()
     test_proba.columns = ['b1_rf', 'b1_lr', 'b1_lasso', 'b1_response', 'b2_rf', 'b2_lr', 'b2_lasso', 'b2_response',
-                          'b3_rf', 'b3_lr', 'b3_lasso', 'b3_response', 'b4_rf', 'b4_lr', 'b4_lasso', 'b4_response']
+                          'b3_rf', 'b3_lr', 'b3_lasso', 'b3_response', 'b4_rf', 'b4_lr', 'b4_lasso', 'b4_response',
+                          'b5_rf', 'b5_lr', 'b5_lasso', 'b5_response']
     test_proba.to_csv('./data/test_proba_v2.csv', index=False)
 
     data_dm4[data_dm4['ptid'] == '769052'].to_csv('./data/example_dmpt.csv') # rf predicted proba: 0.782
