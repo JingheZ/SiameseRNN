@@ -328,11 +328,11 @@ def create_subwindows(df, c=1):
     if c > 0:
         if 'gap_dm' in cols:
             df = df[['ptid', 'vid', 'dxcat', 'gap_dm']].drop_duplicates()
-            vals = [max(1, 18 - int((x / 24 / 60 - 90) / 30)) for x in df['gap_dm']]
+            vals = [max(1, 12 - int((x / 24 / 60 - 180) / 30)) for x in df['gap_dm']]
             df['subw'] = [int((x - 1) / c) for x in vals]
         else:
             df = df[['ptid', 'dxcat', 'adm_date']].drop_duplicates()
-            vals = [min(int(x / 24 / 60 / 30), 17) for x in df['adm_date']]
+            vals = [min(int(x / 24 / 60 / 30), 11) for x in df['adm_date']]
             df['subw'] = [int(x / c) for x in vals]
     else:
         df.sort(['ptid', 'adm_date', 'dxcat'], ascending=[1, 1, 1], inplace=True)
@@ -352,7 +352,7 @@ def get_counts_subwindow(df, y, vars, c):
     counts0 = df[['ptid', 'dxcat', 'subw']].groupby(['ptid', 'dxcat', 'subw']).size().unstack('dxcat')
     counts0.reset_index(inplace=True)
     dt = get_counts_one_window(counts0, 0)
-    for j in range(1, max(0, int(18/c))):
+    for j in range(1, max(0, int(12/c))):
         cts = get_counts_one_window(counts0, j)
         dt = pd.merge(dt, cts, on='ptid', how='outer')
     dt['response'] = y
@@ -615,12 +615,12 @@ if __name__ == '__main__':
     features2a_names = ['cat' + i for i in features2a] + ['response']
     counts_bps = counts[features2a_names]
 
-    cooccur_list = [[258, 259], [53, 98], [256, 259], [212, 259], [256, 258], [167, 258], [204, 211]]
-    mvisit_list = [259, 133, 98, 258, 211, 205]
+    cooccur_list = [[258, 259], [53, 98], [204, 211]]
+    mvisit_list = [259, 211]
     counts_bpsb = get_seq_item_counts(seq_dm, seq_control, cooccur_list, mvisit_list)
     counts_bps = pd.concat([counts_bpsb, counts], axis=1).fillna(0)
     counts_bps.to_csv('./data/counts_bps.csv')
-    # To do: need to add 258 -> 167
+
     counts_bps_y = counts_bps['response']
     counts_bps_x = counts_bps
     del counts_bps_x['response']
@@ -671,6 +671,40 @@ if __name__ == '__main__':
     clf3, features_wts3, results_by_f3, results_by_auc3 = make_prediction_and_tuning(train_x3, train_y3, test_x3, test_y3, features3, [1000, 15, 2, 'rf'])
     clf3, features_wts3, results_by_f3, results_by_auc3 = make_prediction_and_tuning(train_x3, train_y3, test_x3, test_y3, features3, [0.01, 15, 2, 'lr'])
 
+    # ======================================= collect prediction results =============================
+
+    test_proba0a = make_predictions(train_x0, train_y0, test_x0, [1000, 15, 'rf'])
+    test_proba0b = make_predictions(train_x0, train_y0, test_x0, [1000, 15, 'lr'])
+    test_proba0c = make_predictions(train_x0, train_y0, test_x0, [0.01, 15, 'lr'])
+
+    # test_proba1a = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'rf'])
+    # test_proba1b = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'lr'])
+    # test_proba1c = make_predictions(train_x3, train_y3, test_x3, [0.01, 15, 'lr'])
+    test_proba1a = make_predictions(train_x1, train_y1, test_x1, [1000, 15, 'rf'])
+    test_proba1b = make_predictions(train_x1, train_y1, test_x1, [1000, 15, 'lr'])
+    test_proba1c = make_predictions(train_x1, train_y1, test_x1, [0.01, 15, 'lr'])
+
+    test_proba2a = make_predictions(train_x2, train_y2, test_x2, [1000, 15, 'rf'])
+    test_proba2b = make_predictions(train_x2, train_y2, test_x2, [1000, 15, 'lr'])
+    test_proba2c = make_predictions(train_x2, train_y2, test_x2, [0.01, 15, 'lr'])
+
+    test_proba3a = make_predictions(train_x4, train_y4, test_x4, [1000, 15, 'rf'])
+    test_proba3b = make_predictions(train_x4, train_y4, test_x4, [1000, 15, 'lr'])
+    test_proba3c = make_predictions(train_x4, train_y4, test_x4, [0.01, 15, 'lr'])
+
+    test_proba = pd.DataFrame([test_proba0a, test_proba0b, test_proba0c, test_y0.values.tolist(),
+                               test_proba1a, test_proba1b, test_proba1c, test_y1.values.tolist(),
+                               test_proba2a, test_proba2b, test_proba2c, test_y2.values.tolist(),
+                               test_proba3a, test_proba3b, test_proba3c, test_y4.values.tolist(), ])
+    test_proba = test_proba.transpose()
+    test_proba.columns = ['b1_rf', 'b1_lr', 'b1_lasso', 'b1_response', 'b2_rf', 'b2_lr', 'b2_lasso', 'b2_response',
+                          'b3_rf', 'b3_lr', 'b3_lasso', 'b3_response', 'b4_rf', 'b4_lr', 'b4_lasso', 'b4_response']
+    test_proba.to_csv('./data/test_proba.csv', index=False)
+
+    data_dm4[data_dm4['ptid'] == '769052'].to_csv('./data/example_dmpt.csv') # rf predicted proba: 0.782
+    data_control4[data_control4['ptid'] =='1819093'].to_csv('./data/example_controlpt.csv') # rf predicted proba: 0.033
+
+
     # ============= Add t-sne or pca for visualization ==========================================================
 
     train_tsne0 = tsne(train_x0)
@@ -710,31 +744,3 @@ if __name__ == '__main__':
 
     output_train_pca2 = viz_samples(train_pca2, train_y2.values, 'baseline-2-train')
     output_test_pca2 = viz_samples(test_pca2, test_y2.values, 'baseline-2-test')
-
-    test_proba0a = make_predictions(train_x0, train_y0, test_x0, [1000, 15, 'rf'])
-    test_proba0b = make_predictions(train_x0, train_y0, test_x0, [1000, 15, 'lr'])
-    test_proba0c = make_predictions(train_x0, train_y0, test_x0, [0.01, 15, 'lr'])
-
-    test_proba1a = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'rf'])
-    test_proba1b = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'lr'])
-    test_proba1c = make_predictions(train_x3, train_y3, test_x3, [0.01, 15, 'lr'])
-
-    test_proba2a = make_predictions(train_x2, train_y2, test_x2, [1000, 15, 'rf'])
-    test_proba2b = make_predictions(train_x2, train_y2, test_x2, [1000, 15, 'lr'])
-    test_proba2c = make_predictions(train_x2, train_y2, test_x2, [0.01, 15, 'lr'])
-
-    test_proba3a = make_predictions(train_x4, train_y4, test_x4, [1000, 15, 'rf'])
-    test_proba3b = make_predictions(train_x4, train_y4, test_x4, [1000, 15, 'lr'])
-    test_proba3c = make_predictions(train_x4, train_y4, test_x4, [0.01, 15, 'lr'])
-
-    test_proba = pd.DataFrame([test_proba0a, test_proba0b, test_proba0c, test_y0.values.tolist(),
-                               test_proba1a, test_proba1b, test_proba1c, test_y1.values.tolist(),
-                               test_proba2a, test_proba2b, test_proba2c, test_y2.values.tolist(),
-                               test_proba3a, test_proba3b, test_proba3c, test_y4.values.tolist(), ])
-    test_proba = test_proba.transpose()
-    test_proba.columns = ['b1_rf', 'b1_lr', 'b1_lasso', 'b1_response', 'b2_rf', 'b2_lr', 'b2_lasso', 'b2_response',
-                          'b3_rf', 'b3_lr', 'b3_lasso', 'b3_response', 'b4_rf', 'b4_lr', 'b4_lasso', 'b4_response']
-    test_proba.to_csv('./data/test_proba.csv', index=False)
-
-    data_dm4[data_dm4['ptid'] == '769052'].to_csv('./data/example_dmpt.csv') # rf predicted proba: 0.782
-    data_control4[data_control4['ptid']=='1819093'].to_csv('./data/example_controlpt.csv') # rf predicted proba: 0.033
