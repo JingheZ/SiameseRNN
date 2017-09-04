@@ -25,6 +25,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.decomposition import PCA
 
+
 def getCode(element, CCS_dict):
     element = str(element)
     element = element.replace(".", "")
@@ -539,11 +540,17 @@ if __name__ == '__main__':
     # find patients with CKD: dxcat = '127'
     data_copd, ptids_copd = find_visit_gaps(data, ['127'], 'copd')
     # find_patient_counts(data_copd)
+    with open('./data/data_chf_ptids.pickle', 'wb') as f:
+        pickle.dump([data_chf, ptids_chf], f)
+    f.close()
     with open('./data/data_dm_ptids.pickle', 'wb') as f:
         pickle.dump([data_dm, ptids_dm], f)
     f.close()
     with open('./data/data_ckd_ptids.pickle', 'wb') as f:
         pickle.dump([data_ckd, ptids_ckd], f)
+    f.close()
+    with open('./data/data_copd_ptids.pickle', 'wb') as f:
+        pickle.dump([data_copd, ptids_chf], f)
     f.close()
     # find patients with at least four years of complete visits
     # 1. first visit date = 0
