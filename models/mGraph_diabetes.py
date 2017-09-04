@@ -594,7 +594,22 @@ if __name__ == '__main__':
     counts_sub_dm = get_counts_subwindow(data_dm3, 1, prelim_features, 3)
     counts_sub_control = get_counts_subwindow(data_control3, 0, prelim_features, 3)
     counts_sub = counts_sub_dm.append(counts_sub_control).fillna(0)
-    counts_sub.to_csv('./data/counts_sub.csv')
+    counts_sub.to_csv('./data/counts_sub_by3month.csv')
+
+    counts_sub_dm = get_counts_subwindow(data_dm3, 1, prelim_features, 2)
+    counts_sub_control = get_counts_subwindow(data_control3, 0, prelim_features, 2)
+    counts_sub = counts_sub_dm.append(counts_sub_control).fillna(0)
+    counts_sub.to_csv('./data/counts_sub_by2month.csv')
+
+    counts_sub_dm = get_counts_subwindow(data_dm3, 1, prelim_features, 1)
+    counts_sub_control = get_counts_subwindow(data_control3, 0, prelim_features, 1)
+    counts_sub = counts_sub_dm.append(counts_sub_control).fillna(0)
+    counts_sub.to_csv('./data/counts_sub_by1month.csv')
+
+    counts_sub_dm = get_counts_subwindow(data_dm3, 1, prelim_features, 6)
+    counts_sub_control = get_counts_subwindow(data_control3, 0, prelim_features, 6)
+    counts_sub = counts_sub_dm.append(counts_sub_control).fillna(0)
+    counts_sub.to_csv('./data/counts_sub_by6month.csv')
 
     counts_sub_x = counts_sub[counts_sub.columns[:-1]]
     counts_sub_y = counts_sub['response']
@@ -699,7 +714,7 @@ if __name__ == '__main__':
     test_proba = test_proba.transpose()
     test_proba.columns = ['b1_rf', 'b1_lr', 'b1_lasso', 'b1_response', 'b2_rf', 'b2_lr', 'b2_lasso', 'b2_response',
                           'b3_rf', 'b3_lr', 'b3_lasso', 'b3_response', 'b4_rf', 'b4_lr', 'b4_lasso', 'b4_response']
-    test_proba.to_csv('./data/test_proba.csv', index=False)
+    test_proba.to_csv('./data/test_proba_v2.csv', index=False)
 
     data_dm4[data_dm4['ptid'] == '769052'].to_csv('./data/example_dmpt.csv') # rf predicted proba: 0.782
     data_control4[data_control4['ptid'] =='1819093'].to_csv('./data/example_controlpt.csv') # rf predicted proba: 0.033

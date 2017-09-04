@@ -14,12 +14,12 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn import metrics
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn import neighbors
+from sklearn.utils import shuffle
 
-
-def split_target_data(ptids):
+def split_target_data(ptids, ratio):
     train_ids = []
     test_ids = []
-    rs = ShuffleSplit(n_splits=1, test_size=0.4, random_state=1)
+    rs = ShuffleSplit(n_splits=1, test_size=ratio, random_state=1)
     for train_index, test_index in rs.split(ptids):
         train_ids, test_ids = ptids[train_index], ptids[test_index]
     return train_ids, test_ids
@@ -46,13 +46,13 @@ def get_counts_by_class(df, y, thres=50):
 def create_subwindows(df, c=1):
     cols = df.columns
     if c > 0:
-        if 'gap_dm' in cols:
-            df = df[['ptid', 'vid', 'dxcat', 'gap_dm']].drop_duplicates()
-            vals = [max(1, 12 - int((x / 24 / 60 - 180) / 30)) for x in df['gap_dm']]
+        if 'gap_ckd' in cols:
+            df = df[['ptid', 'dxcat', 'gap_ckd']].drop_duplicates()
+            vals = [max(1, 12 - int((x / 24 / 60 - 180) / 30)) for x in df['gap_ckd']]
             df['subw'] = [int((x - 1) / c) for x in vals]
         else:
-            df = df[['ptid', 'dxcat', 'adm_date']].drop_duplicates()
-            vals = [min(int(x / 24 / 60 / 30), 11) for x in df['adm_date']]
+            df = df[['ptid', 'dxcat', 'gap_dm']].drop_duplicates()
+            vals = [min(int(-x / 24 / 60 / 30), 11) for x in df['gap_dm']]
             df['subw'] = [int(x / c) for x in vals]
     else:
         df.sort(['ptid', 'adm_date', 'dxcat'], ascending=[1, 1, 1], inplace=True)
@@ -72,7 +72,7 @@ def get_counts_subwindow(df, y, vars, c):
     counts0 = df[['ptid', 'dxcat', 'subw']].groupby(['ptid', 'dxcat', 'subw']).size().unstack('dxcat')
     counts0.reset_index(inplace=True)
     dt = get_counts_one_window(counts0, 0)
-    for j in range(1, max(0, int(18/c))):
+    for j in range(1, max(0, int(12/c))):
         cts = get_counts_one_window(counts0, j)
         dt = pd.merge(dt, cts, on='ptid', how='outer')
     dt['response'] = y
@@ -104,6 +104,13 @@ def make_prediction(train_x, train_y, test_x, test_y, s, param):
     return pred, result, auc
 
 
+def split_shuffle_train_test_sets(train_ids, test_ids, X, y):
+    train_x, test_x = X.ix[train_ids], X.ix[test_ids]
+    train_y, test_y = y.ix[train_ids], y.ix[test_ids]
+    train_x, train_y = shuffle(train_x, train_y, random_state=1)
+    return train_x, train_y, test_x, test_y
+
+
 if __name__ == '__main__':
     # ===================== load data =====================================
     with open('./data/data_dm_ptids.pickle', 'rb') as f:
@@ -132,27 +139,30 @@ if __name__ == '__main__':
     data_dm_ckd2 = data_dm_ckd[data_dm_ckd['ptid'].isin(ptids_dm_ckd)]
     data_dm_ckd2['gap_ckd'] = data_dm_ckd2['first_ckd_date'] - data_dm_ckd2['adm_date']
     data_dm_ckd3 = data_dm_ckd2[data_dm_ckd2['gap_ckd'].between(180 * 24 * 60, 540 * 24 * 60)]
-    ptids_dm_ckd3 = set(data_dm_ckd3['ptid'])  # 410 pts
+    ptids_dm_ckd3 = set(data_dm_ckd3['ptid'])  # 1068 pts
 
-    # get the dm data for training: three years of history after first dm
+    # get the dm data for training: 2.5 years of history after first dm: 1yr observation,
+    # half year hold off, and 1yr prediction
     data_dm2 = data_dm[~data_dm['ptid'].isin(ptids_ckd)]
-    data_dm3 = data_dm2[data_dm2['gap_dm'] <= -720 * 24 * 60]
-    ptids_dm3 = set(data_dm3['ptid']) # 7436 pts
+    data_dm3 = data_dm2[data_dm2['gap_dm'] < -360 * 2.5 * 24 * 60]
+    ptids_dm3 = set(data_dm3['ptid']) # 6259 pts
     data_dm4 = data_dm[data_dm['ptid'].isin(ptids_dm3)]
     data_dm5 = data_dm4[data_dm4['gap_dm'].between(-360 * 24 * 60, 0)]
-    ptids_dm5 = set(data_dm5['ptid'])  # 7436 pts
+    ptids_dm5 = set(data_dm5['ptid'])  # 6259 pts
 
     # get preliminary features
     counts_dm = get_counts_by_class(data_dm5, 0, len(ptids_dm5) * 0.05)
     counts_ckd = get_counts_by_class(data_ckd3, 1, len(ptids_ckd3) * 0.05)
     counts_dmckd = get_counts_by_class(data_dm_ckd3, 1, len(ptids_dm_ckd3) * 0.05)
     counts = counts_dm.append(counts_ckd).append(counts_dmckd).fillna(0)
-    prelim_features = set(counts.columns[:-1]) # 63
+    prelim_features = set(counts.columns[:-1]) # 64
     # update datasets to exclude unselected features
     data_dm = data_dm5[data_dm5['dxcat'].isin(prelim_features)]
     data_ckd = data_ckd3[data_ckd3['dxcat'].isin(prelim_features)]
     data_dmckd = data_dm_ckd3[data_dm_ckd3['dxcat'].isin(prelim_features)]
-
+    ptids_dm = list(set(data_dm['ptid'].values.tolist())) # 6259
+    ptids_ckd = list(set(data_ckd['ptid'].values.tolist()))  # 1022
+    ptids_dmckd = list(set(data_dmckd['ptid'].values.tolist()))  # 1035
     # get aggregated counts
     counts_dm = get_counts_by_class(data_dm, 0, 0)
     counts_ckd = get_counts_by_class(data_ckd, 1, 0)
@@ -166,18 +176,49 @@ if __name__ == '__main__':
     counts_sub_ckd = get_counts_subwindow(data_ckd, 1, prelim_features, 3)
     counts_sub_dmckd = get_counts_subwindow(data_dmckd, 1, prelim_features, 3)
     counts_sub = counts_sub_dm.append(counts_sub_ckd).append(counts_sub_dmckd).fillna(0)
-    counts_sub.to_csv('./data/comorbid_task_counts_sub.csv')
+    counts_sub.to_csv('./data/comorbid_task_counts_sub_by3momth.csv')
 
+    counts_sub_dm = get_counts_subwindow(data_dm, 0, prelim_features, 2)
+    counts_sub_ckd = get_counts_subwindow(data_ckd, 1, prelim_features, 2)
+    counts_sub_dmckd = get_counts_subwindow(data_dmckd, 1, prelim_features, 2)
+    counts_sub = counts_sub_dm.append(counts_sub_ckd).append(counts_sub_dmckd).fillna(0)
+    counts_sub.to_csv('./data/comorbid_task_counts_sub_by2momth.csv')
 
     # ================ split train and testing data ========================================
-    # randomly select 60% for training and 40% for testing from target group
-    train_ids_dm_ckd, test_ids_dm_ckd = split_target_data(np.array(list(ptids_dm_ckd3)))
+    random.seed(1)
+    # randomly select 60% for training and 30% for testing from target group
+    train_ids_dm_ckd, test_ids_dm_ckd = split_target_data(np.array(ptids_dmckd), 0.3)
     # randomly select twice amount of target group from only dm group
-    train_ids_dm = random.sample(ptids_dm5, (len(train_ids_dm_ckd) + len(ptids_ckd3)) * 2)
-
+    train_ids_ckd = ptids_ckd
+    test_ids_dm = random.sample(ptids_dm, len(test_ids_dm_ckd) * 2)
+    train_ids_dm_a = random.sample(list(set(ptids_dm).difference(set(test_ids_dm))),
+                                  (len(train_ids_dm_ckd) + len(ptids_ckd)) * 2)
+    train_ids_dm_b = random.sample(list(set(ptids_dm).difference(set(test_ids_dm))), len(train_ids_dm_ckd) * 2)
+    # testing ids
+    test_ids = list(test_ids_dm_ckd) + test_ids_dm # 933 pts
+    # Training set 1: create training, including the pure CKD patients
+    train_ids_a = list(train_ids_dm_ckd) + train_ids_dm_a + train_ids_ckd # 5238 pts
+    # Training set 2: create training, without pure CKD patients
+    train_ids_b = list(train_ids_dm_ckd) + train_ids_dm_b # 2172 pts
 
     # =============== modeling =============================================================
     # baseline 1: aggregated count vector
-    test_proba0a = make_predictions(train_x0, train_y0, test_x0, [1000, 15, 'rf'])
-    test_proba0b = make_predictions(train_x0, train_y0, test_x0, [1000, 15, 'lr'])
-    test_proba0c = make_predictions(train_x0, train_y0, test_x0, [0.01, 15, 'lr'])
+    counts_x = counts[counts.columns[:-1]]
+    counts_y = counts['response']
+    features0 = counts.columns.tolist()[:-1]
+    train_x0a, train_y0a, test_x0, test_y0 = split_shuffle_train_test_sets(train_ids_a, test_ids, counts_x, counts_y)
+    train_x0b, train_y0b, test_x0, test_y0 = split_shuffle_train_test_sets(train_ids_b, test_ids, counts_x, counts_y)
+
+    # baseline 2: subw count vector
+    counts_sub_x = counts_sub[counts_sub.columns[1:]]
+    counts_sub_y = counts_sub['response']
+    features1 = counts_sub.columns.tolist()[1:]
+    train_x1a, train_y1a, test_x1, test_y1 = split_shuffle_train_test_sets(train_ids_a, test_ids, counts_sub_x, counts_sub_y)
+    train_x1b, train_y1b, test_x1, test_y1 = split_shuffle_train_test_sets(train_ids_b, test_ids, counts_sub_x, counts_sub_y)
+
+
+
+
+    # test_proba0a = make_predictions(train_x0, train_y0, test_x0, [1000, 15, 'rf'])
+    # test_proba0b = make_predictions(train_x0, train_y0, test_x0, [1000, 15, 'lr'])
+    # test_proba0c = make_predictions(train_x0, train_y0, test_x0, [0.01, 15, 'lr'])
