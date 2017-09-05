@@ -17,6 +17,15 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn import neighbors
 from sklearn.utils import shuffle
 from operator import itemgetter
+from scipy.stats import entropy
+
+
+def calculate_KL(dt1, dt2, cols):
+    kl = []
+    for c in cols:
+        kl0 = entropy(dt1[c], dt2[c])
+        kl.append(kl0)
+    return np.sum(kl), kl
 
 
 def split_target_data(ptids, ratio):
@@ -243,13 +252,14 @@ if __name__ == '__main__':
     counts = counts_copd.append(counts_dm).append(counts_copddm).fillna(0)
     counts.columns = ['cat' + i for i in counts.columns[:-1]] + ['response']
     counts.to_csv('./data/comorbid_task_counts.csv')
-
+    kl_sum0, kls0 = calcuate_KL(counts_dm, counts_copddm)
     # get subw counts
     counts_sub_copd = get_counts_subwindow(data_copd5, 0, prelim_features, 3)
     counts_sub_dm = get_counts_subwindow(data_dm3, 1, prelim_features, 3)
     counts_sub_copddm = get_counts_subwindow(data_copd_dm3, 2, prelim_features, 3)
     counts_sub = counts_sub_copd.append(counts_sub_dm).append(counts_sub_copddm).fillna(0)
     counts_sub.to_csv('./data/comorbid_task_counts_sub_by3momth.csv')
+    kl_sum1, kls1 = calcuate_KL(counts_sub_dm, counts_sub_copddm)
 
     counts_sub_copd = get_counts_subwindow(data_copd, 0, prelim_features, 2)
     counts_sub_dm = get_counts_subwindow(data_dm, 1, prelim_features, 2)
