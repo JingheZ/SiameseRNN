@@ -247,13 +247,13 @@ if __name__ == '__main__':
     # get subw counts
     counts_sub_copd = get_counts_subwindow(data_copd5, 0, prelim_features, 3)
     counts_sub_dm = get_counts_subwindow(data_dm3, 1, prelim_features, 3)
-    counts_sub_copddm = get_counts_subwindow(data_copd_dm3, 1, prelim_features, 3)
+    counts_sub_copddm = get_counts_subwindow(data_copd_dm3, 2, prelim_features, 3)
     counts_sub = counts_sub_copd.append(counts_sub_dm).append(counts_sub_copddm).fillna(0)
     counts_sub.to_csv('./data/comorbid_task_counts_sub_by3momth.csv')
 
     counts_sub_copd = get_counts_subwindow(data_copd, 0, prelim_features, 2)
     counts_sub_dm = get_counts_subwindow(data_dm, 1, prelim_features, 2)
-    counts_sub_copddm = get_counts_subwindow(data_copddm, 1, prelim_features, 2)
+    counts_sub_copddm = get_counts_subwindow(data_copddm, 2, prelim_features, 2)
     counts_sub = counts_sub_copd.append(counts_sub_dm).append(counts_sub_copddm).fillna(0)
     counts_sub.to_csv('./data/comorbid_task_counts_sub_by2momth.csv')
 
@@ -280,7 +280,7 @@ if __name__ == '__main__':
 
     # training data: train_ids
     train_ids = list(train_ids_copd_dm)
-    for r in np.arange(0, 10.1, 1):
+    for r in np.arange(0, 9, 1):
         num_dm = r * len(train_ids_copd_dm)
         train_ids_dm = random.sample(ptids_dm, num_dm)
         train_ids_copd = random.sample(rest_copd_ptids, (num_dm + len(train_ids_copd_dm)) * ratio)
