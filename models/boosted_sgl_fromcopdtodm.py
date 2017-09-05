@@ -208,7 +208,7 @@ if __name__ == '__main__':
     ptids_dm3 = set(data_dm3['ptid'])  # 1065 pts
 
     # get the data for copd-dm (target group):
-    data_copd_dm2 = data_copd_dm[data_copd_dm['ptid'].isin(ptids_copd_dm)]
+    data_copd_dm2 = data_copd_dm[data_copd_dm['ptid'].isin(ptids_copd_dm1)]
     data_copd_dm2['gap_dm'] = data_copd_dm2['first_dm_date'] - data_copd_dm2['adm_date']
     data_copd_dm3 = data_copd_dm2[data_copd_dm2['gap_dm'].between(180 * 24 * 60, 540 * 24 * 60)]
     ptids_copd_dm3 = set(data_copd_dm3['ptid'])  # 1068 pts
@@ -216,12 +216,13 @@ if __name__ == '__main__':
     # get the copd data for training: 2.5 years of history after first copd: 1yr observation,
     # half year hold off, and 1yr prediction
     data_copd2 = data_copd[~data_copd['ptid'].isin(ptids_dm)]
-    data_copd3 = data_copd2[data_copd2['gap_copd'] < -360 * 2.5 * 24 * 60]
+    data_copd3 = data_copd2[data_copd2['gap_copd'] < -360 * 2 * 24 * 60]
     ptids_copd3 = set(data_copd3['ptid']) # 6259 pts
     data_copd4 = data_copd[data_copd['ptid'].isin(ptids_copd3)]
-    data_copd5 = data_copd4[data_copd4['gap_copd'].between(-180 * 24 * 60, 0)]
+    data_copd5 = data_copd4[data_copd4['gap_copd'].between(-360 * 24 * 60, 0)]
     ptids_copd5 = set(data_copd5['ptid'])  # 6259 pts
-
+    # add the pts who develop dm after three years
+    # data_copd_dm_after3yr = data_copd_dm[data_copd_dm['first_dm_date'] >= 360 * 24 * 60]
     # get preliminary features
     counts_copd = get_counts_by_class(data_copd5, 0, len(ptids_copd5) * 0.05)
     counts_dm = get_counts_by_class(data_dm3, 1, len(ptids_dm3) * 0.05)
@@ -260,7 +261,7 @@ if __name__ == '__main__':
     random.seed(5)
     ratio = 4
     # randomly select 60% for training and 40% for testing from target group
-    train_ids_copd_dm, test_ids_copd_dm = split_target_data(np.array(ptids_copddm), 0.4)
+    train_ids_copd_dm, test_ids_copd_dm = split_target_data(np.array(ptids_copddm), 0.65)
     test_ids_copd = random.sample(ptids_copd, len(test_ids_copd_dm) * ratio)
     rest_copd_ptids = list(set(ptids_copd).difference(set(test_ids_copd)))
     test_ids = list(test_ids_copd) + list(test_ids_copd_dm)
@@ -278,34 +279,34 @@ if __name__ == '__main__':
     # train_ids_b = list(train_ids_copd_dm) + train_ids_copd_b # 2172 pts
 
     # training data: train_ids
-    train_ids_copd = rest_copd_ptids
-    train_ids = train_ids_copd + list(train_ids_copd_dm)
-    for r in np.arange(0, 5.1, 0.5):
+    train_ids = list(train_ids_copd_dm)
+    for r in np.arange(0, 10.1, 1):
         num_dm = r * len(train_ids_copd_dm)
         train_ids_dm = random.sample(ptids_dm, num_dm)
-        train_ids += list(train_ids_dm)
+        train_ids_copd = random.sample(rest_copd_ptids, (num_dm + len(train_ids_copd_dm)) * ratio)
+        train_ids += list(train_ids_dm) + list(train_ids_copd)
 
         # =============== modeling =============================================================
         # baseline 1: aggregated count vector
         counts_x = counts[counts.columns[:-1]]
         counts_y = counts['response']
-        features0 = counts.columns.tolist()[:-1]
+        features0 = counts_x.columns.tolist()
         train_x0, train_y0, test_x0, test_y0 = split_shuffle_train_test_sets(train_ids, test_ids, counts_x, counts_y)
 
         clf0, features_wts0, results_by_f0 = make_prediction_and_tuning(train_x0, train_y0, test_x0,
-                                                                                         test_y0, features0, [100, 15, 2, 'rf'])
+                                                                                         test_y0, features0, [100, 15, 1, 'rf'])
         # clf0, features_wts0, results_by_f0 = make_prediction_and_tuning(train_x0, train_y0, test_x0,
         #                                                                                  test_y0, features0, [0.1, 15, 2, 'lr'])
 
         # baseline 2: subw count vector
         counts_sub_x = counts_sub[counts_sub.columns[1:]]
-        del counts_sub_x['t0_cat127']
+        # del counts_sub_x['t0_cat127']
         counts_sub_y = counts_sub['response']
         features1 = counts_sub_x.columns.tolist()
         train_x1, train_y1, test_x1, test_y1 = split_shuffle_train_test_sets(train_ids, test_ids, counts_sub_x, counts_sub_y)
 
         clf1, features_wts1, results_by_f1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features1,
-                                                                        [100, 15, 2, 'rf'])
+                                                                        [100, 15, 1, 'rf'])
         # clf1, features_wts1, results_by_f1 = make_prediction_and_tuning(train_x1, train_y1, test_x1,
         #                                                                                  test_y1, features1, [0.01, 15, 1, 'lr'])
 
