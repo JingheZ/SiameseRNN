@@ -1,7 +1,7 @@
 """
-Transfer learning for comorbid risk prediction
+Transfer learning for ckdid risk prediction
 1. boosted or bagged SGL
-2. significance: used domain adaptation for comorbid risk prediction; considers temporal info; works for small samples
+2. significance: used domain adaptation for ckdid risk prediction; considers temporal info; works for small samples
 """
 
 import pandas as pd
@@ -53,14 +53,14 @@ def get_counts_by_class(df, y, thres=50):
 def create_subwindows(df, c=1):
     cols = df.columns
     if c > 0:
-        if 'gap_ckd' in cols:
-            df = df[['ptid', 'dxcat', 'gap_ckd']].drop_duplicates()
-            vals = [max(1, 12 - int((x / 24 / 60 - 180) / 30)) for x in df['gap_ckd']]
+        if 'gap_dm' in cols:
+            df = df[['ptid', 'dxcat', 'gap_dm']].drop_duplicates()
+            vals = [max(1, 6 - int((x / 24 / 60) / 30)) for x in df['gap_dm']]
             df['subw'] = [int((x - 1) / c) for x in vals]
         else:
-            df = df[['ptid', 'dxcat', 'gap_dm']].drop_duplicates()
-            vals = [min(int(-x / 24 / 60 / 30), 11) for x in df['gap_dm']]
-            df['subw'] = [int(x / c) for x in vals]
+            df = df[['ptid', 'dxcat', 'gap_ckd']].drop_duplicates()
+            vals = [max(1, 6 - int((x / 24 / 60 - 0) / 30)) for x in df['gap_ckd']]
+            df['subw'] = [int((x - 1) / c) for x in vals]
     else:
         df.sort(['ptid', 'adm_date', 'dxcat'], ascending=[1, 1, 1], inplace=True)
         df = df[['ptid', 'dxcat', 'adm_date']].drop_duplicates()
@@ -79,7 +79,7 @@ def get_counts_subwindow(df, y, vars, c):
     counts0 = df[['ptid', 'dxcat', 'subw']].groupby(['ptid', 'dxcat', 'subw']).size().unstack('dxcat')
     counts0.reset_index(inplace=True)
     dt = get_counts_one_window(counts0, 0)
-    for j in range(1, max(0, int(12/c))):
+    for j in range(1, max(0, int(6/c))):
         cts = get_counts_one_window(counts0, j)
         dt = pd.merge(dt, cts, on='ptid', how='outer')
     dt['response'] = y
@@ -182,8 +182,25 @@ def make_prediction_and_tuning(train_x, train_y, test_x, test_y, features, param
     return clf, fts_wts, [threshold_f, pred_f]
 
 
+def create_train_validate_test_sets_positive(ptids, y):
+    rs = StratifiedShuffleSplit(n_splits=1, train_size=0.7, test_size=.3,
+                      random_state=0)
+    rs.get_n_splits(ptids, y)
+    train_index = list(list(rs.split(ptids, y))[0][0])
+    test_index = list(list(rs.split(ptids, y))[0][1])
+    train_ids = list(ptids[train_index])
+    test_ids = list(ptids[test_index])
+    # with open('./data/ckdid_risk_target_train_test_ptids.pickle', 'wb') as f:
+    #     pickle.dump([train_ids, test_ids], f)
+    return train_ids, test_ids
+
+
 if __name__ == '__main__':
     # ===================== load data =====================================
+    # with open('./data/data_all4ckdidity.pickle', 'rb') as f:
+    #     data = pickle.load(f)
+    # f.close()
+    random.seed(1)
     with open('./data/data_dm_ptids.pickle', 'rb') as f:
         data_dm, ptids_dm = pickle.load(f)
     f.close()
@@ -191,36 +208,113 @@ if __name__ == '__main__':
         data_ckd, ptids_ckd = pickle.load(f)
     f.close()
 
+    # with open('./data/data_ckd_ptids.pickle', 'rb') as f:
+    #     data_ckd, ptids_ckd = pickle.load(f)
+    # f.close()
+    # cohort:
+    # data of 4 years, 1 year prior to DM, and 3 month hold-off, total 3 year for prediction of ckdidity
+    data_dm_v2 = data_dm[data_dm['gap_dm'] <= -360 * 3 * 24 * 60]
+    data_dm_v3 = data_dm[data_dm['gap_dm'] >= 180 * 24 * 60]
+    data_dm_ptids = set(data_dm_v2['ptid'].values).intersection(set(data_dm_v3['ptid'].values)) # 1001
+
     data_dm_ckd = pd.merge(data_dm, data_ckd[['ptid', 'first_ckd_date']].drop_duplicates(), how='inner', left_on='ptid',
                            right_on='ptid')
     data_dm_ckd.sort(['ptid', 'adm_date'], ascending=[1, 1], inplace=True)
-    data_dm_ckd['gap_dm_ckd'] = data_dm_ckd['first_ckd_date'] - data_dm_ckd['first_dm_date']
-    ptids_dm_ckd = set(data_dm_ckd['ptid'])  # 4803 pts
-    d0 = data_dm_ckd[data_dm_ckd['first_ckd_date'] >= 180 * 24 * 60]
-    ptids_dm_ckd0 = set(d0['ptid'])  # 1329 pts
-    d1 = d0[d0['gap_dm_ckd'] > (180 + 360) * 24 * 60].drop_duplicates()
-    ptids_dm_ckd1 = set(d1['ptid'])  # 561 pts
+    # data_dm_ckd['gap_dm_ckd'] = data_dm_ckd['first_dm_date'] - data_dm_ckd['first_ckd_date']
 
-    # get the data as training of the ckd class -1.5 to -0.5 years prior to first ckd
-    data_ckd2 = data_ckd[~data_ckd['ptid'].isin(ptids_dm)]
-    data_ckd3 = data_ckd2[data_ckd2['gap_ckd'].between(180 * 24 * 60, 540 * 24 * 60)]
-    ptids_ckd3 = set(data_ckd3['ptid'])  # 1065 pts
+    # ckd onset prior to prediction window
+    data_dm_ckd_earlyckd = data_dm_ckd[data_dm_ckd['first_dm_date'] - data_dm_ckd['first_ckd_date'] > -90 * 24 * 60]
+    # ckd onset after prediction window
+    data_dm_ckd_lateckd = data_dm_ckd[data_dm_ckd['first_dm_date'] - data_dm_ckd['first_ckd_date'] < -360 * 3 * 24 * 60]
+    #
+    target_pos_ids = data_dm_ptids.intersection(set(data_dm_ckd['ptid'].values)).difference(set(data_dm_ckd_earlyckd['ptid'].values)).difference(set(data_dm_ckd_lateckd['ptid'].values))
+    target_neg_ids = data_dm_ptids.difference(set(data_dm_ckd['ptid'].values))\
+        .union(data_dm_ptids.intersection(set(data_dm_ckd_lateckd['ptid'].values)))
 
-    # get the data for dm-ckd (target group):
-    data_dm_ckd2 = data_dm_ckd[data_dm_ckd['ptid'].isin(ptids_dm_ckd1)]
-    data_dm_ckd2['gap_ckd'] = data_dm_ckd2['first_ckd_date'] - data_dm_ckd2['adm_date']
-    data_dm_ckd3 = data_dm_ckd2[data_dm_ckd2['gap_ckd'].between(180 * 24 * 60, 540 * 24 * 60)]
-    ptids_dm_ckd3 = set(data_dm_ckd3['ptid'])  # 410 pts
+    # target_pos_ids = data_dm_ptids.intersection(set(data_dm_ckd['ptid'].values)).difference(set(data_dm_ckd_earlyckd['ptid'].values))
+    # target_neg_ids = data_dm_ptids.difference(set(data_dm_ckd['ptid'].values))
 
-    # get the dm data for training: 2.5 years of history after first dm: 1yr observation,
-    # half year hold off, and 1yr prediction
-    data_dm2 = data_dm[~data_dm['ptid'].isin(ptids_ckd)]
-    data_dm2 = data_dm2[~data_dm2['ptid'].isin(ptids_dm_ckd)]
-    data_dm3 = data_dm2[data_dm2['gap_dm'] <= -360 * 2 * 24 * 60]
-    ptids_dm3 = set(data_dm3['ptid']) # 7436 pts
-    data_dm4 = data_dm[data_dm['ptid'].isin(ptids_dm3)]
-    data_dm5 = data_dm4[data_dm4['gap_dm'].between(-360 * 24 * 60, 0)]
-    ptids_dm5 = set(data_dm5['ptid'])  # 7436 pts
+    data_dm = data_dm[data_dm['gap_dm'].between(0, 180 * 24 * 60)]
+    target_pos_data = data_dm[data_dm['ptid'].isin(target_pos_ids)]
+    target_neg_data = data_dm[data_dm['ptid'].isin(target_neg_ids)]
+
+    counts_target_pos = get_counts_by_class(target_pos_data, 1, len(target_pos_ids) * 0.05)
+    counts_target_neg = get_counts_by_class(target_neg_data, 0, len(target_neg_ids) * 0.05)
+    counts_target = counts_target_pos.append(counts_target_neg).fillna(0)
+    prelim_features = set(counts_target.columns[:-1])  # 59
+
+    target_pos_data = target_pos_data[target_pos_data['dxcat'].isin(prelim_features)]
+    target_neg_data = target_neg_data[target_neg_data['dxcat'].isin(prelim_features)]
+    target_pos_ids = list(set(target_pos_data['ptid'].values)) # 25
+    target_neg_ids = list(set(target_neg_data['ptid'].values)) # 761
+
+    data_ckd_v2 = data_ckd[data_ckd['gap_ckd'] >= 180 * 24 * 60]
+    data_ckd_ptids = set(data_ckd_v2['ptid'].values).difference(set(ptids_dm))
+    data_ckd = data_ckd[data_ckd['ptid'].isin(data_ckd_ptids)]
+    # data_ckd = data_ckd[data_ckd['gap_ckd'].between(180 * 24 * 60, 360 * 24 * 60)]
+    data_ckd = data_ckd[data_ckd['gap_ckd'].between(0, 180 * 24 * 60)]
+    data_ckd = data_ckd[data_ckd['dxcat'].isin(prelim_features)]
+
+    # get aggregated counts
+    counts_target_pos = get_counts_by_class(target_pos_data, 1, 0)
+    counts_target_neg = get_counts_by_class(target_neg_data, 0, 0)
+    counts_ckd = get_counts_by_class(data_ckd, 1, 0)
+    counts = counts_target_pos.append(counts_target_neg).append(counts_ckd).fillna(0)
+    counts.columns = ['cat' + i for i in counts_target.columns[:-1]] + ['response']
+
+    # get subw counts
+    counts_sub_target_pos = get_counts_subwindow(target_pos_data, 1, prelim_features, 3)
+    counts_sub_target_neg = get_counts_subwindow(target_neg_data, 0, prelim_features, 3)
+    counts_sub_ckd = get_counts_subwindow(data_ckd, 1, prelim_features, 3)
+    counts_sub = counts_sub_target_pos.append(counts_sub_target_neg).append(counts_sub_ckd).fillna(0)
+
+    # shufflesplit
+    target_neg_ids_sample = random.sample(target_neg_ids, len(target_pos_ids) * 2)
+    target_ids_sample = list(target_neg_ids_sample) + target_pos_ids
+    ys = [0] * len(target_neg_ids_sample) + [1] * len(target_pos_ids)
+    train_ids, test_ids = create_train_validate_test_sets_positive(np.array(target_ids_sample), ys)
+
+    rest_dm_ptids = set(target_neg_ids).difference(target_neg_ids_sample)
+    ckd_ids_sample = random.sample(list(set(data_ckd['ptid'].values)), len(rest_dm_ptids))
+    train_ids_v2 = train_ids + list(rest_dm_ptids) + list(ckd_ids_sample)
+    train_ids_v2 = train_ids + list(ckd_ids_sample)
+    # ================================== Modeling ========================================
+    # baseline 1: aggregated counts of target data only
+    counts_x = counts[counts.columns[:-1]]
+    counts_y = counts['response']
+    features0 = counts_x.columns.tolist()
+    train_x0, train_y0, test_x0, test_y0 = split_shuffle_train_test_sets(train_ids, test_ids, counts_x, counts_y)
+    clf0, features_wts0, results_by_f0 = make_prediction_and_tuning(train_x0, train_y0, test_x0,
+                                                                    test_y0, features0, [100, 15, 1, 'rf'])
+    # baseline 2: subw counts of target data only
+    counts_sub_x = counts_sub[counts_sub.columns[1:]]
+    counts_sub_y = counts_sub['response']
+    features1 = counts_sub_x.columns.tolist()
+    train_x1, train_y1, test_x1, test_y1 = split_shuffle_train_test_sets(train_ids, test_ids, counts_sub_x,
+                                                                         counts_sub_y)
+    clf1, features_wts1, results_by_f1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features1,
+                                                                    [100, 15, 1, 'rf'])
+
+    # baseline 3: aggregated counts of target data and control data
+    counts_x = counts[counts.columns[:-1]]
+    counts_y = counts['response']
+    features0 = counts_x.columns.tolist()
+    train_x0, train_y0, test_x0, test_y0 = split_shuffle_train_test_sets(train_ids_v2, test_ids, counts_x, counts_y)
+    clf0, features_wts0, results_by_f0 = make_prediction_and_tuning(train_x0, train_y0, test_x0,
+                                                                    test_y0, features0, [100, 15, 1, 'rf'])
+    # baseline 4: subw counts of target data and control data
+    counts_sub_x = counts_sub[counts_sub.columns[1:]]
+    counts_sub_y = counts_sub['response']
+    features1 = counts_sub_x.columns.tolist()
+    train_x1, train_y1, test_x1, test_y1 = split_shuffle_train_test_sets(train_ids_v2, test_ids, counts_sub_x,
+                                                                         counts_sub_y)
+    clf1, features_wts1, results_by_f1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features1,
+                                                                    [100, 15, 1, 'rf'])
+
+    # # get the data as training of the ckd class -1.5 to -0.5 years prior to first ckd
+    # data_ckd2 = data_ckd[~data_ckd['ptid'].isin(ptids_dm)]
+    # data_ckd3 = data_ckd2[data_ckd2['gap_ckd'].between(180 * 24 * 60, 540 * 24 * 60)]
+    # ptids_ckd3 = set(data_ckd3['ptid'])  # 1065 pts
 
     # get preliminary features
     counts_dm = get_counts_by_class(data_dm5, 0, len(ptids_dm5) * 0.05)
@@ -241,20 +335,20 @@ if __name__ == '__main__':
     counts_dmckd = get_counts_by_class(data_dmckd, 1, 0)
     counts = counts_dm.append(counts_ckd).append(counts_dmckd).fillna(0)
     counts.columns = ['cat' + i for i in counts.columns[:-1]] + ['response']
-    counts.to_csv('./data/comorbid_task_counts.csv')
+    counts.to_csv('./data/ckdid_task_counts.csv')
 
     # get subw counts
     counts_sub_dm = get_counts_subwindow(data_dm5, 0, prelim_features, 3)
     counts_sub_ckd = get_counts_subwindow(data_ckd3, 1, prelim_features, 3)
     counts_sub_dmckd = get_counts_subwindow(data_dm_ckd3, 1, prelim_features, 3)
     counts_sub = counts_sub_dm.append(counts_sub_ckd).append(counts_sub_dmckd).fillna(0)
-    counts_sub.to_csv('./data/comorbid_task_counts_sub_by3momth.csv')
+    counts_sub.to_csv('./data/ckdid_task_counts_sub_by3momth.csv')
 
     counts_sub_dm = get_counts_subwindow(data_dm, 0, prelim_features, 2)
     counts_sub_ckd = get_counts_subwindow(data_ckd, 1, prelim_features, 2)
     counts_sub_dmckd = get_counts_subwindow(data_dmckd, 1, prelim_features, 2)
     counts_sub = counts_sub_dm.append(counts_sub_ckd).append(counts_sub_dmckd).fillna(0)
-    counts_sub.to_csv('./data/comorbid_task_counts_sub_by2momth.csv')
+    counts_sub.to_csv('./data/ckdid_task_counts_sub_by2momth.csv')
 
     # ================ split train and testing data ========================================
     random.seed(5)
@@ -267,12 +361,13 @@ if __name__ == '__main__':
     # # randomly select twice amount of target group from only dm group
 
     # train_ids_dm = rest_dm_ptids
-    # train_ids = train_ids_copd + list(train_ids_copd_dm)
+    # train_ids = train_ids_ckd + list(train_ids_ckd_dm)
     train_ids = list(train_ids_dm_ckd)
     for r in np.arange(0, 2.6, 0.5):
         num_ckd = r * len(train_ids_dm_ckd)
         train_ids_ckd = random.sample(ptids_ckd, num_ckd)
         train_ids_dm = random.sample(rest_dm_ptids, (num_ckd + len(train_ids_dm_ckd)) * ratio)
+        # train_ids_dm = random.sample(rest_dm_ptids, num_ckd * ratio)
         train_ids += list(train_ids_dm) + list(train_ids_ckd)
 
         # =============== modeling =============================================================

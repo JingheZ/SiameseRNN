@@ -23,7 +23,13 @@ from scipy.stats import entropy
 def calculate_KL(dt1, dt2, cols):
     kl = []
     for c in cols:
-        kl0 = entropy(dt1[c].values, dt2[c].values, base=2)
+        pk = dt1[c].values
+        qk = dt2[c].values
+        if len(pk) > len(qk):
+            pk = np.random.choice(pk, len(qk))
+        elif len(pk) < len(qk):
+            qk = np.random.choice(qk, len(pk))
+        kl0 = entropy(pk, qk, base=2)
         kl.append(kl0)
     return np.sum(kl), kl
 
@@ -252,14 +258,17 @@ if __name__ == '__main__':
     counts = counts_copd.append(counts_dm).append(counts_copddm).fillna(0)
     counts.columns = ['cat' + i for i in counts.columns[:-1]] + ['response']
     counts.to_csv('./data/comorbid_task_counts.csv')
-    kl_sum0, kls0 = calculate_KL(counts_dm, counts_copddm)
+
+    counts_dm_copddm = counts_dm.append(counts_copddm).fillna(0)
+    kl_sum0, kls0 = calculate_KL(counts_dm_copddm[:len(counts_dm)], counts_dm_copddm[len(counts_dm):], counts_dm_copddm.columns)
+
     # get subw counts
     counts_sub_copd = get_counts_subwindow(data_copd5, 0, prelim_features, 3)
     counts_sub_dm = get_counts_subwindow(data_dm3, 1, prelim_features, 3)
     counts_sub_copddm = get_counts_subwindow(data_copd_dm3, 2, prelim_features, 3)
     counts_sub = counts_sub_copd.append(counts_sub_dm).append(counts_sub_copddm).fillna(0)
     counts_sub.to_csv('./data/comorbid_task_counts_sub_by3momth.csv')
-    kl_sum1, kls1 = calculate_KL(counts_sub_dm, counts_sub_copddm)
+    kl_sum1, kls1 = calculate_KL(counts_sub_dm, counts_sub_copddm, counts_sub.columns)
 
     counts_sub_copd = get_counts_subwindow(data_copd, 0, prelim_features, 2)
     counts_sub_dm = get_counts_subwindow(data_dm, 1, prelim_features, 2)
