@@ -357,6 +357,7 @@ if __name__ == '__main__':
     #     visits_v3 = pickle.load(f)
     # f.close()
 
+
     # get all patients who have a 2.5 year history
     visits_v3 = visits_v2[visits_v2['anon_dis_date_y'] >= 2.5 * 360 * 24 * 60]
     visits_v3_ids = set(visits_v3['ptid'].values) # 73877 pts
