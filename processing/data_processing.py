@@ -199,14 +199,21 @@ def get_counts_subwindow(df, y, vars, c):
         del cts['subw']
         cts.columns = ['ptid'] + ['t' + str(j) + '_' + k for k in cts.columns[1:]]
         return cts
+    # add IP or OP indicator
+    df_ip = df[df['cdrIPorOP'] == 'IP']
+    ip_ids = set(df_ip['ptid'].values)
 
-    df = df[df['dxcat'].isin(vars)]
-    counts0 = df[['ptid', 'dxcat', 'subw']].groupby(['ptid', 'dxcat', 'subw']).size().unstack('dxcat')
+    df = df[df['itemid'].isin(vars)]
+    df['subw'] = df['adm_month'].apply(lambda x: int(x / c))
+    counts0 = df[['ptid', 'itemid', 'subw']].groupby(['ptid', 'itemid', 'subw']).size().unstack('itemid')
     counts0.reset_index(inplace=True)
     dt = get_counts_one_window(counts0, 0)
-    for j in range(0, int(12/c)):
+    for j in range(1, int(12/c)):
         cts = get_counts_one_window(counts0, j)
         dt = pd.merge(dt, cts, on='ptid', how='outer')
+
+    dt['IPvisit'] = dt['ptid'].apply(lambda x: 1 if x in ip_ids else 0)
+    # add response
     dt['response'] = y
     dt.index = dt['ptid']
     del dt['ptid']
@@ -419,14 +426,32 @@ if __name__ == '__main__':
     dt = dt.sort(['ptid', 'adm_month'], ascending=[1, 1])
     dt_1yr = dt[dt['adm_month'].between(0, 11)]
 
+    with open('./data/hospitalization_data_1year.pickle', 'wb') as f:
+        pickle.dump(dt_1yr, f)
+    f.close()
+
+    with open('./data/hospitalization_data_pos_neg_ids.pickle', 'wb') as f:
+        pickle.dump([pos_ids, neg_ids], f)
+    f.close()
     dt_pos = dt_1yr[dt_1yr['ptid'].isin(pos_ids)]
     dt_neg = dt_1yr[dt_1yr['ptid'].isin(neg_ids)]
 
-    counts_pos = get_counts_by_class(dt_pos, 1, 0.1 * len(pos_ids))
-    counts_neg = get_counts_by_class(dt_neg, 0, 0.1 * len(neg_ids))
+    counts_pos = get_counts_by_class(dt_pos, 1, 0.05 * len(pos_ids))
+    counts_neg = get_counts_by_class(dt_neg, 0, 0.05 * len(neg_ids))
     counts = counts_pos.append(counts_neg).fillna(0)
     prelim_features = set(counts.columns[:-1])
 
+    counts_sub_pos = get_counts_subwindow(dt_pos, 1, prelim_features, 3)
+    counts_sub_neg = get_counts_subwindow(dt_neg, 0, prelim_features, 3)
+    counts_sub = counts_sub_pos.append(counts_sub_neg).fillna(0)
+
+    with open('./data/hospitalization_data_counts.pickle', 'wb') as f:
+        pickle.dump(counts, f)
+    f.close()
+
+    with open('./data/hospitalization_data_counts_sub.pickle', 'wb') as f:
+        pickle.dump(counts_sub, f)
+    f.close()
     # But need to work on the time window, to exclude some info before the prediction window
     # also need to study the prediction window and how to structure it as a semi-supervised learning method
 
