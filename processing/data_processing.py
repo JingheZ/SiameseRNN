@@ -98,6 +98,123 @@ def create_visit_ranks_reverse(visit_ranks):
     return visit_ranks_r, visit_ranks_r_flatten
 
 
+def getCode(element, CCS_dict):
+    element = str(element)
+    element = element.replace(".", "")
+    element = element.capitalize()
+    if CCS_dict.__contains__(element):
+        dx = CCS_dict[element]
+    elif len(element) < 5:
+        element = element + '0'
+        if CCS_dict.__contains__(element):
+            dx = CCS_dict[element]
+        else:
+            element = element + '0'
+            if CCS_dict.__contains__(element):
+                dx = CCS_dict[element]
+            else:
+                dx = '0000 Others'
+    elif not element[:-1].isdigit():
+        element = element[:-1]
+        if CCS_dict.__contains__(element):
+            dx = CCS_dict[element]
+        else:
+            element = element + '0'
+            if CCS_dict.__contains__(element):
+                dx = CCS_dict[element]
+            else:
+                dx = '0000 Others'
+    else:
+        dx = '0000 Others'
+    return dx
+
+
+def dx2dxcat():
+    filename1 = './data/dxref.csv'
+    filename2 = './data/ccs_dx_icd10cm_2016.csv'
+    def CCS(filename):
+        data = pd.read_csv(filename, dtype=object)
+        cols = data.columns
+        data = data[cols[:3]]
+        data.columns = ['icd', 'category', 'name']
+        data['icd'] = data['icd'].str.replace("'", "")
+        data['category'] = data['category'].str.replace("'", "")
+        data['name'] = data['name'].str.replace("'", "")
+        data['icd'] = data['icd'].str.replace(" ", "")
+        data['category'] = data['category'].str.replace(" ", "")
+        return data
+    dxgrps9 = CCS(filename1)
+    dxgrps10 = CCS(filename2)
+    dxgrps = pd.concat([dxgrps9, dxgrps10], axis=0)
+    dxgrps.index = dxgrps['icd']
+    dxgrps_dict = dxgrps[['category']].to_dict()['category']
+    del dxgrps_dict['']
+    dxgrps_dict['F431'] = '651'
+    icd10_init = ['R', 'L', 'M', 'G', 'W', 'S', 'V', 'F', 'D', 'X', 'P', 'T', 'N', 'O', 'Z', 'Y', 'I', 'C', 'Q', 'H', 'J', 'E', 'K']
+    dxgrps_dict2 = {}
+    for k, v in dxgrps_dict.items():
+        if k[0] in icd10_init and len(k) > 5:
+            if not dxgrps_dict2.__contains__(k[:5]):
+                dxgrps_dict2[k[:5]] = v
+    return dxgrps, dxgrps_dict, dxgrps_dict2
+
+
+def process_dxs(data, dxgrps_dict, dxgrps_dict2):
+    data['dx'] = data['itemid'].str.replace('.', '')
+    dxs = data['dx'].values.tolist()
+    dxcats = []
+    for i in dxs:
+        if dxgrps_dict.__contains__(i):
+            dxcats.append(dxgrps_dict[i])
+        elif dxgrps_dict2.__contains__(i):
+            dxcats.append(dxgrps_dict2[i])
+        else:
+            dxcats.append('0')
+    data['dxcat'] = dxcats
+    data = data[data['dxcat'] != '0']
+    return data
+
+
+def get_counts_by_class(df, y, thres=50):
+    def filter_rare_columns(data, thres):
+        cols = data.columns
+        num = len(data)
+        cols_updated = []
+        for i in cols:
+            ct = data[i].value_counts(dropna=False)[0]
+            if num - ct > thres:
+                cols_updated.append(i)
+        data = data[cols_updated]
+        return data
+    df = df[['ptid', 'itemid']].drop_duplicates()
+    counts = df.groupby(['ptid', 'itemid']).size().unstack('itemid').fillna(0)
+    counts = filter_rare_columns(counts, thres)
+    counts['response'] = y
+    return counts
+
+
+def get_counts_subwindow(df, y, vars, c):
+    def get_counts_one_window(counts0, j):
+        cts = counts0[counts0['subw'] == j]
+        del cts['subw']
+        cts.columns = ['ptid'] + ['t' + str(j) + '_' + k for k in cts.columns[1:]]
+        return cts
+
+    df = df[df['dxcat'].isin(vars)]
+    counts0 = df[['ptid', 'dxcat', 'subw']].groupby(['ptid', 'dxcat', 'subw']).size().unstack('dxcat')
+    counts0.reset_index(inplace=True)
+    dt = get_counts_one_window(counts0, 0)
+    for j in range(0, int(12/c)):
+        cts = get_counts_one_window(counts0, j)
+        dt = pd.merge(dt, cts, on='ptid', how='outer')
+    dt['response'] = y
+    dt.index = dt['ptid']
+    del dt['ptid']
+    dt.fillna(0, inplace=True)
+    return dt
+
+
+
 if __name__ == '__main__':
     # ============================ DX Data =================================================
     filename = './data/2017_02feb_28_ALL_Diagnoses.dat'
@@ -214,46 +331,33 @@ if __name__ == '__main__':
     del visits_v2['anon_dis_date_x']
     del visits_v2['VisitDXs']
     visits_v2['cdrIPorOP'] = visits_v2['cdrIPorOP'].map({'OP': 'OP', 'IP': 'IP', 'OBS': 'OP'})
-    visits_v2 = visits_v2.sort(['ptid', 'anon_adm_date_y', 'vid']).drop_duplicates()
+    visits_v2 = visits_v2.sort(['ptid', 'anon_adm_date_y', 'vid']).drop_duplicates() # 370074 pts
 
-    # select pts with at least two visits
-    counts = visits_v2[['ptid', 'anon_adm_date_y']].drop_duplicates().groupby('ptid').count() # 370074 visits
-    counts2 = counts[counts['anon_adm_date_y'] >= 2] # 200,741 patients
-    visits_v3 = visits_v2[visits_v2['ptid'].isin(counts2.index)].drop_duplicates()
-    visits_v3 = visits_v3.sort(['ptid', 'anon_adm_date_y'])
-    # duplicated visits which each visit has more than one visit, take it as an inpatient visit
-    vids_multiple_visit_type = set(visits_v3[visits_v3.duplicated('vid')]['vid'])
-    visits_v3.ix[visits_v3['vid'].isin(vids_multiple_visit_type), 'cdrIPorOP'] = 'IP'
-    visits_v3 = visits_v3.drop_duplicates()
-    with open('./data/visits_v3.pickle', 'wb') as f:
-        pickle.dump(visits_v3, f)
-    f.close()
+    # # select pts with at least two visits
+    # counts = visits_v2[['ptid', 'anon_adm_date_y']].drop_duplicates().groupby('ptid').count() # 370074 visits
+    # counts2 = counts[counts['anon_adm_date_y'] >= 2] # 200,741 patients
+    # visits_v3 = visits_v2[visits_v2['ptid'].isin(counts2.index)].drop_duplicates()
+    # visits_v3 = visits_v3.sort(['ptid', 'anon_adm_date_y'])
+    # # duplicated visits which each visit has more than one visit, take it as an inpatient visit
+    # vids_multiple_visit_type = set(visits_v3[visits_v3.duplicated('vid')]['vid'])
+    # visits_v3.ix[visits_v3['vid'].isin(vids_multiple_visit_type), 'cdrIPorOP'] = 'IP'
+    # visits_v3 = visits_v3.drop_duplicates()
+    # with open('./data/visits_v3.pickle', 'wb') as f:
+    #     pickle.dump(visits_v3, f)
+    # f.close()
+    #
+    # with open('./data/visits_v3.pickle', 'rb') as f:
+    #     visits_v3 = pickle.load(f)
+    # f.close()
 
-    # create a dict of all patients, in each patient data, there is also a dict of ranks containing the visit ids
-    visit_ranks_dict = create_visit_ranks(visits_v3)
-    # create dict of dict for patient, that the keys are vid and value is rank
-    visit_ranks_reverse, visit_ranks_reverse_flattened = create_visit_ranks_reverse(visit_ranks_dict)
-    with open('./data/visit_ranks.pickle', 'wb') as f:
-        pickle.dump([visit_ranks_reverse, visit_ranks_reverse_flattened], f)
-    f.close()
-
-    # create a dict of all patients which flattens the above dict
-    visit_ranks_df = pd.DataFrame.from_dict(visit_ranks_reverse_flattened, dtype=object, orient='index')
-    visit_ranks_df['vid'] = visit_ranks_df.index
-    visit_ranks_df.columns = ['rank', 'vid']
-    visits_v4 = pd.merge(left=visits_v3, right=visit_ranks_df, how='inner', left_on='vid', right_on='vid')
-    visits_v4 = visits_v4.sort(['ptid', 'rank'])
-    with open('./data/visits_v4.pickle', 'wb') as f:
-        pickle.dump(visits_v4, f)
-    f.close()
-
-    IPvisits = visits_v4[visits_v4['cdrIPorOP'] == 'IP'] # 92763 patients with inhospital visits
-    IPvisits2 = IPvisits[IPvisits['rank'] > 1]  # 43808 patients with inhospital visits after two visits
-    IPvisits1 = IPvisits[IPvisits['rank'] > 0]  # 56512 patients with inhospital visits after the first visits
-    IPvisits0 = IPvisits[IPvisits['rank'] == 0]  # 36251 patients with inhospital visits is the first visit
-    IPvisits_only0 = IPvisits0[~IPvisits0['ptid'].isin(set(IPvisits1['ptid'].values))] # 24052 patients with inpatient visits in the first visit
-
-    # visits_v5 = visits_v4[['ptid', 'rank', 'anon_adm_date_y', 'anon_dis_date_y']]
+    # get all patients who have a 2.5 year history
+    visits_v3 = visits_v2[visits_v2['anon_dis_date_y'] >= 2.5 * 360 * 24 * 60]
+    visits_v3_ids = set(visits_v3['ptid'].values) # 73877 pts
+    visits_v4 = visits_v2[visits_v2['ptid'].isin(visits_v3_ids)]
+    visits_v4 = visits_v4[visits_v4['anon_adm_date_y'].between(1.5 * 360 * 24 * 60, 2.5 * 360 * 24 * 60)]
+    IPvisits = visits_v4[visits_v4['cdrIPorOP'] == 'IP'] # 3677 patients with inhospital visits
+    pos_ids = list(set(IPvisits['ptid'].values))
+    neg_ids = list(visits_v3_ids.difference(set(pos_ids)))
 
     # ====================== Remove the unused pts from the orders and dx data =====================
     with open('./data/dxs_data.pickle', 'rb') as f:
@@ -267,21 +371,26 @@ if __name__ == '__main__':
     with open('./data/proc_orders.pickle', 'rb') as f:
         data_proc = pickle.load(f)
     f.close()
-
-    ptids = list(visit_ranks_reverse.keys())
+    ptids = pos_ids + neg_ids
     data_dx.columns = ['ptid', 'vid', 'itemid', 'pdx']
     data_dx = data_dx[data_dx['ptid'].isin(ptids)]
+
+    dxgrps, dxgrps_dict, dxgrps_dict2 = dx2dxcat()
+    data_dx2 = process_dxs(data_dx, dxgrps_dict, dxgrps_dict2)
+    data_dx2['dxcat'] = data_dx2['dxcat'].apply(lambda x: 'dx' + str(x))
+    data_dx2.head()
 
     data_med.columns = ['ptid', 'vid', 'itemid', 'adm_date']
     data_med = data_med[data_med['ptid'].isin(ptids)]
 
     data_proc.columns = ['ptid', 'vid', 'itemid', 'adm_date']
     data_proc = data_proc[data_proc['ptid'].isin(ptids)]
+    data_proc['itemid'] = data_proc['itemid'].apply(lambda x: 'p' + str(x))
 
     with open('./data/dxs_data_v2.pickle', 'wb') as f:
-        pickle.dump(data_dx, f)
+        pickle.dump(data_dx2, f)
     f.close()
-    data_dx.to_csv('./data/dxs_data_v2.csv', index=False)
+    data_dx2.to_csv('./data/dxs_data_v2.csv', index=False)
 
     with open('./data/med_orders_v2.pickle', 'wb') as f:
         pickle.dump(data_med[['ptid', 'vid', 'itemid']], f)
@@ -292,6 +401,31 @@ if __name__ == '__main__':
         pickle.dump(data_proc[['ptid', 'vid', 'itemid']], f)
     f.close()
     data_proc[['ptid', 'vid', 'itemid']].to_csv('./data/proc_orders_v2.csv', index=False)
+
+
+    # to merge dx, med, and proc info
+    data_dx3 = data_dx2[['ptid', 'vid', 'dxcat']].drop_duplicates()
+    data_dx3.columns = ['ptid', 'vid', 'itemid']
+    dt1 = pd.concat([data_dx3, data_med[['ptid', 'vid', 'itemid']].drop_duplicates(),
+                     data_proc[['ptid', 'vid', 'itemid']].drop_duplicates()], axis=0)
+    dt = pd.merge(left=dt1, right=visits_v2[['vid', 'cdrIPorOP', 'anon_adm_date_y']].drop_duplicates(),
+                  left_on='vid', right_on='vid', how='inner')
+
+    dt['adm_month'] = dt['anon_adm_date_y'].apply(lambda x: int(x/24/60/30))
+    with open('./data/clinical_events_hospitalization.pickle', 'wb') as f:
+        pickle.dump(dt, f)
+    f.close()
+    dt = dt[['ptid', 'adm_month', 'itemid', 'cdrIPorOP']].drop_duplicates()
+    dt = dt.sort(['ptid', 'adm_month'], ascending=[1, 1])
+    dt_1yr = dt[dt['adm_month'].between(0, 11)]
+
+    dt_pos = dt_1yr[dt_1yr['ptid'].isin(pos_ids)]
+    dt_neg = dt_1yr[dt_1yr['ptid'].isin(neg_ids)]
+
+    counts_pos = get_counts_by_class(dt_pos, 1, 0.1 * len(pos_ids))
+    counts_neg = get_counts_by_class(dt_neg, 0, 0.1 * len(neg_ids))
+    counts = counts_pos.append(counts_neg).fillna(0)
+    prelim_features = set(counts.columns[:-1])
 
     # But need to work on the time window, to exclude some info before the prediction window
     # also need to study the prediction window and how to structure it as a semi-supervised learning method
