@@ -50,6 +50,22 @@ def get_counts_by_class(df, y, thres=50):
     return counts
 
 
+# def create_subwindows(df, c=1):
+#     cols = df.columns
+#     if c > 0:
+#         if 'gap_dm' in cols:
+#             df = df[['ptid', 'dxcat', 'gap_dm']].drop_duplicates()
+#             vals = [min(int(-x / 24 / 60 / 30), 11) for x in df['gap_dm']]
+#             df['subw'] = [int(x / c) for x in vals]
+#         else:
+#             df = df[['ptid', 'dxcat', 'gap_ckd']].drop_duplicates()
+#             vals = [max(1, 12 - int((x / 24 / 60 - 180) / 30)) for x in df['gap_ckd']]
+#             df['subw'] = [int((x - 1) / c) for x in vals]
+#     else:
+#         df.sort(['ptid', 'adm_date', 'dxcat'], ascending=[1, 1, 1], inplace=True)
+#         df = df[['ptid', 'dxcat', 'adm_date']].drop_duplicates()
+#     return df
+
 def create_subwindows(df, c=1):
     cols = df.columns
     if c > 0:
@@ -58,9 +74,9 @@ def create_subwindows(df, c=1):
             vals = [min(int(-x / 24 / 60 / 30), 11) for x in df['gap_dm']]
             df['subw'] = [int(x / c) for x in vals]
         else:
-            df = df[['ptid', 'dxcat', 'gap_ckd']].drop_duplicates()
-            vals = [max(1, 12 - int((x / 24 / 60 - 180) / 30)) for x in df['gap_ckd']]
-            df['subw'] = [int((x - 1) / c) for x in vals]
+            df = df[['ptid', 'dxcat', 'adm_date']].drop_duplicates()
+            vals = [min(int(x / 24 / 60 / 30), 11) for x in df['adm_date']]
+            df['subw'] = [int(x / c) for x in vals]
     else:
         df.sort(['ptid', 'adm_date', 'dxcat'], ascending=[1, 1, 1], inplace=True)
         df = df[['ptid', 'dxcat', 'adm_date']].drop_duplicates()
@@ -183,6 +199,9 @@ def make_prediction_and_tuning(train_x, train_y, test_x, test_y, features, param
 
 
 def make_predictions(train_x, train_y, test_x, param):
+    # train_x = train_x.as_matrix().astype(np.float)
+    # test_x = test_x.as_matrix().astype(np.float)
+    # train_y = train_y.as_matrix().astype(np.float)
     if param[2] == 'rf':
         clf = RandomForestClassifier(n_estimators=param[0], criterion='entropy', n_jobs=param[1], random_state=0, class_weight='balanced')
         # clf = LogisticRegression(penalty='l1', C=param[0], n_jobs=param[1], random_state=0)
@@ -327,21 +346,24 @@ if __name__ == '__main__':
 
     # get the data as training of the ckd class -1.5 to -0.5 years prior to first ckd
     data_ckd2 = data_ckd[~data_ckd['ptid'].isin(ptids_dm)]
-    data_ckd3 = data_ckd2[data_ckd2['gap_ckd'].between(180 * 24 * 60, 540 * 24 * 60)]
-    ptids_ckd3 = set(data_ckd3['ptid'])  # 1065 pts
+    data_ckd3 = data_ckd2[data_ckd2['gap_ckd'] > 360 * 1 * 24 * 60]
+    ptids_ckd3 = set(data_ckd3['ptid'])  # 1022 pts
+    data_ckd4 = data_ckd[data_ckd['ptid'].isin(ptids_ckd3)]
+    data_ckd3 = data_ckd4[data_ckd4['adm_date'].between(0, 360 * 24 * 60)]
+    ptids_ckd3 = set(data_ckd3['ptid'])  # 1022 pts
 
     # get preliminary features
     counts_dm = get_counts_by_class(data_dm5, 0, len(ptids_dm5) * 0.05)
     counts_ckd = get_counts_by_class(data_ckd3, 1, len(ptids_ckd3) * 0.05)
     counts_dmckd = get_counts_by_class(data_dm_ckd3, 1, len(ptids_dm_ckd3) * 0.05)
     counts = counts_dm.append(counts_ckd).append(counts_dmckd).fillna(0)
-    prelim_features = set(counts.columns[:-1]) # 72
+    prelim_features = set(counts.columns[:-1]) # 73
     # update datasets to exclude unselected features
     data_dm = data_dm5[data_dm5['dxcat'].isin(prelim_features)]
     data_ckd = data_ckd3[data_ckd3['dxcat'].isin(prelim_features)]
     data_dmckd = data_dm_ckd3[data_dm_ckd3['dxcat'].isin(prelim_features)]
     ptids_dm = list(set(data_dm['ptid'].values.tolist())) # 6259
-    ptids_ckd = list(set(data_ckd['ptid'].values.tolist()))  # 1023
+    ptids_ckd = list(set(data_ckd['ptid'].values.tolist()))  # 981
     ptids_dmckd = list(set(data_dmckd['ptid'].values.tolist()))  # 561
     # get aggregated counts
     counts_dm = get_counts_by_class(data_dm, 0, 0)
@@ -352,17 +374,23 @@ if __name__ == '__main__':
     counts.to_csv('./data/comorbid_task_counts.csv')
 
     # get subw counts
-    counts_sub_dm = get_counts_subwindow(data_dm, 0, prelim_features, 2)
-    counts_sub_ckd = get_counts_subwindow(data_ckd, 1, prelim_features, 2)
-    counts_sub_dmckd = get_counts_subwindow(data_dmckd, 1, prelim_features, 2)
+    counts_sub_dm = get_counts_subwindow(data_dm, 0, prelim_features, 4)
+    counts_sub_ckd = get_counts_subwindow(data_ckd, 1, prelim_features, 4)
+    counts_sub_dmckd = get_counts_subwindow(data_dmckd, 1, prelim_features, 4)
     counts_sub = counts_sub_dm.append(counts_sub_ckd).append(counts_sub_dmckd).fillna(0)
-    counts_sub.to_csv('./data/comorbid_task_counts_sub_by2momth.csv')
+    counts_sub.to_csv('./data/comorbid_task_counts_sub_by4momth.csv')
 
     counts_sub_dm = get_counts_subwindow(data_dm5, 0, prelim_features, 3)
     counts_sub_ckd = get_counts_subwindow(data_ckd3, 1, prelim_features, 3)
     counts_sub_dmckd = get_counts_subwindow(data_dm_ckd3, 1, prelim_features, 3)
     counts_sub = counts_sub_dm.append(counts_sub_ckd).append(counts_sub_dmckd).fillna(0)
     counts_sub.to_csv('./data/comorbid_task_counts_sub_by3momth.csv')
+
+    counts_sub_dm = get_counts_subwindow(data_dm, 0, prelim_features, 2)
+    counts_sub_ckd = get_counts_subwindow(data_ckd, 1, prelim_features, 2)
+    counts_sub_dmckd = get_counts_subwindow(data_dmckd, 1, prelim_features, 2)
+    counts_sub = counts_sub_dm.append(counts_sub_ckd).append(counts_sub_dmckd).fillna(0)
+    counts_sub.to_csv('./data/comorbid_task_counts_sub_by2momth.csv')
 
     # =============== primary representation =============================================================
     # baseline 1: aggregated count vector
@@ -374,13 +402,15 @@ if __name__ == '__main__':
     counts_sub_x = counts_sub[counts_sub.columns[1:]]
     counts_sub_y = counts_sub['response']
     features2 = counts_sub_x.columns.tolist()
+
     # baseline 3: mining sequence patterns
     # get the sequence by sub-windows
-    seq_dm = create_sequence(data_dm4, 'dm_train')
-    seq_control = create_sequence(data_control4, 'control_train')
+    seq_dm = create_sequence(data_dm, 'comorbid_risk_dm')
+    seq_ckd = create_sequence(data_ckd, 'comorbid_risk_ckd')
+    seq_dmckd = create_sequence(data_dmckd, 'comorbid_risk_dmckd')
     cooccur_list = [[258, 259], [53, 98], [204, 211]]
     mvisit_list = [259, 211]
-    counts_bpsb = get_seq_item_counts(seq_dm, seq_control, cooccur_list, mvisit_list)
+    counts_bpsb = get_seq_item_counts(seq_dm, seq_dmckd, seq_ckd, cooccur_list, mvisit_list)
     counts_bps = pd.concat([counts_bpsb, counts], axis=1).fillna(0)
     counts_bps.to_csv('./data/counts_bps.csv')
     counts_bps_y = counts_bps['response']
@@ -395,7 +425,6 @@ if __name__ == '__main__':
     counts_trans_y = counts_trans['response']
     features4 = counts_trans_x.columns.tolist()
 
-
     # ================ split train and testing data ========================================
     random.seed(5)
     ratio = 2
@@ -409,60 +438,66 @@ if __name__ == '__main__':
     pd.Series(test_ids).to_csv('./data/comorbid_risk_test_ids.csv', index=False)
     # train_ids_dm = rest_dm_ptids
     # train_ids = train_ids_copd + list(train_ids_copd_dm)
-    for r in np.arange(0, 3.05, 1):
+    for r in range(0, 4, 1):
         print(r)
+        # random.seed(1)
         train_ids = list(train_ids_dm_ckd)
-        num_ckd = r * len(train_ids_dm_ckd)
-        train_ids_ckd = random.sample(ptids_ckd, int(num_ckd))
-        train_ids_dm = random.sample(rest_dm_ptids, int((num_ckd + len(train_ids_dm_ckd)) * ratio))
+        num_ckd = int(r * len(train_ids_dm_ckd))
+        if num_ckd < len(ptids_ckd):
+            train_ids_ckd = random.sample(ptids_ckd, num_ckd)
+        else:
+            train_ids_ckd = ptids_ckd
+        train_ids_dm = random.sample(rest_dm_ptids, int((len(train_ids_ckd) + len(train_ids_dm_ckd)) * ratio))
         # train_ids_dm = random.sample(rest_dm_ptids, num_ckd * ratio)
         train_ids += list(train_ids_dm) + list(train_ids_ckd)
         pd.Series(train_ids).to_csv('./data/comorbid_risk_train_ids_r' + str(r) + '.csv', index=False)
 
 
-
         train_x0, train_y0, test_x0, test_y0 = split_shuffle_train_test_sets(train_ids, test_ids, counts_x, counts_y)
-
+        #
         train_x1, train_y1, test_x1, test_y1 = split_shuffle_train_test_sets(train_ids, test_ids, counts_sub_x, counts_sub_y)
-
-        train_x4, train_y4, test_x4, test_y4 = split_shuffle_train_test_sets(train_ids, test_ids, counts_trans_x,
-                                                                     counts_trans_y)
+        #
+        # # train_x4, train_y4, test_x4, test_y4 = split_shuffle_train_test_sets(train_ids, test_ids, counts_trans_x,
+        # #                                                              counts_trans_y)
+        clf0, features_wts0, results_by_f0 = make_prediction_and_tuning(train_x0, train_y0, test_x0,
+                                                                                         test_y0, features1, [100, 15, 2, 'rf'])
         # clf0, features_wts0, results_by_f0 = make_prediction_and_tuning(train_x0, train_y0, test_x0,
-        #                                                                                  test_y0, features0, [100, 15, 2, 'rf'])
-        # clf0, features_wts0, results_by_f0 = make_prediction_and_tuning(train_x0, train_y0, test_x0,
-        #                                                                                  test_y0, features0, [0.1, 15, 2, 'lr'])
-        # clf1, features_wts1, results_by_f1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features1,
-        #                                                                 [100, 15, 2, 'rf'])
-
-
-        test_proba0a = make_predictions(train_x0, train_y0, test_x0, [1000, 15, 'rf'])
-        test_proba0b = make_predictions(train_x0, train_y0, test_x0, [1000, 15, 'lr'])
-        test_proba0c = make_predictions(train_x0, train_y0, test_x0, [0.01, 15, 'lr'])
-
-        test_proba1a = make_predictions(train_x1, train_y1, test_x1, [1000, 15, 'rf'])
-        test_proba1b = make_predictions(train_x1, train_y1, test_x1, [1000, 15, 'lr'])
-        test_proba1c = make_predictions(train_x1, train_y1, test_x1, [0.01, 15, 'lr'])
-
-        test_proba2a = make_predictions(train_x2, train_y2, test_x2, [1000, 15, 'rf'])
-        test_proba2b = make_predictions(train_x2, train_y2, test_x2, [1000, 15, 'lr'])
-        test_proba2c = make_predictions(train_x2, train_y2, test_x2, [0.01, 15, 'lr'])
-
-        test_proba3a = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'rf'])
-        test_proba3b = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'lr'])
-        test_proba3c = make_predictions(train_x3, train_y3, test_x3, [0.01, 15, 'lr'])
-
-        # test_proba4a = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'rf'])
-        # test_proba4b = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'lr'])
-        # test_proba4c = make_predictions(train_x3, train_y3, test_x3, [0.01, 15, 'lr'])
-
+        #                                                                                   test_y0, features0, [0.1, 15, 2, 'lr'])
+        clf1, features_wts1, results_by_f1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features2,
+                                                                        [100, 15, 2, 'rf'])
+        #
+        #
+        test_proba0a = make_predictions(train_x0, train_y0, test_x0, [100, 15, 'rf'])
+        test_proba0b = make_predictions(train_x0, train_y0, test_x0, [100, 15, 'lr'])
+        test_proba0c = make_predictions(train_x0, train_y0, test_x0, [1, 15, 'lr'])
+        #
+        test_proba1a = make_predictions(train_x1, train_y1, test_x1, [100, 15, 'rf'])
+        test_proba1b = make_predictions(train_x1, train_y1, test_x1, [100, 15, 'lr'])
+        test_proba1c = make_predictions(train_x1, train_y1, test_x1, [1, 15, 'lr'])
+        #
+        # # test_proba2a = make_predictions(train_x2, train_y2, test_x2, [1000, 15, 'rf'])
+        # # test_proba2b = make_predictions(train_x2, train_y2, test_x2, [1000, 15, 'lr'])
+        # # test_proba2c = make_predictions(train_x2, train_y2, test_x2, [0.01, 15, 'lr'])
+        # #
+        # # test_proba3a = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'rf'])
+        # # test_proba3b = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'lr'])
+        # # test_proba3c = make_predictions(train_x3, train_y3, test_x3, [0.01, 15, 'lr'])
+        #
+        # # test_proba4a = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'rf'])
+        # # test_proba4b = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'lr'])
+        # # test_proba4c = make_predictions(train_x3, train_y3, test_x3, [0.01, 15, 'lr'])
+        #
         test_proba = pd.DataFrame([test_proba0a, test_proba0b, test_proba0c, test_y0.values.tolist(),
-                                   test_proba1a, test_proba1b, test_proba1c, test_y1.values.tolist(),
-                                   test_proba2a, test_proba2b, test_proba2c, test_y2.values.tolist(),
-                                   test_proba3a, test_proba3b, test_proba3c, test_y3.values.tolist()])
+                                   test_proba1a, test_proba1b, test_proba1c, test_y1.values.tolist()])
         test_proba = test_proba.transpose()
-        test_proba.columns = ['b1_rf', 'b1_lr', 'b1_lasso', 'b1_response', 'b2_rf', 'b2_lr', 'b2_lasso', 'b2_response',
-                              'b3_rf', 'b3_lr', 'b3_lasso', 'b3_response', 'b4_rf', 'b4_lr', 'b4_lasso', 'b4_response']
+        test_proba.columns = ['b1_rf', 'b1_lr', 'b1_lasso', 'b1_response', 'b2_rf', 'b2_lr', 'b2_lasso', 'b2_response']
         test_proba.to_csv('./data/comorbid_risk_test_proba_baselines_r' + str(r) + '.csv', index=False)
+        #
+        # # data_dm4[data_dm4['ptid'] == '769052'].to_csv('./data/example_dmpt.csv') # rf predicted proba: 0.782
+        # # data_control4[data_control4['ptid'] =='1819093'].to_csv('./data/example_controlpt.csv') # rf predicted proba: 0.033
 
-        # data_dm4[data_dm4['ptid'] == '769052'].to_csv('./data/example_dmpt.csv') # rf predicted proba: 0.782
-        # data_control4[data_control4['ptid'] =='1819093'].to_csv('./data/example_controlpt.csv') # rf predicted proba: 0.033
+        for p in range(125):
+            np.random.seed(p)
+            sp = np.random.choice(train_ids, size=int(0.75 * len(train_ids)), replace=False)
+            pd.Series(sp).to_csv('./data/comorbid_risk_train_ids_r' + str(r) + '_bootstrap' + str(p) + '.csv', index=False)
+
