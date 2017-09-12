@@ -33,3 +33,10 @@ Threshold 0.410 tuned with AUC, AUC: 0.769
           0       0.93      0.93      0.93      5534
           1       0.60      0.61      0.60       944
 avg / total       0.88      0.88      0.88      6478
+
+
+To do:
+1. add baselines
+2. get the base classifier and filter weak classifiers
+3. collect results of both parts
+

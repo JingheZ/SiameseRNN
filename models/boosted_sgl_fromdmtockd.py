@@ -207,7 +207,7 @@ def make_predictions(train_x, train_y, test_x, param):
     # test_x = test_x.as_matrix().astype(np.float)
     # train_y = train_y.as_matrix().astype(np.float)
     if param[2] == 'rf':
-        clf = RandomForestClassifier(n_estimators=param[0], criterion='entropy', n_jobs=param[1], random_state=0, class_weight='balanced')
+        clf = RandomForestClassifier(n_estimators=param[0], criterion='entropy', n_jobs=param[1], random_state=0)
         # clf = LogisticRegression(penalty='l1', C=param[0], n_jobs=param[1], random_state=0)
         clf.fit(train_x, train_y)
         pred_test = clf.predict_proba(test_x)
@@ -413,43 +413,46 @@ if __name__ == '__main__':
     counts_sub_y = counts_sub['response']
     features2 = counts_sub_x.columns.tolist()
 
-    # baseline 3: mining sequence patterns
-    # get the sequence by sub-windows
-    seq_dm = create_sequence(data_dm, 'comorbid_risk_dm')
-    seq_ckd = create_sequence(data_ckd, 'comorbid_risk_ckd')
-    seq_dmckd = create_sequence(data_dmckd, 'comorbid_risk_dmckd')
-    cooccur_list = [[258, 259], [53, 98], [204, 211]]
-    mvisit_list = [259, 211]
-    counts_bpsb = get_seq_item_counts(seq_dm, seq_dmckd, seq_ckd, cooccur_list, mvisit_list)
-    counts_bps = pd.concat([counts_bpsb, counts], axis=1).fillna(0)
-    counts_bps.to_csv('./data/counts_bps.csv')
-    counts_bps_y = counts_bps['response']
-    counts_bps_x = counts_bps
-    del counts_bps_x['response']
-    features3 = counts_bps_x.columns.tolist()
-
-    # baseline 4: transitions
-    counts_trans = get_transition_counts(data_ckd, data_dm, data_dmckd, prelim_features)
-    counts_trans = pd.concat([counts_trans, counts_y], axis=1)
-    counts_trans_x = counts_trans[counts_trans.columns[:-1]]
-    counts_trans_y = counts_trans['response']
-    features4 = counts_trans_x.columns.tolist()
+    # # baseline 3: mining sequence patterns
+    # # get the sequence by sub-windows
+    # seq_dm = create_sequence(data_dm, 'comorbid_risk_dm')
+    # seq_ckd = create_sequence(data_ckd, 'comorbid_risk_ckd')
+    # seq_dmckd = create_sequence(data_dmckd, 'comorbid_risk_dmckd')
+    # cooccur_list = [[258, 259], [53, 98], [204, 211]]
+    # mvisit_list = [259, 211]
+    # counts_bpsb = get_seq_item_counts(seq_dm, seq_dmckd, seq_ckd, cooccur_list, mvisit_list)
+    # counts_bps = pd.concat([counts_bpsb, counts], axis=1).fillna(0)
+    # counts_bps.to_csv('./data/counts_bps.csv')
+    # counts_bps_y = counts_bps['response']
+    # counts_bps_x = counts_bps
+    # del counts_bps_x['response']
+    # features3 = counts_bps_x.columns.tolist()
+    #
+    # # baseline 4: transitions
+    # counts_trans = get_transition_counts(data_ckd, data_dm, data_dmckd, prelim_features)
+    # counts_trans = pd.concat([counts_trans, counts_y], axis=1)
+    # counts_trans_x = counts_trans[counts_trans.columns[:-1]]
+    # counts_trans_y = counts_trans['response']
+    # features4 = counts_trans_x.columns.tolist()
 
     # ================ split train and testing data ========================================
 
     ratio = 1.5
     # randomly select 60% for training and 40% for testing from target group
     train_ids_dm_ckd, test_ids_dm_ckd = split_target_data(np.array(ptids_dmckd), 0.4)
+    train_ids_dm_ckd, valid_ids_dm_ckd = split_target_data(np.array(train_ids_dm_ckd), 0.33)
     random.seed(5)
     test_ids_dm = random.sample(ptids_dm, int(len(test_ids_dm_ckd) * ratio))
     rest_dm_ptids = list(set(ptids_dm).difference(set(test_ids_dm)))
     test_ids = list(test_ids_dm) + list(test_ids_dm_ckd)
-    # # randomly select twice amount of target group from only dm group
-
     pd.Series(test_ids).to_csv('./data/comorbid_risk_test_ids.csv', index=False)
-    # train_ids_dm = rest_dm_ptids
-    # train_ids = train_ids_copd + list(train_ids_copd_dm)
-    for r in range(6):
+    random.seed(5)
+    valid_ids_dm = random.sample(rest_dm_ptids, int(len(valid_ids_dm_ckd) * ratio))
+    rest_dm_ptids = list(set(rest_dm_ptids).difference(set(valid_ids_dm)))
+    valid_ids = list(valid_ids_dm) + list(valid_ids_dm_ckd)
+    pd.Series(valid_ids).to_csv('./data/comorbid_risk_validation_ids.csv', index=False)
+
+    for r in [0, 1, 3, 6]:
         print(r)
         train_ids = list(train_ids_dm_ckd)
         num_ckd = int(r * len(train_ids_dm_ckd))
@@ -479,11 +482,11 @@ if __name__ == '__main__':
         # # #                                                                 [100, 15, 2, 'rf'])
         # # # #
         # # # #
-        test_proba0a = make_predictions(train_x0, train_y0, test_x0, [100, 15, 'rf'])
+        test_proba0a = make_predictions(train_x0, train_y0, test_x0, [50, 15, 'rf'])
         test_proba0b = make_predictions(train_x0, train_y0, test_x0, [200, 15, 'lr'])
         test_proba0c = make_predictions(train_x0, train_y0, test_x0, [1, 15, 'lr'])
         # #
-        test_proba1a = make_predictions(train_x1, train_y1, test_x1, [100, 15, 'rf'])
+        test_proba1a = make_predictions(train_x1, train_y1, test_x1, [50, 15, 'rf'])
         test_proba1b = make_predictions(train_x1, train_y1, test_x1, [200, 15, 'lr'])
         test_proba1c = make_predictions(train_x1, train_y1, test_x1, [1, 15, 'lr'])
         # # # #
