@@ -466,6 +466,12 @@ if __name__ == '__main__':
         # train_ids_dm = random.sample(rest_dm_ptids, num_ckd * ratio)
         train_ids += list(train_ids_dm) + list(train_ids_ckd)
         pd.Series(train_ids).to_csv('./data/comorbid_risk_train_ids_r' + str(r) + '.csv', index=False)
+
+        r = 0
+        test_ids = pd.read_csv('./data/comorbid_risk_test_ids.csv', header=None, dtype=object)
+        test_ids = test_ids.values.flatten()
+        train_ids = pd.read_csv('./data/comorbid_risk_train_ids_r0.csv', header=None, dtype=object)
+        train_ids = train_ids.values.flatten()
         #
         #
         train_x0, train_y0, test_x0, test_y0 = split_shuffle_train_test_sets(train_ids, test_ids, counts_x, counts_y)
@@ -482,11 +488,21 @@ if __name__ == '__main__':
         # # #                                                                 [100, 15, 2, 'rf'])
         # # # #
         # # # #
-        test_proba0a = make_predictions(train_x0, train_y0, test_x0, [50, 15, 'rf'])
+
+
+        features5_all = pd.read_csv('./data/sgl_coefs_alpha7_r0_bootstrap59.csv')
+        i = features5_all.columns[2]
+        features5_inds = features5_all[i]
+        features5 = [features2[j] for j in features5_inds.index if features5_inds.loc[j] != 0]
+        counts_sgl_x = counts_sub[features5]
+        counts_sgl_y = counts_sub['response']
+        train_x3, train_y3, test_x3, test_y3 = split_shuffle_train_test_sets(train_ids, test_ids, counts_sgl_x, counts_sgl_y)
+
+        test_proba0a = make_predictions(train_x0, train_y0, test_x0, [100, 15, 'rf'])
         test_proba0b = make_predictions(train_x0, train_y0, test_x0, [200, 15, 'lr'])
         test_proba0c = make_predictions(train_x0, train_y0, test_x0, [1, 15, 'lr'])
         # #
-        test_proba1a = make_predictions(train_x1, train_y1, test_x1, [50, 15, 'rf'])
+        test_proba1a = make_predictions(train_x1, train_y1, test_x1, [100, 15, 'rf'])
         test_proba1b = make_predictions(train_x1, train_y1, test_x1, [200, 15, 'lr'])
         test_proba1c = make_predictions(train_x1, train_y1, test_x1, [1, 15, 'lr'])
         # # # #
@@ -498,22 +514,25 @@ if __name__ == '__main__':
         # # # # # test_proba3b = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'lr'])
         # # # # # test_proba3c = make_predictions(train_x3, train_y3, test_x3, [0.01, 15, 'lr'])
         # # # #
-        # # # # # test_proba4a = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'rf'])
-        # # # # # test_proba4b = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'lr'])
-        # # # # # test_proba4c = make_predictions(train_x3, train_y3, test_x3, [0.01, 15, 'lr'])
+        test_proba4a = make_predictions(train_x3, train_y3, test_x3, [100, 15, 'rf'])
+        test_proba4b = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'lr'])
+        test_proba4c = make_predictions(train_x3, train_y3, test_x3, [1, 15, 'lr'])
         # # # #
         test_proba = pd.DataFrame([test_proba0a, test_proba0b, test_proba0c, test_y0.values.tolist(),
-                                   test_proba1a, test_proba1b, test_proba1c, test_y1.values.tolist()])
+                                   test_proba1a, test_proba1b, test_proba1c, test_y1.values.tolist(),
+                                   test_proba4a, test_proba4b, test_proba4c, test_y3.values.tolist()])
         test_proba = test_proba.transpose()
-        test_proba.columns = ['b1_rf', 'b1_lr', 'b1_lasso', 'b1_response', 'b2_rf', 'b2_lr', 'b2_lasso', 'b2_response']
+        test_proba.columns = ['b1_rf', 'b1_lr', 'b1_lasso', 'b1_response', 'b2_rf', 'b2_lr', 'b2_lasso', 'b2_response',
+                              'b5_rf', 'b5_lr', 'b5_lasso', 'b5_response']
         test_proba.to_csv('./data/comorbid_risk_test_proba_baselines_r' + str(r) + '.csv', index=False)
         # # # #
         # # # data_dm4[data_dm4['ptid'] == '769052'].to_csv('./data/example_dmpt.csv') # rf predicted proba: 0.782
         # # # data_control4[data_control4['ptid'] =='1819093'].to_csv('./data/example_controlpt.csv') # rf predicted proba: 0.033
 
-        for p in range(200):
-            np.random.seed(p)
-            sp = np.random.choice(train_ids, size=int(0.7 * len(train_ids)), replace=True)
-            pd.Series(sp).to_csv('./data/comorbid_risk_train_ids_r' + str(r) + '_bootstrap' + str(p) + '.csv', index=False)
+        # for p in range(200):
+        #     np.random.seed(p)
+        #     sp = np.random.choice(train_ids, size=int(0.7 * len(train_ids)), replace=True)
+        #     pd.Series(sp).to_csv('./data/comorbid_risk_train_ids_r' + str(r) + '_bootstrap' + str(p) + '.csv', index=False)
+        #
 
 
