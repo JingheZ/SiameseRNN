@@ -431,6 +431,24 @@ if __name__ == '__main__':
         pickle.dump(dt_1yr, f)
     f.close()
 
+
+    with open('./data/clinical_events_hospitalization.pickle', 'rb') as f:
+        dt = pickle.load(f)
+    f.close()
+
+    with open('./data/dxs_data_v2.pickle', 'rb') as f:
+        dxs = pickle.load(f)
+    f.close()
+
+    dt2 = pd.merge(left=dt, right=dxs[['vid', 'pdx']],
+                  left_on='vid', right_on='vid', how='inner')
+    dt2_ips = dt2[dt2['cdrIPorOP'] == 'IP']
+    dt2_ips = dt2[~dt2['pdx'].isnull()]
+    ip_pdx = set(dt2_ips['pdx'].values.tolist())
+    ip_pdx_cats = [str(i).split('.')[0] for i in list(ip_pdx)]
+    # len(set(dt2_ips['pdx'].values))
+
+
     with open('./data/hospitalization_data_pos_neg_ids.pickle', 'wb') as f:
         pickle.dump([pos_ids, neg_ids], f)
     f.close()
