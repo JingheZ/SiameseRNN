@@ -480,31 +480,31 @@ if __name__ == '__main__':
         # # # # #
         # # # # # # train_x4, train_y4, test_x4, test_y4 = split_shuffle_train_test_sets(train_ids, test_ids, counts_trans_x,
         # # # # # #                                                              counts_trans_y)
-        # # # # clf0, features_wts0, results_by_f0 = make_prediction_and_tuning(train_x0, train_y0, test_x0,
-        # # # #                                                                                  test_y0, features1, [100, 15, 2, 'rf'])
+        clf0, features_wts0, results_by_f0 = make_prediction_and_tuning(train_x0, train_y0, test_x0,
+                                                                                         test_y0, features1, [100, 15, 1, 'rf'])
         # # # # # clf0, features_wts0, results_by_f0 = make_prediction_and_tuning(train_x0, train_y0, test_x0,
         # # # # #                                                                                   test_y0, features0, [0.1, 15, 2, 'lr'])
-        # # # clf1, features_wts1, results_by_f1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features2,
-        # # #                                                                 [100, 15, 2, 'rf'])
+        clf1, features_wts1, results_by_f1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features2,
+                                                                        [100, 15, 2, 'rf'])
         # # # #
         # # # #
 
 
-        features5_all = pd.read_csv('./data/sgl_coefs_alpha7_r0_bootstrap59.csv')
-        i = features5_all.columns[2]
+        features5_all = pd.read_csv('./data/sgl_coefs_alpha7_r3_bootstrap31.csv')
+        i = features5_all.columns[1]
         features5_inds = features5_all[i]
         features5 = [features2[j] for j in features5_inds.index if features5_inds.loc[j] != 0]
         counts_sgl_x = counts_sub[features5]
         counts_sgl_y = counts_sub['response']
         train_x3, train_y3, test_x3, test_y3 = split_shuffle_train_test_sets(train_ids, test_ids, counts_sgl_x, counts_sgl_y)
 
-        test_proba0a = make_predictions(train_x0, train_y0, test_x0, [100, 15, 'rf'])
+        test_proba0a = make_predictions(train_x0, train_y0, test_x0, [30, 15, 'rf'])
         test_proba0b = make_predictions(train_x0, train_y0, test_x0, [200, 15, 'lr'])
-        test_proba0c = make_predictions(train_x0, train_y0, test_x0, [1, 15, 'lr'])
+        test_proba0c = make_predictions(train_x0, train_y0, test_x0, [0.05, 15, 'lr'])
         # #
-        test_proba1a = make_predictions(train_x1, train_y1, test_x1, [100, 15, 'rf'])
+        test_proba1a = make_predictions(train_x1, train_y1, test_x1, [30, 15, 'rf'])
         test_proba1b = make_predictions(train_x1, train_y1, test_x1, [200, 15, 'lr'])
-        test_proba1c = make_predictions(train_x1, train_y1, test_x1, [1, 15, 'lr'])
+        test_proba1c = make_predictions(train_x1, train_y1, test_x1, [0.05, 15, 'lr'])
         # # # #
         # # # # # test_proba2a = make_predictions(train_x2, train_y2, test_x2, [1000, 15, 'rf'])
         # # # # # test_proba2b = make_predictions(train_x2, train_y2, test_x2, [1000, 15, 'lr'])
@@ -514,9 +514,9 @@ if __name__ == '__main__':
         # # # # # test_proba3b = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'lr'])
         # # # # # test_proba3c = make_predictions(train_x3, train_y3, test_x3, [0.01, 15, 'lr'])
         # # # #
-        test_proba4a = make_predictions(train_x3, train_y3, test_x3, [100, 15, 'rf'])
-        test_proba4b = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'lr'])
-        test_proba4c = make_predictions(train_x3, train_y3, test_x3, [1, 15, 'lr'])
+        test_proba4a = make_predictions(train_x3, train_y3, test_x3, [30, 15, 'rf'])
+        test_proba4b = make_predictions(train_x3, train_y3, test_x3, [200, 15, 'lr'])
+        test_proba4c = make_predictions(train_x3, train_y3, test_x3, [0.05, 15, 'lr'])
         # # # #
         test_proba = pd.DataFrame([test_proba0a, test_proba0b, test_proba0c, test_y0.values.tolist(),
                                    test_proba1a, test_proba1b, test_proba1c, test_y1.values.tolist(),
