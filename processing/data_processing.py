@@ -483,7 +483,7 @@ if __name__ == '__main__':
 
 
     with open('./data/hospitalization_data_pos_neg_ids.pickle', 'wb') as f:
-        pickle.dump([pos_ids, neg_ids], f)
+        pickle.dump([final_pos_ids, final_neg_ids], f)
     f.close()
 
     with open('./data/hospitalization_data_pos_neg_ids.pickle', 'rb') as f:
