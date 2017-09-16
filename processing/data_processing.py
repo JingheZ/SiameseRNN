@@ -132,6 +132,7 @@ def getCode(element, CCS_dict):
 def dx2dxcat():
     filename1 = './data/dxref.csv'
     filename2 = './data/ccs_dx_icd10cm_2016.csv'
+
     def CCS(filename):
         data = pd.read_csv(filename, dtype=object)
         cols = data.columns
@@ -172,6 +173,22 @@ def process_dxs(data, dxgrps_dict, dxgrps_dict2):
             dxcats.append('0')
     data['dxcat'] = dxcats
     data = data[data['dxcat'] != '0']
+    return data
+
+
+def process_pdxs(data, dxgrps_dict, dxgrps_dict2):
+    data['pdx'] = data['pdx'].str.replace('.', '')
+    dxs = data['pdx'].values.tolist()
+    dxcats = []
+    for i in dxs:
+        if dxgrps_dict.__contains__(i):
+            dxcats.append(dxgrps_dict[i])
+        elif dxgrps_dict2.__contains__(i):
+            dxcats.append(dxgrps_dict2[i])
+        else:
+            dxcats.append('0')
+    data['pdxcat'] = dxcats
+    data = data[data['pdxcat'] != '0']
     return data
 
 
@@ -219,7 +236,6 @@ def get_counts_subwindow(df, y, vars, c):
     del dt['ptid']
     dt.fillna(0, inplace=True)
     return dt
-
 
 
 if __name__ == '__main__':
@@ -358,14 +374,14 @@ if __name__ == '__main__':
     # f.close()
 
 
-    # get all patients who have a 2.5 year history
-    visits_v3 = visits_v2[visits_v2['anon_dis_date_y'] >= 2.5 * 360 * 24 * 60]
-    visits_v3_ids = set(visits_v3['ptid'].values) # 73877 pts
+    # get all patients who have a 1.5 year history
+    visits_v3 = visits_v2[visits_v2['anon_dis_date_y'] >= 1.5 * 360 * 24 * 60]
+    visits_v3_ids = set(visits_v3['ptid'].values) # 103363 pts
     visits_v4 = visits_v2[visits_v2['ptid'].isin(visits_v3_ids)]
-    visits_v4 = visits_v4[visits_v4['anon_adm_date_y'].between(1.5 * 360 * 24 * 60, 2.5 * 360 * 24 * 60)]
+    visits_v4 = visits_v4[visits_v4['anon_adm_date_y'] >= 1.5 * 360 * 24 * 60]
     IPvisits = visits_v4[visits_v4['cdrIPorOP'] == 'IP'] # 3677 patients with inhospital visits
-    pos_ids = list(set(IPvisits['ptid'].values))
-    neg_ids = list(visits_v3_ids.difference(set(pos_ids)))
+    pos_ids = list(set(IPvisits['ptid'].values)) # 10416 pts
+    neg_ids = list(visits_v3_ids.difference(set(pos_ids))) # 92947
 
     # ====================== Remove the unused pts from the orders and dx data =====================
     with open('./data/dxs_data.pickle', 'rb') as f:
@@ -431,7 +447,7 @@ if __name__ == '__main__':
         pickle.dump(dt_1yr, f)
     f.close()
 
-
+    # to exclude some inhospitalization
     with open('./data/clinical_events_hospitalization.pickle', 'rb') as f:
         dt = pickle.load(f)
     f.close()
@@ -444,14 +460,36 @@ if __name__ == '__main__':
                   left_on='vid', right_on='vid', how='inner')
     dt2_ips = dt2[dt2['cdrIPorOP'] == 'IP']
     dt2_ips = dt2[~dt2['pdx'].isnull()]
-    ip_pdx = set(dt2_ips['pdx'].values.tolist())
-    ip_pdx_cats = [str(i).split('.')[0] for i in list(ip_pdx)]
-    # len(set(dt2_ips['pdx'].values))
+    dxgrps0, dxgrps_dict0, dxgrps_dict20 = dx2dxcat()
+    dt2_ips2 = process_pdxs(dt2_ips, dxgrps_dict0, dxgrps_dict20)
+    # cts = dt2_ips2[['ptid', 'pdxcat']].drop_duplicates().groupby('pdxcat').count()
+    # cts.reset_index(inplace=True)
+    # cts.columns = ['pdxcat', 'ct']
+    # cts = cts.sort(['ct'], ascending=[0])
+    # # cts2 = cts[cts['pdxcat'].isin(['49', '50', '108', '127', '158'])]
+    # cts['pdxcat'] = cts['pdxcat'].astype(int)
+    # cts = cts[~cts['pdxcat'].between(176, 239)]
+    # cts = cts[~cts['pdxcat'].between(2601, 2621)]
+    # cts['pdxcat'] = cts['pdxcat'].astype(str)
+    dt2_ips2['pdxcat'] = dt2_ips2['pdxcat'].astype(int)
+    dt2_ips3 = dt2_ips2[dt2_ips2['pdxcat'].between(2601, 2621)] # E codes
+    dt2_ips4 = dt2_ips2[dt2_ips2['pdxcat'].between(212, 240)] # dxs at birth, injuries, fractures, etc.
+    dt2_ips5 = dt2_ips2[dt2_ips2['pdxcat'] == 196]
+    unavoid_ip_ptids = set(dt2_ips3['ptid'].values).union(set(dt2_ips4['ptid'].values)).union(set(dt2_ips5['ptid'].values))
+    # unavoid_ip_ptids = set(dt2_ips3['ptid'].values)
+    other_ip_ids = set(dt2_ips2['ptid'].values).difference(unavoid_ip_ptids)
+    final_pos_ids = set(other_ip_ids).intersection(set(pos_ids)) # 4,463
+    final_neg_ids = set(neg_ids).difference(set(unavoid_ip_ptids)) # 72,677
 
 
     with open('./data/hospitalization_data_pos_neg_ids.pickle', 'wb') as f:
         pickle.dump([pos_ids, neg_ids], f)
     f.close()
+
+    with open('./data/hospitalization_data_pos_neg_ids.pickle', 'rb') as f:
+        pos_ids, neg_ids = pickle.load(f)
+    f.close()
+
     dt_pos = dt_1yr[dt_1yr['ptid'].isin(pos_ids)]
     dt_neg = dt_1yr[dt_1yr['ptid'].isin(neg_ids)]
 
