@@ -279,32 +279,87 @@ def create_sequence(df, s):
     return df3
 
 
-def get_seq_item_counts(seq_dm, seq_control, seq_extra, cooccur_list, mvisit_list):
+def get_seq_item_counts(seq_dm, seq_control, seq_extra, cooccur_list, mitmvisit_list):
     # get items occurred at the same time
-    def get_count_one_itemset(seq, c1, c2):
-        ct1 = [1 if c1 in it and c2 in it else 0 for it in seq['dxcat'].values.tolist()]
-        seq['cat' + str(c1) + '_' + str(c2)] = ct1
-        count1 = seq[['ptid', 'cat' + str(c1) + '_' + str(c2)]].groupby('ptid').sum()
+    def get_count_one_itemset(seq, cs):
+        c1 = cs[0]
+        c2 = cs[1]
+        if len(cs) == 2:
+            ct1 = [1 if c1 in it and c2 in it else 0 for it in seq['dxcat'].values.tolist()]
+            seq['cat' + str(c1) + '_' + str(c2)] = ct1
+            count1 = seq[['ptid', 'cat' + str(c1) + '_' + str(c2)]].groupby('ptid').sum()
+        else:
+            c3 = cs[2]
+            ct1 = [1 if c1 in it and c2 in it and c3 in it else 0 for it in seq['dxcat'].values.tolist()]
+            seq['cat' + str(c1) + '_' + str(c2) + '_' + str(c3)] = ct1
+            count1 = seq[['ptid', 'cat' + str(c1) + '_' + str(c2) + '_' + str(c3)]].groupby('ptid').sum()
         return count1
     seq = pd.concat([seq_dm[['ptid', 'dxcat']], seq_control[['ptid', 'dxcat']], seq_extra[['ptid', 'dxcat']]], axis=0)
-    count_ab = get_count_one_itemset(seq, cooccur_list[0][0], cooccur_list[0][1])
-    for a, b in cooccur_list[1:]:
-        countb = get_count_one_itemset(seq, a, b)
+    count_ab = get_count_one_itemset(seq, cooccur_list[0])
+    for a in cooccur_list[1:]:
+        countb = get_count_one_itemset(seq, a)
         count_ab = pd.concat([count_ab, countb], axis=1)
 
-    # get same item occurred in different visits
-    def get_count_two_visits(seq, c):
-        ct1 = [1 if c in it else 0 for it in seq['dxcat'].values.tolist()]
-        seq['var'] = ct1
-        seq = seq[seq['var'] > 0]
-        count1 = seq[['ptid', 'var']].groupby('ptid').count()
-        count1['cat' + str(c) + 'to' + str(c)] = [i * (i - 1) * 0.5 for i in count1['var'].values]
-        del count1['var']
-        return count1
-    count_cd = get_count_two_visits(seq, mvisit_list[0])
-    for c in mvisit_list[1:]:
-        countc = get_count_two_visits(seq, c)
-        count_cd = pd.concat([count_cd, countc], axis=1)
+    # # get same item occurred in different visits
+    # def get_count_two_visits(seq, c):
+    #     ct1 = [1 if c in it else 0 for it in seq['dxcat'].values.tolist()]
+    #     seq['var'] = ct1
+    #     seq = seq[seq['var'] > 0]
+    #     count1 = seq[['ptid', 'var']].groupby('ptid').count()
+    #     count1['cat' + str(c) + 'to' + str(c)] = [i * (i - 1) * 0.5 for i in count1['var'].values]
+    #     del count1['var']
+    #     return count1
+    # count_cd = get_count_two_visits(seq, mvisit_list[0])
+    # for c in mvisit_list[1:]:
+    #     countc = get_count_two_visits(seq, c)
+    #     count_cd = pd.concat([count_cd, countc], axis=1)
+    # count_abcd = pd.concat([count_ab, count_cd], axis=1)
+
+    # get multiple item occurred in different visits
+    def get_count_multiple_items_mvisits(seq2, c):
+        def get_visit_ind_with_item(seq0, l):
+            inds = []
+            for v, vt in enumerate(seq0):
+                fg = 1
+                for c0 in l:
+                    if c0 not in vt:
+                        fg = 0
+                        break
+                if fg == 1:
+                    inds.append(v)
+            return inds
+        def calculate_vcts(inds1, inds2):
+            ct = 0
+            for i in inds1:
+                for j in inds2:
+                    if i < j:
+                        ct += 1
+            return ct
+
+        val = []
+        for p in seq2.index:
+            seq0 = seq2['dxcat'].loc[p]
+            ct1 = get_visit_ind_with_item(seq0, c[0])
+            ct2 = get_visit_ind_with_item(seq0, c[1])
+            va = calculate_vcts(ct1, ct2)
+            val.append(va)
+        val = np.array(val)
+        nm1 = '+'.join([str(c0) for c0 in c[0]])
+        nm2 = '+'.join([str(c0) for c0 in c[1]])
+        return val, [nm1 + 'to' + nm2]
+    seq2 = seq.groupby(['ptid'])['dxcat'].apply(list)
+    seq2 = seq2.reset_index()
+    seq2.index = seq2['ptid']
+    count_cd = seq2['ptid'].values
+    nms = ['ptid']
+    for c in mitmvisit_list:
+        countc, nm0 = get_count_multiple_items_mvisits(seq2, c)
+        count_cd = np.hstack((count_cd, countc))
+        nms += nm0
+    counts_cd = pd.DataFrame(count_cd)
+    counts_cd.columns = nms
+    counts_cd.index = counts_cd['ptid']
+    del counts_cd['ptid']
     count_abcd = pd.concat([count_ab, count_cd], axis=1)
     return count_abcd
 
@@ -390,12 +445,6 @@ if __name__ == '__main__':
     counts_sub = counts_sub_dm.append(counts_sub_ckd).append(counts_sub_dmckd).fillna(0)
     counts_sub.to_csv('./data/comorbid_task_counts_sub_by4momth.csv')
 
-    # counts_sub_dm = get_counts_subwindow(data_dm5, 0, prelim_features, 3)
-    # counts_sub_ckd = get_counts_subwindow(data_ckd3, 1, prelim_features, 3)
-    # counts_sub_dmckd = get_counts_subwindow(data_dm_ckd3, 1, prelim_features, 3)
-    # counts_sub = counts_sub_dm.append(counts_sub_ckd).append(counts_sub_dmckd).fillna(0)
-    # counts_sub.to_csv('./data/comorbid_task_counts_sub_by3momth.csv')
-    #
     # counts_sub_dm = get_counts_subwindow(data_dm, 0, prelim_features, 2)
     # counts_sub_ckd = get_counts_subwindow(data_ckd, 1, prelim_features, 2)
     # counts_sub_dmckd = get_counts_subwindow(data_dmckd, 1, prelim_features, 2)
@@ -403,6 +452,9 @@ if __name__ == '__main__':
     # counts_sub.to_csv('./data/comorbid_task_counts_sub_by2momth.csv')
 
     # =============== primary representation =============================================================
+    counts = pd.read_csv('./data/comorbid_task_counts.csv')
+    counts.index = counts['ptid'].astype(str)
+    del counts['ptid']
     # baseline 1: aggregated count vector
     counts_x = counts[counts.columns[:-1]]
     counts_y = counts['response']
@@ -417,25 +469,35 @@ if __name__ == '__main__':
     # get the sequence by sub-windows
     seq_dm = create_sequence(data_dmckd, 'comorbid_risk_dmckd_train')
     seq_control = create_sequence(data_dm, 'comorbid_risk_control_train')
-    cooccur_list = [[258, 259], [53, 98], [204, 211]]
-    mvisit_list = [259, 211]
-    counts_bpsb = get_seq_item_counts(seq_dm, seq_control, cooccur_list, mvisit_list)
+    seq_extra = create_sequence(data_dm, 'comorbid_risk_ckd_train')
+    cooccur_list = [[49, 98], [53, 98], [49, 53], [49, 53, 98], [259, 663], [49, 663], [257, 259],
+                    [133, 259], [95, 98], [58, 98], [49, 95], [49, 58], [49, 58, 98], [49, 95, 98]]
+    # mvisit_list = [98, 259, 49, 53]
+    mitmvisit_list = [[[98], [98]], [[259], [259]], [[49], [49]], [[53], [53]],
+                      [[49], [98]], [[98], [49]], [[98], [49, 98]], [[49], [49, 98]],
+                      [[49, 98], [49]], [[49, 98], [98]], [[49, 98], [49, 98]], [[98], [259]],
+                      [[49], [259]], [[259], [49]], [[98], [257]], [[49], [257]], [[49], [211]],
+                      [[49], [133]], [[53], [98]], [[49], [53]], [[53], [49]], [[53], [49, 53]],
+                      [[53], [49, 98]], [[53, 98], [49]], [[53], [53, 98]], [[53, 98], [98]],
+                      [[49], [49, 53]], [[49, 53], [49]], [[49], [259, 49]], [[49], [49, 53, 98]],
+                      [[49, 53], [53]], [[49], [53, 98]], [[49, 53], [98]], [[49, 53, 98], [98]],
+                      [[49, 53, 98], [49]], [[49, 53], [49, 53]], [[49, 98], [257]], [[49, 98], [259]]]
+    counts_bpsb = get_seq_item_counts(seq_dm, seq_control, seq_extra, cooccur_list, mitmvisit_list)
     counts_bps = pd.concat([counts_bpsb, counts], axis=1).fillna(0)
-    counts_bps.to_csv('./data/counts_bps.csv')
+    counts_bps.to_csv('./data/comorbid_risk_counts_bps.csv')
     counts_bps_y = counts_bps['response']
     counts_bps_x = counts_bps
     del counts_bps_x['response']
     features3 = counts_bps_x.columns.tolist()
 
     # baseline 4: transitions
-    counts_trans = get_transition_counts(data_dm4, data_control4, prelim_features)
+    counts_trans = get_transition_counts(data_dmckd, data_dm, data_ckd, prelim_features)
     counts_trans = pd.concat([counts_trans, counts], axis=1).fillna(0)
-    counts_trans.to_csv('./data/counts_trans.csv')
+    counts_trans.to_csv('./data/comorbid_risk_counts_trans.csv')
 
     counts_trans_x = counts_trans[counts_trans.columns[:-1]]
     counts_trans_y = counts_trans['response']
     features4 = counts_trans.columns.tolist()[:-1]
-
 
     # ================ split train and testing data ========================================
 
@@ -479,7 +541,10 @@ if __name__ == '__main__':
         train_x0, train_y0, test_x0, test_y0 = split_shuffle_train_test_sets(train_ids, test_ids, counts_x, counts_y)
         # # #
         train_x1, train_y1, test_x1, test_y1 = split_shuffle_train_test_sets(train_ids, test_ids, counts_sub_x, counts_sub_y)
-        # # # # #
+
+        train_x3, train_y3, test_x3, test_y3 = split_shuffle_train_test_sets(train_ids, test_ids, counts_trans_x,
+                                                                             counts_trans_y)
+
         # # # # # # train_x4, train_y4, test_x4, test_y4 = split_shuffle_train_test_sets(train_ids, test_ids, counts_trans_x,
         # # # # # #                                                              counts_trans_y)
         clf0, features_wts0, results_by_f0 = make_prediction_and_tuning(train_x0, train_y0, test_x0,
@@ -490,8 +555,6 @@ if __name__ == '__main__':
                                                                         [100, 15, 2, 'rf'])
         # # # #
         # # # #
-
-
         features5_all = pd.read_csv('./data/sgl_coefs_alpha7_r3_bootstrap31.csv')
         i = features5_all.columns[1]
         features5_inds = features5_all[i]
@@ -512,9 +575,9 @@ if __name__ == '__main__':
         # # # # # test_proba2b = make_predictions(train_x2, train_y2, test_x2, [1000, 15, 'lr'])
         # # # # # test_proba2c = make_predictions(train_x2, train_y2, test_x2, [0.01, 15, 'lr'])
         # # # # #
-        # # # # # test_proba3a = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'rf'])
-        # # # # # test_proba3b = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'lr'])
-        # # # # # test_proba3c = make_predictions(train_x3, train_y3, test_x3, [0.01, 15, 'lr'])
+        test_proba3a = make_predictions(train_x3, train_y3, test_x3, [30, 15, 'rf'])
+        test_proba3b = make_predictions(train_x3, train_y3, test_x3, [200, 15, 'lr'])
+        test_proba3c = make_predictions(train_x3, train_y3, test_x3, [0.05, 15, 'lr'])
         # # # #
         test_proba4a = make_predictions(train_x3, train_y3, test_x3, [30, 15, 'rf'])
         test_proba4b = make_predictions(train_x3, train_y3, test_x3, [200, 15, 'lr'])
