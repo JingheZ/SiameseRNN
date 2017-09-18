@@ -414,26 +414,28 @@ if __name__ == '__main__':
     features2 = counts_sub_x.columns.tolist()
 
     # # baseline 3: mining sequence patterns
-    # # get the sequence by sub-windows
-    # seq_dm = create_sequence(data_dm, 'comorbid_risk_dm')
-    # seq_ckd = create_sequence(data_ckd, 'comorbid_risk_ckd')
-    # seq_dmckd = create_sequence(data_dmckd, 'comorbid_risk_dmckd')
-    # cooccur_list = [[258, 259], [53, 98], [204, 211]]
-    # mvisit_list = [259, 211]
-    # counts_bpsb = get_seq_item_counts(seq_dm, seq_dmckd, seq_ckd, cooccur_list, mvisit_list)
-    # counts_bps = pd.concat([counts_bpsb, counts], axis=1).fillna(0)
-    # counts_bps.to_csv('./data/counts_bps.csv')
-    # counts_bps_y = counts_bps['response']
-    # counts_bps_x = counts_bps
-    # del counts_bps_x['response']
-    # features3 = counts_bps_x.columns.tolist()
-    #
-    # # baseline 4: transitions
-    # counts_trans = get_transition_counts(data_ckd, data_dm, data_dmckd, prelim_features)
-    # counts_trans = pd.concat([counts_trans, counts_y], axis=1)
-    # counts_trans_x = counts_trans[counts_trans.columns[:-1]]
-    # counts_trans_y = counts_trans['response']
-    # features4 = counts_trans_x.columns.tolist()
+    # get the sequence by sub-windows
+    seq_dm = create_sequence(data_dmckd, 'comorbid_risk_dmckd_train')
+    seq_control = create_sequence(data_dm, 'comorbid_risk_control_train')
+    cooccur_list = [[258, 259], [53, 98], [204, 211]]
+    mvisit_list = [259, 211]
+    counts_bpsb = get_seq_item_counts(seq_dm, seq_control, cooccur_list, mvisit_list)
+    counts_bps = pd.concat([counts_bpsb, counts], axis=1).fillna(0)
+    counts_bps.to_csv('./data/counts_bps.csv')
+    counts_bps_y = counts_bps['response']
+    counts_bps_x = counts_bps
+    del counts_bps_x['response']
+    features3 = counts_bps_x.columns.tolist()
+
+    # baseline 4: transitions
+    counts_trans = get_transition_counts(data_dm4, data_control4, prelim_features)
+    counts_trans = pd.concat([counts_trans, counts], axis=1).fillna(0)
+    counts_trans.to_csv('./data/counts_trans.csv')
+
+    counts_trans_x = counts_trans[counts_trans.columns[:-1]]
+    counts_trans_y = counts_trans['response']
+    features4 = counts_trans.columns.tolist()[:-1]
+
 
     # ================ split train and testing data ========================================
 
