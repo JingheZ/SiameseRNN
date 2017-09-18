@@ -354,13 +354,14 @@ def get_seq_item_counts(seq_dm, seq_control, seq_extra, cooccur_list, mitmvisit_
     nms = ['ptid']
     for c in mitmvisit_list:
         countc, nm0 = get_count_multiple_items_mvisits(seq2, c)
-        count_cd = np.hstack((count_cd, countc))
+        count_cd = np.vstack((count_cd, countc))
         nms += nm0
     counts_cd = pd.DataFrame(count_cd)
+    counts_cd = counts_cd.transpose()
     counts_cd.columns = nms
     counts_cd.index = counts_cd['ptid']
     del counts_cd['ptid']
-    count_abcd = pd.concat([count_ab, count_cd], axis=1)
+    count_abcd = pd.concat([count_ab, counts_cd], axis=1)
     return count_abcd
 
 
@@ -483,7 +484,7 @@ if __name__ == '__main__':
                       [[49, 53], [53]], [[49], [53, 98]], [[49, 53], [98]], [[49, 53, 98], [98]],
                       [[49, 53, 98], [49]], [[49, 53], [49, 53]], [[49, 98], [257]], [[49, 98], [259]]]
     counts_bpsb = get_seq_item_counts(seq_dm, seq_control, seq_extra, cooccur_list, mitmvisit_list)
-    counts_bps = pd.concat([counts_bpsb, counts], axis=1).fillna(0)
+    counts_bps = pd.concat([counts_bpsb, counts[['response']]], axis=1).fillna(0)
     counts_bps.to_csv('./data/comorbid_risk_counts_bps.csv')
     counts_bps_y = counts_bps['response']
     counts_bps_x = counts_bps
@@ -542,6 +543,8 @@ if __name__ == '__main__':
         # # #
         train_x1, train_y1, test_x1, test_y1 = split_shuffle_train_test_sets(train_ids, test_ids, counts_sub_x, counts_sub_y)
 
+        train_x2, train_y2, test_x2, test_y2 = split_shuffle_train_test_sets(train_ids, test_ids, counts_bps_x,
+                                                                             counts_bps_y)
         train_x3, train_y3, test_x3, test_y3 = split_shuffle_train_test_sets(train_ids, test_ids, counts_trans_x,
                                                                              counts_trans_y)
 
@@ -553,6 +556,9 @@ if __name__ == '__main__':
         # # # # #                                                                                   test_y0, features0, [0.1, 15, 2, 'lr'])
         clf1, features_wts1, results_by_f1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features2,
                                                                         [100, 15, 2, 'rf'])
+        clf1, features_wts1, results_by_f1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features2,
+                                                                        [100, 15, 2, 'rf'])
+
         # # # #
         # # # #
         features5_all = pd.read_csv('./data/sgl_coefs_alpha7_r3_bootstrap31.csv')
@@ -571,9 +577,9 @@ if __name__ == '__main__':
         test_proba1b = make_predictions(train_x1, train_y1, test_x1, [200, 15, 'lr'])
         test_proba1c = make_predictions(train_x1, train_y1, test_x1, [0.05, 15, 'lr'])
         # # # #
-        # # # # # test_proba2a = make_predictions(train_x2, train_y2, test_x2, [1000, 15, 'rf'])
-        # # # # # test_proba2b = make_predictions(train_x2, train_y2, test_x2, [1000, 15, 'lr'])
-        # # # # # test_proba2c = make_predictions(train_x2, train_y2, test_x2, [0.01, 15, 'lr'])
+        test_proba2a = make_predictions(train_x2, train_y2, test_x2, [30, 15, 'rf'])
+        test_proba2b = make_predictions(train_x2, train_y2, test_x2, [200, 15, 'lr'])
+        test_proba2c = make_predictions(train_x2, train_y2, test_x2, [0.05, 15, 'lr'])
         # # # # #
         test_proba3a = make_predictions(train_x3, train_y3, test_x3, [30, 15, 'rf'])
         test_proba3b = make_predictions(train_x3, train_y3, test_x3, [200, 15, 'lr'])
@@ -591,6 +597,14 @@ if __name__ == '__main__':
                               'b5_rf', 'b5_lr', 'b5_lasso', 'b5_response']
         test_proba.to_csv('./data/comorbid_risk_test_proba_baselines_r' + str(r) + '.csv', index=False)
         # # # #
+
+        test_proba = pd.DataFrame([test_proba2a, test_proba2b, test_proba2c, test_y2.values.tolist(),
+                                   test_proba3a, test_proba3b, test_proba3c, test_y3.values.tolist()])
+        test_proba = test_proba.transpose()
+        test_proba.columns = ['b3_rf', 'b3_lr', 'b3_lasso', 'b3_response', 'b4_rf', 'b4_lr', 'b4_lasso', 'b4_response']
+        test_proba.to_csv('./data/comorbid_risk_test_proba_baselines_bps_trans_r' + str(r) + '.csv', index=False)
+
+
         # # # data_dm4[data_dm4['ptid'] == '769052'].to_csv('./data/example_dmpt.csv') # rf predicted proba: 0.782
         # # # data_control4[data_control4['ptid'] =='1819093'].to_csv('./data/example_controlpt.csv') # rf predicted proba: 0.033
 
