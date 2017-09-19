@@ -483,6 +483,7 @@ if __name__ == '__main__':
                       [[49], [49, 53]], [[49, 53], [49]], [[49], [259, 49]], [[49], [49, 53, 98]],
                       [[49, 53], [53]], [[49], [53, 98]], [[49, 53], [98]], [[49, 53, 98], [98]],
                       [[49, 53, 98], [49]], [[49, 53], [49, 53]], [[49, 98], [257]], [[49, 98], [259]]]
+
     counts_bpsb = get_seq_item_counts(seq_dm, seq_control, seq_extra, cooccur_list, mitmvisit_list)
     counts_bps = pd.concat([counts_bpsb, counts[['response']]], axis=1).fillna(0)
     counts_bps.to_csv('./data/comorbid_risk_counts_bps.csv')
@@ -537,73 +538,132 @@ if __name__ == '__main__':
         test_ids = test_ids.values.flatten()
         train_ids = pd.read_csv('./data/comorbid_risk_train_ids_r0.csv', header=None, dtype=object)
         train_ids = train_ids.values.flatten()
+
+        # baseline 1: freq
+        counts = pd.read_csv('./data/comorbid_task_counts.csv')
+        counts.index = counts['ptid'].astype(str)
+        del counts['ptid']
+        counts_x = counts[counts.columns[:-1]]
+        counts_y = counts['response']
+        features0 = counts.columns.tolist()[:-1]
+        # baseline 2: BPS
+        # seq_dm = create_sequence(data_dmckd[data_dmckd['ptid'].isin(train_ids)], 'comorbid_risk_dmckd_train')
+        # seq_control = create_sequence(data_dm[data_dm['ptid'].isin(train_ids)], 'comorbid_risk_control_train')
+        # seq_extra = create_sequence(data_dm, 'comorbid_risk_ckd_train')
+        #
+        # cooccur_list = [[49, 663], [257, 259], [133, 259], [133, 257], [133, 257, 259], [53, 98], [49, 98],
+        #                 [49, 95], [49, 53], [49, 53, 98], [259, 663], [257, 663], [95, 98], [50, 98], [53, 95],
+        #                 [50, 53], [53, 95, 98], [49, 53, 95], [49, 95, 98]]
+        # # mvisit_list = [98, 259, 49, 53]
+        # mitmvisit_list = [[[259], [259]], [[259], [257]], [[49], [259]], [[259], [49]], [[257], [257]],
+        #                   [[49], [257]], [[49], [133]], [[98], [98]], [[53], [98]], [[98], [53]],
+        #                   [[49], [98]], [[98], [49]], [[98], [49, 98]], [[53, 98], [98]], [[49], [49]],
+        #                   [[49], [49, 98]], [[49, 98], [49]], [[49], [133, 49]], [[49], [257, 49]],
+        #                   [[49, 98], [98]], [[49, 98], [49, 98]], [[49], [133, 259]], [[98], [259]], [[259], [98]],
+        #                   [[259], [49, 98]], [[49], [256]], [[49], [211]], [[49], [205]], [[98], [53, 98]],
+        #                   [[49], [95]], [[53], [53]], [[49], [53]], [[53], [49]], [[53], [53, 98]],
+        #                   [[49], [49, 53]], [[49, 53], [49]], [[49], [259, 49]], [[49, 53], [53]],
+        #                   [[49, 98], [98]], [[49, 98], [259]], [[49, 98], [49, 98]]]
         #
         #
+        # # cooccur_list = [[49, 98], [53, 98], [49, 53], [49, 53, 98], [259, 663], [49, 663], [257, 259],
+        # #                 [133, 259], [95, 98], [58, 98], [49, 95], [49, 58], [49, 58, 98], [49, 95, 98]]
+        # # # # mvisit_list = [98, 259, 49, 53]
+        # # mitmvisit_list = [[[98], [98]], [[259], [259]], [[49], [49]], [[53], [53]],
+        # #                   [[49], [98]], [[98], [49]], [[98], [49, 98]], [[49], [49, 98]],
+        # #                   [[49, 98], [49]], [[49, 98], [98]], [[49, 98], [49, 98]], [[98], [259]],
+        # #                   [[49], [259]], [[259], [49]], [[98], [257]], [[49], [257]], [[49], [211]],
+        # #                   [[49], [133]], [[53], [98]], [[49], [53]], [[53], [49]], [[53], [49, 53]],
+        # #                   [[53], [49, 98]], [[53, 98], [49]], [[53], [53, 98]], [[53, 98], [98]],
+        # #                   [[49], [49, 53]], [[49, 53], [49]], [[49], [259, 49]], [[49], [49, 53, 98]],
+        # #                   [[49, 53], [53]], [[49], [53, 98]], [[49, 53], [98]], [[49, 53, 98], [98]],
+        # #                   [[49, 53, 98], [49]], [[49, 53], [49, 53]], [[49, 98], [257]], [[49, 98], [259]]]
+        #
+        # counts_bpsb = get_seq_item_counts(seq_dm, seq_control, seq_extra, cooccur_list, mitmvisit_list)
+        # counts_bps = pd.concat([counts_bpsb, counts], axis=1).fillna(0)
+        # counts_bps.to_csv('./data/comorbid_risk_counts_bps.csv')
+        counts_bps = pd.read_csv('./data/comorbid_risk_counts_bps.csv')
+        counts_bps.columns = ['ptid'] + list(counts_bps.columns[1:])
+        counts_bps.index = counts_bps['ptid'].astype(str)
+        del counts_bps['ptid']
+        counts_bps_x = counts_bps[counts_bps.columns[:-1]]
+        counts_bps_y = counts_bps['response']
+        features3 = counts_bps_x.columns.tolist()[:-1]
+
+        # baseline 3: trans
+        counts_trans = pd.read_csv('./data/comorbid_risk_counts_trans.csv')
+        counts_trans.columns = ['ptid'] + list(counts_trans.columns[1:])
+        counts_trans.index = counts_trans['ptid'].astype(str)
+        del counts_trans['ptid']
+        counts_trans_x = counts_trans[counts_trans.columns[:-1]]
+        counts_trans_y = counts_trans['response']
+        features4 = counts_trans.columns.tolist()[:-1]
+
+        # baseline 4: single LSR
+        counts_sub = pd.read_csv('./data/comorbid_task_counts_sub_by4momth.csv')
+        counts_sub.index = counts_sub['ptid'].astype(str)
+        del counts_sub['ptid']
+        features5a = counts_sub.columns.tolist()[1:]
+        features5_all = pd.read_csv('./data/sgl_coefs_alpha7_r0_bootstrap15.csv')
+        i = features5_all.columns[1]
+        features5_inds = features5_all[i]
+        features5 = [features5a[j] for j in features5_inds.index if features5_inds.loc[j] != 0]
+        counts_sgl_x = counts_sub[features5]
+        counts_sgl_y = counts_sub['response']
+
         train_x0, train_y0, test_x0, test_y0 = split_shuffle_train_test_sets(train_ids, test_ids, counts_x, counts_y)
         # # #
-        train_x1, train_y1, test_x1, test_y1 = split_shuffle_train_test_sets(train_ids, test_ids, counts_sub_x, counts_sub_y)
-
+        # train_x1, train_y1, test_x1, test_y1 = split_shuffle_train_test_sets(train_ids, test_ids, counts_sub_x, counts_sub_y)
+        #
         train_x2, train_y2, test_x2, test_y2 = split_shuffle_train_test_sets(train_ids, test_ids, counts_bps_x,
                                                                              counts_bps_y)
         train_x3, train_y3, test_x3, test_y3 = split_shuffle_train_test_sets(train_ids, test_ids, counts_trans_x,
                                                                              counts_trans_y)
 
-        # # # # # # train_x4, train_y4, test_x4, test_y4 = split_shuffle_train_test_sets(train_ids, test_ids, counts_trans_x,
-        # # # # # #                                                              counts_trans_y)
-        clf0, features_wts0, results_by_f0 = make_prediction_and_tuning(train_x0, train_y0, test_x0,
-                                                                                         test_y0, features1, [100, 15, 1, 'rf'])
-        # # # # # clf0, features_wts0, results_by_f0 = make_prediction_and_tuning(train_x0, train_y0, test_x0,
-        # # # # #                                                                                   test_y0, features0, [0.1, 15, 2, 'lr'])
-        clf1, features_wts1, results_by_f1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features2,
-                                                                        [100, 15, 2, 'rf'])
-        clf1, features_wts1, results_by_f1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features2,
-                                                                        [100, 15, 2, 'rf'])
+        train_x4, train_y4, test_x4, test_y4 = split_shuffle_train_test_sets(train_ids, test_ids, counts_sgl_x, counts_sgl_y)
 
-        # # # #
-        # # # #
-        features5_all = pd.read_csv('./data/sgl_coefs_alpha7_r3_bootstrap31.csv')
-        i = features5_all.columns[1]
-        features5_inds = features5_all[i]
-        features5 = [features2[j] for j in features5_inds.index if features5_inds.loc[j] != 0]
-        counts_sgl_x = counts_sub[features5]
-        counts_sgl_y = counts_sub['response']
-        train_x3, train_y3, test_x3, test_y3 = split_shuffle_train_test_sets(train_ids, test_ids, counts_sgl_x, counts_sgl_y)
 
-        test_proba0a = make_predictions(train_x0, train_y0, test_x0, [30, 15, 'rf'])
-        test_proba0b = make_predictions(train_x0, train_y0, test_x0, [200, 15, 'lr'])
-        test_proba0c = make_predictions(train_x0, train_y0, test_x0, [0.05, 15, 'lr'])
-        # #
-        test_proba1a = make_predictions(train_x1, train_y1, test_x1, [30, 15, 'rf'])
-        test_proba1b = make_predictions(train_x1, train_y1, test_x1, [200, 15, 'lr'])
-        test_proba1c = make_predictions(train_x1, train_y1, test_x1, [0.05, 15, 'lr'])
-        # # # #
-        test_proba2a = make_predictions(train_x2, train_y2, test_x2, [30, 15, 'rf'])
-        test_proba2b = make_predictions(train_x2, train_y2, test_x2, [200, 15, 'lr'])
-        test_proba2c = make_predictions(train_x2, train_y2, test_x2, [0.05, 15, 'lr'])
-        # # # # #
-        test_proba3a = make_predictions(train_x3, train_y3, test_x3, [30, 15, 'rf'])
-        test_proba3b = make_predictions(train_x3, train_y3, test_x3, [200, 15, 'lr'])
-        test_proba3c = make_predictions(train_x3, train_y3, test_x3, [0.05, 15, 'lr'])
-        # # # #
-        test_proba4a = make_predictions(train_x3, train_y3, test_x3, [30, 15, 'rf'])
-        test_proba4b = make_predictions(train_x3, train_y3, test_x3, [200, 15, 'lr'])
-        test_proba4c = make_predictions(train_x3, train_y3, test_x3, [0.05, 15, 'lr'])
-        # # # #
-        test_proba = pd.DataFrame([test_proba0a, test_proba0b, test_proba0c, test_y0.values.tolist(),
-                                   test_proba1a, test_proba1b, test_proba1c, test_y1.values.tolist(),
-                                   test_proba4a, test_proba4b, test_proba4c, test_y3.values.tolist()])
-        test_proba = test_proba.transpose()
-        test_proba.columns = ['b1_rf', 'b1_lr', 'b1_lasso', 'b1_response', 'b2_rf', 'b2_lr', 'b2_lasso', 'b2_response',
-                              'b5_rf', 'b5_lr', 'b5_lasso', 'b5_response']
-        test_proba.to_csv('./data/comorbid_risk_test_proba_baselines_r' + str(r) + '.csv', index=False)
-        # # # #
-
-        test_proba = pd.DataFrame([test_proba2a, test_proba2b, test_proba2c, test_y2.values.tolist(),
-                                   test_proba3a, test_proba3b, test_proba3c, test_y3.values.tolist()])
-        test_proba = test_proba.transpose()
-        test_proba.columns = ['b3_rf', 'b3_lr', 'b3_lasso', 'b3_response', 'b4_rf', 'b4_lr', 'b4_lasso', 'b4_response']
-        test_proba.to_csv('./data/comorbid_risk_test_proba_baselines_bps_trans_r' + str(r) + '.csv', index=False)
-
+        # # # # # # # train_x4, train_y4, test_x4, test_y4 = split_shuffle_train_test_sets(train_ids, test_ids, counts_trans_x,
+        # # # # # # #                                                              counts_trans_y)
+        # clf0, features_wts0, results_by_f0 = make_prediction_and_tuning(train_x0, train_y0, test_x0,
+        #                                                                                  test_y0, features1, [100, 15, 1, 'rf'])
+        # # # # # # clf0, features_wts0, results_by_f0 = make_prediction_and_tuning(train_x0, train_y0, test_x0,
+        # # # # # #                                                                                   test_y0, features0, [0.1, 15, 2, 'lr'])
+        # clf1, features_wts1, results_by_f1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features2,
+        #                                                                 [100, 15, 2, 'rf'])
+        # clf2, features_wts2, results_by_f2 = make_prediction_and_tuning(train_x2, train_y2, test_x2, test_y2, features3,
+        #                                                                 [30, 15, 2, 'rf'])
+        for n in [10, 20, 30, 50, 100, 150, 500]:
+            test_proba0a = make_predictions(train_x0, train_y0, test_x0, [n, 15, 'rf'])
+            test_proba0b = make_predictions(train_x0, train_y0, test_x0, [200, 15, 'lr'])
+            test_proba0c = make_predictions(train_x0, train_y0, test_x0, [0.05, 15, 'lr'])
+            # #
+            # test_proba1a = make_predictions(train_x1, train_y1, test_x1, [10, 15, 'rf'])
+            # test_proba1b = make_predictions(train_x1, train_y1, test_x1, [200, 15, 'lr'])
+            # test_proba1c = make_predictions(train_x1, train_y1, test_x1, [0.05, 15, 'lr'])
+            # # # #
+            test_proba2a = make_predictions(train_x2, train_y2, test_x2, [n, 15, 'rf'])
+            test_proba2b = make_predictions(train_x2, train_y2, test_x2, [200, 15, 'lr'])
+            test_proba2c = make_predictions(train_x2, train_y2, test_x2, [0.05, 15, 'lr'])
+            # # # # #
+            test_proba3a = make_predictions(train_x3, train_y3, test_x3, [n, 15, 'rf'])
+            test_proba3b = make_predictions(train_x3, train_y3, test_x3, [200, 15, 'lr'])
+            test_proba3c = make_predictions(train_x3, train_y3, test_x3, [0.05, 15, 'lr'])
+            # # # #
+            test_proba4a = make_predictions(train_x4, train_y4, test_x4, [n, 15, 'rf'])
+            test_proba4b = make_predictions(train_x4, train_y4, test_x4, [200, 15, 'lr'])
+            test_proba4c = make_predictions(train_x4, train_y4, test_x4, [0.05, 15, 'lr'])
+            # # # #
+            test_proba = pd.DataFrame([test_proba0a, test_proba0b, test_proba0c, test_y0.values.tolist(),
+                                       # test_proba1a, test_proba1b, test_proba1c, test_y1.values.tolist(),
+                                       test_proba2a, test_proba2b, test_proba2c, test_y2.values.tolist(),
+                                       test_proba3a, test_proba3b, test_proba3c, test_y3.values.tolist(),
+                                       test_proba4a, test_proba4b, test_proba4c, test_y4.values.tolist()])
+            test_proba = test_proba.transpose()
+            test_proba.columns = ['b1_rf', 'b1_lr', 'b1_lasso', 'b1_response',
+                                  'b3_rf', 'b3_lr', 'b3_lasso', 'b3_response', 'b4_rf', 'b4_lr', 'b4_lasso', 'b4_response',
+                                  'b5_rf', 'b5_lr', 'b5_lasso', 'b5_response']
+            test_proba.to_csv('./data/comorbid_risk_test_proba_baselines_r' + str(r) + '_bs' + str(n) + '.csv', index=False)
 
         # # # data_dm4[data_dm4['ptid'] == '769052'].to_csv('./data/example_dmpt.csv') # rf predicted proba: 0.782
         # # # data_control4[data_control4['ptid'] =='1819093'].to_csv('./data/example_controlpt.csv') # rf predicted proba: 0.033
@@ -614,4 +674,23 @@ if __name__ == '__main__':
         #     pd.Series(sp).to_csv('./data/comorbid_risk_train_ids_r' + str(r) + '_bootstrap' + str(p) + '.csv', index=False)
         #
 
+
+        features5_all = pd.read_csv('./data/sgl_coefs_alpha7_r0_bootstrap5.csv')
+        i = features5_all.columns[1]
+        features5_inds = features5_all[i]
+        features5 = [features5a[j] for j in features5_inds.index if features5_inds.loc[j] != 0]
+        counts_sgl_x = counts_sub[features5]
+        counts_sgl_y = counts_sub['response']
+        train_x4, train_y4, test_x4, test_y4 = split_shuffle_train_test_sets(train_ids, test_ids, counts_sgl_x, counts_sgl_y)
+
+        for n in [10, 20, 30, 50, 100, 150, 500, 1000]:
+            # # # #
+            test_proba4a = make_predictions(train_x4, train_y4, test_x4, [n, 15, 'rf'])
+            test_proba4b = make_predictions(train_x4, train_y4, test_x4, [200, 15, 'lr'])
+            test_proba4c = make_predictions(train_x4, train_y4, test_x4, [0.05, 15, 'lr'])
+            # # # #
+            test_proba = pd.DataFrame([test_proba4a, test_proba4b, test_proba4c, test_y4.values.tolist()])
+            test_proba = test_proba.transpose()
+            test_proba.columns = ['b5_rf', 'b5_lr', 'b5_lasso', 'b5_response']
+            test_proba.to_csv('./data/comorbid_risk_test_proba_baseline_LSR_r' + str(r) + '_bs' + str(n) + '.csv', index=False)
 
