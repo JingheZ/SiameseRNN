@@ -694,3 +694,9 @@ if __name__ == '__main__':
             test_proba.columns = ['b5_rf', 'b5_lr', 'b5_lasso', 'b5_response']
             test_proba.to_csv('./data/comorbid_risk_test_proba_baseline_LSR_r' + str(r) + '_bs' + str(n) + '.csv', index=False)
 
+        # get the features of the model with the highest weight in the proposed framework
+        features5_all = pd.read_csv('./data/sgl_coefs_alpha7_r0_bootstrap9.csv')
+        i = features5_all.columns[1]
+        features5_inds = features5_all[i]
+        features5 = [(features5a[j], features5_inds.loc[j]) for j in features5_inds.index if features5_inds.loc[j] != 0]
+        features5 = sorted(features5, key=itemgetter(1), reverse=True)
