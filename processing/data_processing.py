@@ -402,10 +402,9 @@ if __name__ == '__main__':
     data_dx.columns = ['ptid', 'vid', 'itemid', 'pdx']
     data_dx = data_dx[data_dx['ptid'].isin(ptids)]
 
-    dxgrps, dxgrps_dict, dxgrps_dict2 = dx2dxcat()
-    data_dx2 = process_dxs(data_dx, dxgrps_dict, dxgrps_dict2)
-    data_dx2['dxcat'] = data_dx2['dxcat'].apply(lambda x: 'dx' + str(x))
-    data_dx2.head()
+    # dxgrps, dxgrps_dict, dxgrps_dict2 = dx2dxcat()
+    # data_dx2 = process_dxs(data_dx, dxgrps_dict, dxgrps_dict2)
+    data_dx['dxcat'] = data_dx['itemid'].apply(lambda x: 'dx' + str(x)).apply(lambda x: x.replace('.', ''))
 
     data_med.columns = ['ptid', 'vid', 'itemid', 'adm_date']
     data_med = data_med[data_med['ptid'].isin(ptids)]
@@ -415,9 +414,9 @@ if __name__ == '__main__':
     data_proc['itemid'] = data_proc['itemid'].apply(lambda x: 'p' + str(x))
 
     with open('./data/dxs_data_v2.pickle', 'wb') as f:
-        pickle.dump(data_dx2, f)
+        pickle.dump(data_dx, f)
     f.close()
-    data_dx2.to_csv('./data/dxs_data_v2.csv', index=False)
+    data_dx.to_csv('./data/dxs_data_v2.csv', index=False)
 
     with open('./data/med_orders_v2.pickle', 'wb') as f:
         pickle.dump(data_med[['ptid', 'vid', 'itemid']], f)

@@ -5,6 +5,7 @@ Prepare data for experiments
 import pickle
 from sklearn.model_selection import StratifiedShuffleSplit, ShuffleSplit
 import numpy as np
+import pandas as pd
 
 
 def split_train_validate_test(pos, neg):
@@ -20,8 +21,15 @@ def split_train_validate_test(pos, neg):
     return train_ids, test_ids, valid_ids
 
 
+def find_previous_IP(dt_pos, dt_neg):
+    pass
+
+
 def group_items_byadmmonth(dt):
-    dt_window = dt
+    dt_window = dt[['ptid', 'itemid', 'adm_month']].groupby(['ptid', 'adm_month'])['itemid'].apply(list)
+    dt_window = dt_window.reset_index()
+
+
 
 
 if __name__ == '__main__':
