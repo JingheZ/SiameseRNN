@@ -109,36 +109,14 @@ def get_counts_subwindow(df, y, vars, c):
     return dt
 
 
-def make_prediction(train_x, train_y, test_x, test_y, s, param):
-    clf = None
-    if s == 'svm':
-        clf = SVC(kernel=param[0], class_weight='balanced')
-        # clf = SVC(kernel=param[0])
-    elif s == 'rf':
-        clf = RandomForestClassifier(n_estimators=param[0], criterion='entropy', class_weight='balanced')
-        # clf = RandomForestClassifier(n_estimators=param[0], criterion='entropy')
-    elif s == 'lda':
-        clf = LinearDiscriminantAnalysis()
-    elif s == 'knn':
-        clf = neighbors.KNeighborsClassifier(param[0], weights='distance')
-    # elif s == 'xgb':
-    #     param_dist = {'objective': 'binary:logistic', 'n_estimators': param[0], 'learning_rate': param[1]}
-    #     xgb.XGBClassifier(**param_dist)
-    clf.fit(train_x, train_y)
-    pred = clf.predict(test_x)
-    result = metrics.classification_report(test_y, pred)
-    auc = metrics.roc_auc_score(test_y, pred)
-    return pred, result, auc
-
-
-def split_shuffle_train_test_sets(train_ids, test_ids, X, y):
-    train_x, test_x = X.ix[train_ids], X.ix[test_ids]
-    train_y, test_y = y.ix[train_ids], y.ix[test_ids]
+def split_shuffle_train_test_sets(train_ids, test_ids, valid_ids, X, y):
+    train_x, test_x, valid_x = X.ix[train_ids], X.ix[test_ids], X.ix[valid_ids]
+    train_y, test_y, valid_y = y.ix[train_ids], y.ix[test_ids], y.ix[valid_ids]
     train_x, train_y = shuffle(train_x, train_y, random_state=5)
-    return train_x, train_y, test_x, test_y
+    return train_x, train_y, test_x, test_y, valid_x, valid_y
 
 
-def tune_proba_threshold_pred(pred_proba, y, test_pred_proba, test_y, b):
+def tune_proba_threshold_pred(pred_proba, y, b):
     results = []
     for t in np.arange(0, 1, 0.01):
         res = [1 if p > t else 0 for p in pred_proba]
@@ -149,75 +127,30 @@ def tune_proba_threshold_pred(pred_proba, y, test_pred_proba, test_y, b):
             auc0 = metrics.roc_auc_score(y, res)
             results.append((t, auc0))
     threshold = max(results, key=itemgetter(1))[0]
-    pred = [1 if p > threshold else 0 for p in test_pred_proba]
-    perfm = metrics.classification_report(test_y, pred)
-    auc = metrics.roc_auc_score(test_y, pred)
-    return threshold, perfm, auc, pred
+    return threshold
 
 
-def make_prediction_and_tuning(train_x, train_y, test_x, test_y, features, param):
+def make_prediction_and_tuning(train_x, train_y, test_x, test_y, param):
     if param[3] == 'rf':
-        clf = RandomForestClassifier(n_estimators=param[0], criterion='entropy', n_jobs=param[1], random_state=0)
-        # clf = LogisticRegression(penalty='l1', C=param[0], n_jobs=param[1], random_state=0)
-        clf.fit(train_x, train_y)
-        pred_train = clf.predict_proba(train_x)
-        pred_test = clf.predict_proba(test_x)
-        train_pred_proba = [i[1] for i in pred_train]
-        test_pred_proba = [i[1] for i in pred_test]
-        # threshold tuning with f measure
-        threshold_f, perfm_f, auc_f, pred_f = tune_proba_threshold_pred(train_pred_proba, train_y, test_pred_proba, test_y, param[2])
-        print('Threshold %.3f tuned with f measure, AUC: %.3f' % (threshold_f, auc_f))
-        print(perfm_f)
-        # # threshold tuning with auc
-        # threshold_a, perfm_a, auc_a, pred_a = tune_proba_threshold_pred(train_pred_proba, train_y, test_pred_proba, test_y, 'auc')
-        # print('Threshold %.3f tuned with AUC, AUC: %.3f' % (threshold_a, auc_a))
-        # print(perfm_a)
-        # get the list of feature importance
-        wts = clf.feature_importances_
-        fts_wts = list(zip(features, wts))
-        fts_wts_sorted = sorted(fts_wts, key=itemgetter(1), reverse=True)
-        fts_wts = fts_wts_sorted
-    else:
-        clf = LogisticRegression(penalty='l1', C=param[0], n_jobs=param[1], random_state=0)
-        clf.fit(train_x, train_y)
-        pred_train = clf.predict_proba(train_x)
-        pred_test = clf.predict_proba(test_x)
-        train_pred_proba = [i[1] for i in pred_train]
-        test_pred_proba = [i[1] for i in pred_test]
-        # threshold tuning with f measure
-        threshold_f, perfm_f, auc_f, pred_f = tune_proba_threshold_pred(train_pred_proba, train_y, test_pred_proba,
-                                                                        test_y, param[2])
-        print('Threshold %.3f tuned with f measure, AUC: %.3f' % (threshold_f, auc_f))
-        print(perfm_f)
-        # threshold tuning with auc
-        # threshold_a, perfm_a, auc_a, pred_a = tune_proba_threshold_pred(train_pred_proba, train_y, test_pred_proba,
-        #                                                                 test_y, 'auc')
-        # print('Threshold %.3f tuned with AUC, AUC: %.3f' % (threshold_a, auc_a))
-        # print(perfm_a)
-        # get the list of feature importance
-        # wts = clf.feature_importances_
-        # fts_wts = list(zip(features, wts))
-        # fts_wts_sorted = sorted(fts_wts, key=itemgetter(1), reverse=True)
-        fts_wts = clf.coef_
-    return clf, fts_wts, [threshold_f, pred_f]
-
-
-def make_predictions(train_x, train_y, test_x, param):
-    # train_x = train_x.as_matrix().astype(np.float)
-    # test_x = test_x.as_matrix().astype(np.float)
-    # train_y = train_y.as_matrix().astype(np.float)
-    if param[2] == 'rf':
-        clf = RandomForestClassifier(n_estimators=param[0], criterion='entropy', n_jobs=param[1], random_state=0)
+        clf = RandomForestClassifier(n_estimators=param[0], criterion='entropy', n_jobs=param[1], random_state=0,
+                                     min_samples_leaf=param[4])
         # clf = LogisticRegression(penalty='l1', C=param[0], n_jobs=param[1], random_state=0)
         clf.fit(train_x, train_y)
         pred_test = clf.predict_proba(test_x)
         test_pred_proba = [i[1] for i in pred_test]
+        # threshold tuning with f measure
+        threshold = tune_proba_threshold_pred(test_pred_proba, test_y, param[2])
+        print('Threshold %.3f tuned with f measure' % (threshold))
+
     else:
         clf = LogisticRegression(penalty='l1', C=param[0], n_jobs=param[1], random_state=0)
         clf.fit(train_x, train_y)
         pred_test = clf.predict_proba(test_x)
         test_pred_proba = [i[1] for i in pred_test]
-    return test_pred_proba
+        # threshold tuning with f measure
+        threshold = tune_proba_threshold_pred(test_pred_proba, test_y, param[2])
+        print('Threshold %.3f tuned with f measure' % (threshold))
+    return clf, threshold
 
 
 def get_transition_counts(dm, control, extra, vars):
@@ -363,6 +296,25 @@ def get_seq_item_counts(seq_dm, seq_control, seq_extra, cooccur_list, mitmvisit_
     del counts_cd['ptid']
     count_abcd = pd.concat([count_ab, counts_cd], axis=1)
     return count_abcd
+
+
+def make_predictions(train_x, train_y, test_x, param):
+    # train_x = train_x.as_matrix().astype(np.float)
+    # test_x = test_x.as_matrix().astype(np.float)
+    # train_y = train_y.as_matrix().astype(np.float)
+    if param[2] == 'rf':
+        clf = RandomForestClassifier(n_estimators=param[0], criterion='entropy', n_jobs=param[1], random_state=0,
+                                     min_samples_leaf=50, min_samples_split=2)
+        # clf = LogisticRegression(penalty='l1', C=param[0], n_jobs=param[1], random_state=0)
+        clf.fit(train_x, train_y)
+        pred_test = clf.predict_proba(test_x)
+        test_pred_proba = [i[1] for i in pred_test]
+    else:
+        clf = LogisticRegression(penalty='l1', C=param[0], n_jobs=param[1], random_state=0)
+        clf.fit(train_x, train_y)
+        pred_test = clf.predict_proba(test_x)
+        test_pred_proba = [i[1] for i in pred_test]
+    return test_pred_proba
 
 
 if __name__ == '__main__':
@@ -538,7 +490,8 @@ if __name__ == '__main__':
         test_ids = test_ids.values.flatten()
         train_ids = pd.read_csv('./data/comorbid_risk_train_ids_r0.csv', header=None, dtype=object)
         train_ids = train_ids.values.flatten()
-
+        valid_ids = pd.read_csv('./data/comorbid_risk_validation_ids.csv', header=None, dtype=object)
+        valid_ids = valid_ids.values.flatten()
         # baseline 1: freq
         counts = pd.read_csv('./data/comorbid_task_counts.csv')
         counts.index = counts['ptid'].astype(str)
@@ -611,28 +564,38 @@ if __name__ == '__main__':
         counts_sgl_x = counts_sub[features5]
         counts_sgl_y = counts_sub['response']
 
-        train_x0, train_y0, test_x0, test_y0 = split_shuffle_train_test_sets(train_ids, test_ids, counts_x, counts_y)
+        train_x0, train_y0, test_x0, test_y0 , valid_x0, valid_y0 = split_shuffle_train_test_sets(train_ids, test_ids,
+                                                                                                  valid_ids, counts_x,
+                                                                                                  counts_y)
         # # #
         # train_x1, train_y1, test_x1, test_y1 = split_shuffle_train_test_sets(train_ids, test_ids, counts_sub_x, counts_sub_y)
         #
-        train_x2, train_y2, test_x2, test_y2 = split_shuffle_train_test_sets(train_ids, test_ids, counts_bps_x,
-                                                                             counts_bps_y)
-        train_x3, train_y3, test_x3, test_y3 = split_shuffle_train_test_sets(train_ids, test_ids, counts_trans_x,
-                                                                             counts_trans_y)
+        train_x2, train_y2, test_x2, test_y2, valid_x2, valid_y2 = split_shuffle_train_test_sets(train_ids, test_ids,
+                                                                                                 valid_ids, counts_bps_x,
+                                                                                                 counts_bps_y)
+        train_x3, train_y3, test_x3, test_y3, valid_x3, valid_y3 = split_shuffle_train_test_sets(train_ids, test_ids,
+                                                                                                 valid_ids, counts_trans_x,
+                                                                                                 counts_trans_y)
 
-        train_x4, train_y4, test_x4, test_y4 = split_shuffle_train_test_sets(train_ids, test_ids, counts_sgl_x, counts_sgl_y)
+        train_x4, train_y4, test_x4, test_y4, valid_x4, valid_y4 = split_shuffle_train_test_sets(train_ids, test_ids,
+                                                                                                 valid_ids, counts_sgl_x,
+                                                                                                 counts_sgl_y)
 
+        clf0, results_by_f0 = make_prediction_and_tuning(train_x0, train_y0, valid_x0, valid_y0, [20, 15, 1, 'rf', 1])
+        clf0, results_by_f0 = make_prediction_and_tuning(train_x0, train_y0, valid_x0, valid_y0, [0.05, 15, 1, 'lr'])
+        # threshold: lr: 0.44; rf size = 20 (0.49); rf size = 50 (0.40);
 
-        # # # # # # # train_x4, train_y4, test_x4, test_y4 = split_shuffle_train_test_sets(train_ids, test_ids, counts_trans_x,
-        # # # # # # #                                                              counts_trans_y)
-        # clf0, features_wts0, results_by_f0 = make_prediction_and_tuning(train_x0, train_y0, test_x0,
-        #                                                                                  test_y0, features1, [100, 15, 1, 'rf'])
-        # # # # # # clf0, features_wts0, results_by_f0 = make_prediction_and_tuning(train_x0, train_y0, test_x0,
-        # # # # # #                                                                                   test_y0, features0, [0.1, 15, 2, 'lr'])
-        # clf1, features_wts1, results_by_f1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features2,
-        #                                                                 [100, 15, 2, 'rf'])
-        # clf2, features_wts2, results_by_f2 = make_prediction_and_tuning(train_x2, train_y2, test_x2, test_y2, features3,
-        #                                                                 [30, 15, 2, 'rf'])
+        clf2, results_by_f2 = make_prediction_and_tuning(train_x2, train_y2, valid_x2, valid_y2, [20, 15, 1, 'rf', 1])
+        clf2, results_by_f2 = make_prediction_and_tuning(train_x2, train_y2, valid_x2, valid_y2, [0.05, 15, 1, 'lr'])
+        # threshold: lr: 0.53; rf size = 20 (0.55); rf size = 50 (0.66);
+
+        clf3, results_by_f3 = make_prediction_and_tuning(train_x3, train_y3, valid_x3, valid_y3, [20, 15, 1, 'rf', 1])
+        clf3, results_by_f3 = make_prediction_and_tuning(train_x3, train_y3, valid_x3, valid_y3, [0.05, 15, 1, 'lr'])
+        # threshold: lr: 0.43; rf size = 20 (0.45); rf size = 50 (0.35);
+
+        clf4, results_by_f4 = make_prediction_and_tuning(train_x4, train_y4, valid_x4, valid_y4, [20, 15, 1, 'rf', 50])
+        clf4, results_by_f4 = make_prediction_and_tuning(train_x4, train_y4, valid_x4, valid_y4, [0.01, 15, 1, 'lr'])
+        # threshold: lr: 0.48; rf size = 20 (0.36); rf size = 50 (0.37);
         for n in [10, 20, 30, 50, 100, 150, 500]:
             test_proba0a = make_predictions(train_x0, train_y0, test_x0, [n, 15, 'rf'])
             test_proba0b = make_predictions(train_x0, train_y0, test_x0, [200, 15, 'lr'])
@@ -681,13 +644,13 @@ if __name__ == '__main__':
         features5 = [features5a[j] for j in features5_inds.index if features5_inds.loc[j] != 0]
         counts_sgl_x = counts_sub[features5]
         counts_sgl_y = counts_sub['response']
-        train_x4, train_y4, test_x4, test_y4 = split_shuffle_train_test_sets(train_ids, test_ids, counts_sgl_x, counts_sgl_y)
+        train_x4, train_y4, test_x4, test_y4, valid_x4, valid_y5 = split_shuffle_train_test_sets(train_ids, test_ids, valid_ids, counts_sgl_x, counts_sgl_y)
 
         for n in [10, 20, 30, 50, 100, 150, 500, 1000]:
             # # # #
             test_proba4a = make_predictions(train_x4, train_y4, test_x4, [n, 15, 'rf'])
             test_proba4b = make_predictions(train_x4, train_y4, test_x4, [200, 15, 'lr'])
-            test_proba4c = make_predictions(train_x4, train_y4, test_x4, [0.05, 15, 'lr'])
+            test_proba4c = make_predictions(train_x4, train_y4, test_x4, [0.01, 15, 'lr'])
             # # # #
             test_proba = pd.DataFrame([test_proba4a, test_proba4b, test_proba4c, test_y4.values.tolist()])
             test_proba = test_proba.transpose()
@@ -695,8 +658,32 @@ if __name__ == '__main__':
             test_proba.to_csv('./data/comorbid_risk_test_proba_baseline_LSR_r' + str(r) + '_bs' + str(n) + '.csv', index=False)
 
         # get the features of the model with the highest weight in the proposed framework
-        features5_all = pd.read_csv('./data/sgl_coefs_alpha7_r0_bootstrap9.csv')
+        features5_all = pd.read_csv('./data/sgl_coefs_alpha7_r0_bootstrap67.csv')
         i = features5_all.columns[1]
         features5_inds = features5_all[i]
         features5 = [(features5a[j], features5_inds.loc[j]) for j in features5_inds.index if features5_inds.loc[j] != 0]
         features5 = sorted(features5, key=itemgetter(1), reverse=True)
+        with open('./data/comorbid_risk_features_wts_WBSLR_best.pickle', 'wb') as f:
+            pickle.dump(features5, f)
+        f.close()
+        # tune the threshold for the proposed model on validation set
+        valid_proba = pd.read_csv('./data/comorbid_risk_prediction_valid_50.csv')
+        tune_proba_threshold_pred(valid_proba['pred'].values, valid_proba['response'], 1)
+        # threshold: bs size = 20 (0.96); rf size = 50 (0.99);
+
+        # get example pt records
+        data_dmckd[data_dmckd['ptid'] == '1658503'].to_csv('./data/comorbid_risk_pos_example1_withselectvar_obswindow.csv')  # rf predicted proba: 0.782
+        data_dm_ckd3[data_dm_ckd3['ptid'] == '1658503'].to_csv('./data/comorbid_risk_pos_example1_obswindow.csv')
+        data_dm_ckd[data_dm_ckd['ptid'] == '1658503'].to_csv('./data/comorbid_risk_pos_example1_all.csv')
+
+        data_dmckd[data_dmckd['ptid'] == '651172'].to_csv('./data/comorbid_risk_pos_example2_withselectvar_obswindow.csv')  # rf predicted proba: 0.782
+        data_dm_ckd3[data_dm_ckd3['ptid'] == '651172'].to_csv('./data/comorbid_risk_pos_example2_obswindow.csv')
+        data_dm_ckd[data_dm_ckd['ptid'] == '651172'].to_csv('./data/comorbid_risk_pos_example2_all.csv')
+
+        data_dm[data_dm['ptid'] == '1726071'].to_csv('./data/comorbid_risk_neg_example1_withselectvar_obswindow.csv')  # rf predicted proba: 0.782
+        data_dm5[data_dm5['ptid'] == '1726071'].to_csv('./data/comorbid_risk_neg_example1_obswindow.csv')
+        data_dm_ckd[data_dm_ckd['ptid'] == '1726071'].to_csv('./data/comorbid_risk_neg_example1_all.csv')
+
+        data_dm[data_dm['ptid'] == '387115'].to_csv('./data/comorbid_risk_neg_example2_withselectvar_obswindow.csv')  # rf predicted proba: 0.782
+        data_dm5[data_dm5['ptid'] == '387115'].to_csv('./data/comorbid_risk_neg_example2_obswindow.csv')
+        data_dm2[data_dm2['ptid'] == '387115'].to_csv('./data/comorbid_risk_neg_example2_all.csv')
