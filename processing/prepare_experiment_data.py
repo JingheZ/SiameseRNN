@@ -4,12 +4,13 @@ Prepare data for experiments
 
 import pickle
 from sklearn.model_selection import StratifiedShuffleSplit, ShuffleSplit
+import numpy as np
 
 
 def split_train_validate_test(pos, neg):
-    ids = list(pos) + list(neg)
+    ids = np.array(list(pos) + list(neg))
     ys = [1] * len(pos) + [0] * len(neg)
-    rs = StratifiedShuffleSplit(n_splits=1, train_size=0.65, test_size=0.2, random_state=1)
+    rs = StratifiedShuffleSplit(n_splits=1, train_size=0.7, test_size=0.15, random_state=1)
     train_ids = []
     test_ids = []
     valid_ids = []
@@ -19,10 +20,23 @@ def split_train_validate_test(pos, neg):
     return train_ids, test_ids, valid_ids
 
 
+def group_items_byadmmonth(dt):
+    dt_window = dt
+
+
 if __name__ == '__main__':
 
     with open('./data/hospitalization_data_pos_neg_ids.pickle', 'rb') as f:
         pos_ids, neg_ids = pickle.load(f)
     f.close()
 
+    with open('./data/hospitalization_data_1year.pickle', 'rb') as f:
+        dt = pickle.load(f)
+    f.close()
+
+    dt_pos = dt[dt['ptid'].isin(pos_ids)]
+    dt_neg = dt[dt['ptid'].isin(neg_ids)]
+    dt_pos['y'] = 1
+    dt_neg['y'] = 1
     train_ids, valid_ids, test_ids = split_train_validate_test(pos_ids, neg_ids)
+

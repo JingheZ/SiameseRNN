@@ -355,6 +355,9 @@ if __name__ == '__main__':
     del visits_v2['VisitDXs']
     visits_v2['cdrIPorOP'] = visits_v2['cdrIPorOP'].map({'OP': 'OP', 'IP': 'IP', 'OBS': 'OP'})
     visits_v2 = visits_v2.sort(['ptid', 'anon_adm_date_y', 'vid']).drop_duplicates() # 370074 pts
+    with open('./data/visits_v2.pickle', 'wb') as f:
+        pickle.dump(visits_v2, f)
+    f.close()
 
     # # select pts with at least two visits
     # counts = visits_v2[['ptid', 'anon_adm_date_y']].drop_duplicates().groupby('ptid').count() # 370074 visits
@@ -426,25 +429,31 @@ if __name__ == '__main__':
     f.close()
     data_proc[['ptid', 'vid', 'itemid']].to_csv('./data/proc_orders_v2.csv', index=False)
 
-
+    with open('./data/dxs_data_v2.pickle', 'rb') as f:
+        data_dx2 = pickle.load(f)
+    f.close()
+    with open('./data/med_orders_v2.pickle', 'rb') as f:
+        data_med = pickle.load(f)
+    f.close()
+    with open('./data/proc_orders_v2.pickle', 'rb') as f:
+        data_proc = pickle.load(f)
+    f.close()
     # to merge dx, med, and proc info
     data_dx3 = data_dx2[['ptid', 'vid', 'dxcat']].drop_duplicates()
     data_dx3.columns = ['ptid', 'vid', 'itemid']
     dt1 = pd.concat([data_dx3, data_med[['ptid', 'vid', 'itemid']].drop_duplicates(),
                      data_proc[['ptid', 'vid', 'itemid']].drop_duplicates()], axis=0)
+
+    with open('./data/visits_v2.pickle', 'rb') as f:
+        visits_v2 = pickle.load(f)
+    f.close()
+
     dt = pd.merge(left=dt1, right=visits_v2[['vid', 'cdrIPorOP', 'anon_adm_date_y']].drop_duplicates(),
                   left_on='vid', right_on='vid', how='inner')
 
     dt['adm_month'] = dt['anon_adm_date_y'].apply(lambda x: int(x/24/60/30))
     with open('./data/clinical_events_hospitalization.pickle', 'wb') as f:
         pickle.dump(dt, f)
-    f.close()
-    dt = dt[['ptid', 'adm_month', 'itemid', 'cdrIPorOP']].drop_duplicates()
-    dt = dt.sort(['ptid', 'adm_month'], ascending=[1, 1])
-    dt_1yr = dt[dt['adm_month'].between(0, 11)]
-
-    with open('./data/hospitalization_data_1year.pickle', 'wb') as f:
-        pickle.dump(dt_1yr, f)
     f.close()
 
     # to exclude some inhospitalization
@@ -481,34 +490,54 @@ if __name__ == '__main__':
     final_pos_ids = set(other_ip_ids).intersection(set(pos_ids)) # 4,463
     final_neg_ids = set(neg_ids).difference(set(unavoid_ip_ptids)) # 72,677
 
-
     with open('./data/hospitalization_data_pos_neg_ids.pickle', 'wb') as f:
         pickle.dump([final_pos_ids, final_neg_ids], f)
     f.close()
 
-    with open('./data/hospitalization_data_pos_neg_ids.pickle', 'rb') as f:
-        pos_ids, neg_ids = pickle.load(f)
+    dt = dt[['ptid', 'adm_month', 'itemid', 'cdrIPorOP']].drop_duplicates()
+    dt = dt.sort(['ptid', 'adm_month'], ascending=[1, 1])
+    dt_1yr = dt[dt['adm_month'].between(0, 11)]
+
+    with open('./data/hospitalization_data_1year.pickle', 'wb') as f:
+        pickle.dump(dt_1yr, f)
     f.close()
 
-    dt_pos = dt_1yr[dt_1yr['ptid'].isin(pos_ids)]
-    dt_neg = dt_1yr[dt_1yr['ptid'].isin(neg_ids)]
-
-    counts_pos = get_counts_by_class(dt_pos, 1, 0.05 * len(pos_ids))
-    counts_neg = get_counts_by_class(dt_neg, 0, 0.05 * len(neg_ids))
-    counts = counts_pos.append(counts_neg).fillna(0)
-    prelim_features = set(counts.columns[:-1])
-
-    counts_sub_pos = get_counts_subwindow(dt_pos, 1, prelim_features, 3)
-    counts_sub_neg = get_counts_subwindow(dt_neg, 0, prelim_features, 3)
-    counts_sub = counts_sub_pos.append(counts_sub_neg).fillna(0)
-
-    with open('./data/hospitalization_data_counts.pickle', 'wb') as f:
-        pickle.dump(counts, f)
+    # get the primary dx of hospitalization of interest
+    IPs = dt2_ips2[dt2_ips2['adm_month'] > 17]
+    IP_adm = IPs[['ptid', 'adm_month']].drop_duplicates().groupby(['ptid']).min()
+    IP_adm = IP_adm.reset_index()
+    IP_adm_pdx = pd.merge(left=IPs[['ptid', 'adm_month', 'pdxcat']].drop_duplicates(), right=IP_adm,
+                  left_on='ptid', right_on='ptid', how='inner')
+    IP_adm_pdx = IP_adm_pdx[IP_adm_pdx['adm_month_x'] == IP_adm_pdx['adm_month_y']]
+    del IP_adm_pdx['adm_month_y']
+    IP_adm_pdx.columns = ['ptid', 'adm_month', 'pdxcat']
+    with open('./data/IP_adm_month_pdx.pickle', 'wb') as f:
+        pickle.dump(IP_adm_pdx, f)
     f.close()
 
-    with open('./data/hospitalization_data_counts_sub.pickle', 'wb') as f:
-        pickle.dump(counts_sub, f)
-    f.close()
+    # with open('./data/hospitalization_data_pos_neg_ids.pickle', 'rb') as f:
+    #     pos_ids, neg_ids = pickle.load(f)
+    # f.close()
+    #
+    # dt_pos = dt_1yr[dt_1yr['ptid'].isin(pos_ids)]
+    # dt_neg = dt_1yr[dt_1yr['ptid'].isin(neg_ids)]
+    #
+    # counts_pos = get_counts_by_class(dt_pos, 1, 0.05 * len(pos_ids))
+    # counts_neg = get_counts_by_class(dt_neg, 0, 0.05 * len(neg_ids))
+    # counts = counts_pos.append(counts_neg).fillna(0)
+    # prelim_features = set(counts.columns[:-1])
+    #
+    # counts_sub_pos = get_counts_subwindow(dt_pos, 1, prelim_features, 3)
+    # counts_sub_neg = get_counts_subwindow(dt_neg, 0, prelim_features, 3)
+    # counts_sub = counts_sub_pos.append(counts_sub_neg).fillna(0)
+    #
+    # with open('./data/hospitalization_data_counts.pickle', 'wb') as f:
+    #     pickle.dump(counts, f)
+    # f.close()
+    #
+    # with open('./data/hospitalization_data_counts_sub.pickle', 'wb') as f:
+    #     pickle.dump(counts_sub, f)
+    # f.close()
     # But need to work on the time window, to exclude some info before the prediction window
     # also need to study the prediction window and how to structure it as a semi-supervised learning method
 
