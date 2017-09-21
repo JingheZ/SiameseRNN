@@ -13,13 +13,13 @@ from gensim.models import Word2Vec
 def split_train_validate_test(pos, neg):
     ids = np.array(list(pos) + list(neg))
     ys = [1] * len(pos) + [0] * len(neg)
-    rs = StratifiedShuffleSplit(n_splits=1, train_size=0.7, test_size=0.15, random_state=1)
+    rs = StratifiedShuffleSplit(n_splits=1, train_size=0.7, test_size=0.2, random_state=1)
     train_ids = []
     test_ids = []
     valid_ids = []
     for train_ind, test_ind in rs.split(ids, ys):
         train_ids, test_ids = ids[train_ind], ids[test_ind]
-        valid_ids = set(ids).difference(set(train_ids).union(set(test_ind)))
+        valid_ids = set(ids).difference(set(train_ids).union(set(test_ids)))
     return train_ids, valid_ids, test_ids
 
 
@@ -86,30 +86,32 @@ if __name__ == '__main__':
     dt_pos = dt[dt['ptid'].isin(pos_ids)]
     dt_neg = dt[dt['ptid'].isin(neg_ids)]
     dt1 = pd.concat([dt_pos, dt_neg], axis=0)
+
+    # dt1 = dt_pos
     item_cts = dt1[['ptid', 'itemid']].drop_duplicates().groupby('itemid').count()
-    item_cts_50 = item_cts[item_cts['ptid'] > 50]
+    item_cts_100 = item_cts[item_cts['ptid'] > 50]
     dt1 = dt1[dt1['itemid'].isin(vocab)]
-    dt1 = dt1[dt1['itemid'].isin(item_cts_50.index.tolist())]
+    dt1 = dt1[dt1['itemid'].isin(item_cts_100.index.tolist())]
 
     dt = dt1[['ptid', 'itemid', 'adm_month']].groupby(['ptid', 'adm_month'])['itemid'].apply(list)
     dt = dt.reset_index()
     dt['length'] = dt['itemid'].apply(lambda x: len(x))
-    # remove patients with more than 200 items in a month
-    pts_300 = dt[dt['length'] > 200]
-    dt1 = dt1[~dt1['ptid'].isin(set(pts_300['ptid'].values))]
+    # remove patients with more than 115 items in a month
+    pts_115 = dt[dt['length'] > 115]
+    dt1 = dt1[~dt1['ptid'].isin(set(pts_115['ptid'].values))]
 
     dt2 = group_items_byadmmonth(dt1)
     dt_ipinfo = find_previous_IP(dt1)
     ptids = set(dt1['ptid'].values)
 
-    print('original_total_pts %i' % (len(pos_ids) + len(neg_ids)))
-    print('updated_total_pts after excluding rare events %i' % len(ptids))
-    print('original_pos_pts %i' % len(pos_ids))
-    print('original_neg_pts %i' % len(neg_ids))
+    print('original_total_pts %i' % (len(pos_ids) + len(neg_ids))) # 73877
+    print('updated_total_pts after excluding rare events %i' % len(ptids)) # 69755
+    print('original_pos_pts %i' % len(pos_ids)) # 3677
+    print('original_neg_pts %i' % len(neg_ids)) # 70200
     pos_ids = list(set(pos_ids).intersection(ptids))
     neg_ids = list(set(neg_ids).intersection(ptids))
-    print('updated_pos_pts %i' % len(pos_ids))
-    print('updated_neg_pts %i' % len(neg_ids))
+    print('updated_pos_pts %i' % len(pos_ids)) # 3025
+    print('updated_neg_pts %i' % len(neg_ids)) # 66730
 
     train_ids, valid_ids, test_ids = split_train_validate_test(pos_ids, neg_ids)
     with open('./data/hospitalization_train_validate_test_ids.pickle', 'wb') as f:

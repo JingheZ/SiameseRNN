@@ -34,10 +34,10 @@ def create_full_set(dt, y, w2v, vsize, pad_size):
     for i in range(len(dt)):
         seq = create_sequence(dt[i], w2v, vsize, pad_size)
         x.append(seq)
-    x = Variable(torch.FloatTensor(x), requires_grad=False)
+    # x = Variable(torch.FloatTensor(x), requires_grad=False)
     # y = np.array(y)[:, inds].tolist()
     # y = Variable(torch.LongTensor(y), requires_grad=False)
-    y = Variable(torch.FloatTensor(y), requires_grad=False)
+    # y = Variable(torch.FloatTensor(y), requires_grad=False)
     return x, y
 
 
@@ -117,10 +117,18 @@ if __name__ == '__main__':
     f.close()
 
     # create input tensor and pad each visit to length of 200
-    pad_size = 200
+    pad_size = 115
     size = 100
     # Prepare validation data for the model
     validate_x, validate_y = create_full_set(validate, validate_y, w2v_model, size, pad_size)
+    with open('./data/hospitalization_validate_data_padded.pickle', 'wb') as f:
+        pickle.dump([validate_x, validate_y], f)
+    f.close()
+
+    test_x, test_y = create_full_set(test, test_y, w2v_model, size, pad_size)
+    with open('./data/hospitalization_test_data_padded.pickle', 'wb') as f:
+        pickle.dump([test_x, test_y], f)
+    f.close()
     # Prepare test data for the model
 
 
