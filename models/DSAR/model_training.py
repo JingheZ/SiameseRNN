@@ -11,7 +11,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from models.Patient2Vec import Patient2Vec
-from sklearn.utils import shuffle
 from torch.autograd import Variable
 from gensim.models import Word2Vec
 from models.DSAR.RNNs import RNNmodel, RNNmodelRT, RNNmodelBi, RNNmodelRTBi
@@ -34,15 +33,11 @@ def create_full_set(dt, y, w2v, vsize, pad_size):
     for i in range(len(dt)):
         seq = create_sequence(dt[i], w2v, vsize, pad_size)
         x.append(seq)
-    # x = Variable(torch.FloatTensor(x), requires_grad=False)
-    # y = np.array(y)[:, inds].tolist()
-    # y = Variable(torch.LongTensor(y), requires_grad=False)
-    # y = Variable(torch.FloatTensor(y), requires_grad=False)
     return x, y
 
 
 def create_sequence(items, w2v, dim, pad_size):
-    seq = [[]] * 12
+    seq = [[], [], [], [], [], [], [], [], [], [], [], []]
     seq_flag = [0] * 12
     for l in range(12):
         seq_flag[l] = len(items[l])
@@ -54,6 +49,13 @@ def create_sequence(items, w2v, dim, pad_size):
         if seq_flag[l] < pad_size:
             seq[l] += [[0] * dim for k in range(pad_size - seq_flag[l])]
     return seq
+
+
+def list2tensor(x, y):
+    x = Variable(torch.FloatTensor(x), requires_grad=False)
+    # y = Variable(torch.LongTensor(y), requires_grad=False)
+    y = Variable(torch.FloatTensor(y), requires_grad=False)
+    return x, y
 
 
 def tensor2scalor(mat):
@@ -124,13 +126,7 @@ if __name__ == '__main__':
     with open('./data/hospitalization_validate_data_padded.pickle', 'wb') as f:
         pickle.dump([validate_x, validate_y], f)
     f.close()
-
-    test_x, test_y = create_full_set(test, test_y, w2v_model, size, pad_size)
-    with open('./data/hospitalization_test_data_padded.pickle', 'wb') as f:
-        pickle.dump([test_x, test_y], f)
-    f.close()
-    # Prepare test data for the model
-
+    validate_x, validate_y = list2tensor(validate_x, validate_y)
 
     # Model hyperparameters
     # model_type = 'rnn-rt'
@@ -148,7 +144,7 @@ if __name__ == '__main__':
     initrange = 1
     att_dim = 100
     n_hops = 5
-    batch_size = 500
+    batch_size = 100
     epoch_max = 30 # training for maximum 3 epochs of training data
     n_iter_max_dev = 1000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
@@ -177,7 +173,7 @@ if __name__ == '__main__':
     # criterion = nn.CrossEntropyLoss()
     criterion = nn.MultiLabelSoftMarginLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
-    model_path = './saved_models' + folder + '/model_' + model_type + '_layer' + str(n_layers) + '.dat'
+    model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '.dat'
     print('Start Training...')
     if os.path.exists(model_path):
         saved_model = torch.load(model_path)
@@ -193,7 +189,7 @@ if __name__ == '__main__':
         while epoch < epoch_max:
             step = 0
             while (step + 1) * batch_size < train_iters:
-                batch_x, batch_y = create_batch(train_ids_shuffled, step, batch_size, train_x, train_y)
+                batch_x, batch_y = create_batch(step, batch_size, train, train_y, w2v_model, size, pad_size)
                 optimizer.zero_grad()
                 y_pred, _ = model(batch_x, batch_size)
                 # states, alpha, beta = model(batch_x, batch_size)
@@ -208,8 +204,8 @@ if __name__ == '__main__':
                     # acc = calcualte_accuracy(y_pred, batch_y, batch_size)
                     print('%i epoch, %i batches, elapsed time: %.2f, loss: %.3f' % (epoch + 1, step + 1, elapsed, loss.data[0]))
                     # Evaluate model performance on validation set
-                    pred_dev, _ = model(dev_x, batch_size_dev)
-                    loss_dev = criterion(pred_dev, dev_y)
+                    pred_dev, _ = model(validate_x, len(valid_ids))
+                    loss_dev = criterion(pred_dev, validate_y)
                     # loss_dev = CrossEntropy_Multi(pred_dev, dev_y, output_size, criterion)
                     # loss_dev = criterion(pred_dev[:, -1, :], dev_y)
                     # acc_dev = calcualte_accuracy(pred_dev, dev_y, batch_size_dev)
@@ -232,8 +228,8 @@ if __name__ == '__main__':
 
     # ============================ To evaluate model using testing set =============================================
     print('Start Testing...')
-    result_file = './results' + folder + '/test_results_' + model_type + '_layer' + str(n_layers) + '.pickle'
-    output_file = './results' + folder + '/test_outputs_' + model_type + '_layer' + str(n_layers) + '.pickle'
+    result_file = './results/test_results_' + model_type + '_layer' + str(n_layers) + '.pickle'
+    output_file = './results/test_outputs_' + model_type + '_layer' + str(n_layers) + '.pickle'
 
     # Evaluate the model
     model.eval()
@@ -256,5 +252,9 @@ if __name__ == '__main__':
     # 1. When selecting variables, for labs select last or first two and last two;
     # while for meds and dxs, code as 1 when the item is ever true in the patient data
 
-
-
+    # Prepare test data for the model
+    test_x, test_y = create_full_set(test, test_y, w2v_model, size, pad_size)
+    with open('./data/hospitalization_test_data_padded.pickle', 'wb') as f:
+        pickle.dump([test_x, test_y], f)
+    f.close()
+    test_x, test_y = list2tensor(test_x, test_y)

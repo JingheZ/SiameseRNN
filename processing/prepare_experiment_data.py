@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from gensim.models import Word2Vec
 # import time
+import random
 
 
 def split_train_validate_test(pos, neg):
@@ -16,10 +17,13 @@ def split_train_validate_test(pos, neg):
     rs = StratifiedShuffleSplit(n_splits=1, train_size=0.7, test_size=0.2, random_state=1)
     train_ids = []
     test_ids = []
-    valid_ids = []
     for train_ind, test_ind in rs.split(ids, ys):
         train_ids, test_ids = ids[train_ind], ids[test_ind]
-        valid_ids = set(ids).difference(set(train_ids).union(set(test_ids)))
+    valid_pos = set(pos).difference(set(train_ids).union(set(test_ids)))
+    rest_neg = set(neg).difference(set(train_ids).union(set(test_ids)))
+    valid_neg = random.sample(list(rest_neg), len(valid_pos))
+    valid_ids = list(valid_pos) + list(valid_neg)
+        # valid_ids = set(ids).difference(set(train_ids).union(set(test_ids)))
     return train_ids, valid_ids, test_ids
 
 
