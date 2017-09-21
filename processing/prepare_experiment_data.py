@@ -3,7 +3,7 @@ Prepare data for experiments
 """
 
 import pickle
-from sklearn.model_selection import StratifiedShuffleSplit, ShuffleSplit
+from sklearn.model_selection import StratifiedShuffleSplit
 import numpy as np
 import pandas as pd
 from gensim.models import Word2Vec
@@ -86,10 +86,14 @@ if __name__ == '__main__':
     dt_pos = dt[dt['ptid'].isin(pos_ids)]
     dt_neg = dt[dt['ptid'].isin(neg_ids)]
     dt1 = pd.concat([dt_pos, dt_neg], axis=0)
+    dt1 = dt1[dt1['itemid'].isin(vocab)]
     dt2 = group_items_byadmmonth(dt1)
     dt_ipinfo = find_previous_IP(dt1)
 
     train_ids, valid_ids, test_ids = split_train_validate_test(pos_ids, neg_ids)
+    with open('./data/hospitalization_train_validate_test_ids.pickle', 'wb') as f:
+        pickle.dump([train_ids, valid_ids, test_ids], f)
+    f.close()
     train = [dt2[pid] for pid in train_ids]
     validate = [dt2[pid] for pid in valid_ids]
     test = [dt2[pid] for pid in test_ids]
@@ -99,6 +103,7 @@ if __name__ == '__main__':
     train_y = [1 if pid in pos_ids else 0 for pid in train_ids]
     validate_y = [1 if pid in pos_ids else 0 for pid in valid_ids]
     test_y = [1 if pid in pos_ids else 0 for pid in test_ids]
+
     with open('./data/hospitalization_train_data.pickle', 'wb') as f:
         pickle.dump([train, train_ip, train_y], f)
     f.close()

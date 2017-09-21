@@ -68,7 +68,7 @@ from gensim.models import Word2Vec#, Doc2Vec
 # #     return model
 
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
     # # ============== get visit doc data for embedding =============
     # filenames = ['./data/dxs_data_v2.pickle', './data/med_orders_v2.pickle', './data/proc_orders_v2.pickle']
     # visit_docs = process_doc_data(filenames)  # 923707 visits (docs)
