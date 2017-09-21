@@ -7,7 +7,7 @@ from sklearn.model_selection import StratifiedShuffleSplit
 import numpy as np
 import pandas as pd
 from gensim.models import Word2Vec
-import time
+# import time
 
 
 def split_train_validate_test(pos, neg):
