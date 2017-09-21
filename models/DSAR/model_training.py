@@ -17,45 +17,43 @@ from gensim.models import Word2Vec
 from models.DSAR.RNNs import RNNmodel, RNNmodelRT, RNNmodelBi, RNNmodelRTBi
 
 
-def create_batch(step, batch_size, data_x, data_y, w2v):
+def create_batch(step, batch_size, data_x, data_y, w2v, vsize, pad_size):
     start = step * batch_size
     end = (step + 1) * batch_size
     batch_x = []
     for i in range(start, end):
-        x = create_sequence(data_x[i], w2v)
+        x = create_sequence(data_x[i], w2v, vsize, pad_size)
         batch_x.append(x)
     batch_y = data_y[start:end]
     # return Variable(torch.FloatTensor(batch_x), requires_grad=False), Variable(torch.LongTensor(batch_y), requires_grad=False) # for cross-entropy loss
     return Variable(torch.FloatTensor(batch_x), requires_grad=False), Variable(torch.FloatTensor(batch_y), requires_grad=False) # for cross-entropy loss
 
 
-def create_full_set(dt, y, w2v):
+def create_full_set(dt, y, w2v, vsize, pad_size):
     x = []
     for i in range(len(dt)):
-        seq = create_sequence(dt[i], w2v)
+        seq = create_sequence(dt[i], w2v, vsize, pad_size)
         x.append(seq)
-    # x = Variable(torch.FloatTensor(x), requires_grad=False)
+    x = Variable(torch.FloatTensor(x), requires_grad=False)
     # y = np.array(y)[:, inds].tolist()
     # y = Variable(torch.LongTensor(y), requires_grad=False)
-    # y = Variable(torch.FloatTensor(y), requires_grad=False)
+    y = Variable(torch.FloatTensor(y), requires_grad=False)
     return x, y
 
 
-def create_sequence(items, w2v):
+def create_sequence(items, w2v, dim, pad_size):
     seq = [[]] * 12
     seq_flag = [0] * 12
     for l in range(12):
         seq_flag[l] = len(items[l])
-        num_rare = 0
         if seq_flag[l] > 0:
             for j in range(seq_flag[l]):
-                if not w2v_model.wv.vocab.__contains__(items[l][j]):
-                    num_rare += 1
-                else:
-                    vec = w2v[items[l][j]]
-                    seq[l].append(vec)
-        seq_flag[l] -= num_rare
-    return seq#, seq_flag
+                vec = w2v[items[l][j]].tolist()
+                seq[l].append(vec)
+        # pad the input events in a visit to pad_size
+        if seq_flag[l] < pad_size:
+            seq[l] += [[0] * dim for k in range(pad_size - seq_flag[l])]
+    return seq
 
 
 def tensor2scalor(mat):
@@ -118,15 +116,17 @@ if __name__ == '__main__':
         test, test_ip, test_y = pickle.load(f)
     f.close()
 
+    # create input tensor and pad each visit to length of 200
+    pad_size = 200
+    size = 100
     # Prepare validation data for the model
-    validate_x, validate_y = create_full_set(validate, validate_y, w2v_model)
-
+    validate_x, validate_y = create_full_set(validate, validate_y, w2v_model, size, pad_size)
     # Prepare test data for the model
 
 
     # Model hyperparameters
     # model_type = 'rnn-rt'
-    input_size = len(window)
+    input_size = len(size)
     embedding_size = 50
     hidden_size = 64
     n_layers = 1

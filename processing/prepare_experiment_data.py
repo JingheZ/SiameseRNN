@@ -52,7 +52,7 @@ if __name__ == '__main__':
     # # run the skip-gram w2v model
     size = 100
     window = 100
-    # min_count = 50
+    # min_count = 100
     # workers = 28
     # iter = 5
     sg = 1 # skip-gram:1; cbow: 0
@@ -86,7 +86,18 @@ if __name__ == '__main__':
     dt_pos = dt[dt['ptid'].isin(pos_ids)]
     dt_neg = dt[dt['ptid'].isin(neg_ids)]
     dt1 = pd.concat([dt_pos, dt_neg], axis=0)
+    item_cts = dt1[['ptid', 'itemid']].drop_duplicates().groupby('itemid').count()
+    item_cts_50 = item_cts[item_cts['ptid'] > 50]
     dt1 = dt1[dt1['itemid'].isin(vocab)]
+    dt1 = dt1[dt1['itemid'].isin(item_cts_50.index.tolist())]
+
+    dt = dt1[['ptid', 'itemid', 'adm_month']].groupby(['ptid', 'adm_month'])['itemid'].apply(list)
+    dt = dt.reset_index()
+    dt['length'] = dt['itemid'].apply(lambda x: len(x))
+    # remove patients with more than 200 items in a month
+    pts_300 = dt[dt['length'] > 200]
+    dt1 = dt1[~dt1['ptid'].isin(set(pts_300['ptid'].values))]
+
     dt2 = group_items_byadmmonth(dt1)
     dt_ipinfo = find_previous_IP(dt1)
     ptids = set(dt1['ptid'].values)
