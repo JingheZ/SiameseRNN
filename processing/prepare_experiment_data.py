@@ -89,7 +89,7 @@ if __name__ == '__main__':
     dt1 = dt1[dt1['itemid'].isin(vocab)]
     dt2 = group_items_byadmmonth(dt1)
     dt_ipinfo = find_previous_IP(dt1)
-    ptids = set(dt1[dt1['ptid']].values)
+    ptids = set(dt1['ptid'].values)
 
     print('original_total_pts %i' % (len(pos_ids) + len(neg_ids)))
     print('updated_total_pts after excluding rare events %i' % len(ptids))
