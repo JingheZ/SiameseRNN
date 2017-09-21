@@ -514,6 +514,22 @@ if __name__ == '__main__':
         pickle.dump(IP_adm_pdx, f)
     f.close()
 
+    # prepare data for word embedding w2v
+    with open('./data/clinical_events_hospitalization.pickle', 'rb') as f:
+        data = pickle.load(f)
+    f.close()
+    data = data[['vid', 'itemid']].drop_duplicates()
+    docs = data.groupby('vid')['itemid'].apply(list)
+    docs = docs.reset_index()
+    docs['length'] = docs['itemid'].apply(lambda x: len(x))
+    docs['length'].describe() # 80% quantile is 10; 92.5% quantile is 20; 98.75% quantile is 100
+    # all itemids by visit
+    vts = docs['itemid'].values.tolist()
+
+    with open('./data/visit_items_for_w2v.pickle', 'wb') as f:
+        pickle.dump(vts, f)
+    f.close()
+
     # with open('./data/hospitalization_data_pos_neg_ids.pickle', 'rb') as f:
     #     pos_ids, neg_ids = pickle.load(f)
     # f.close()

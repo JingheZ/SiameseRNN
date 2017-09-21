@@ -18,34 +18,37 @@ def split_train_validate_test(pos, neg):
     test_ids = []
     valid_ids = []
     for train_ind, test_ind in rs.split(ids, ys):
-        train_ids, test_ind = ids[train_ind], ids[test_ind]
+        train_ids, test_ids = ids[train_ind], ids[test_ind]
         valid_ids = set(ids).difference(set(train_ids).union(set(test_ind)))
-    return train_ids, test_ids, valid_ids
+    return train_ids, valid_ids, test_ids
 
 
-def find_previous_IP(dt_pos, dt_neg):
-    pass
+def find_previous_IP(dt):
+    dt = dt[['ptid', 'cdrIPorOP']].drop_duplicates()
+    dt_ipinfo = dt.groupby('ptid')['cdrIPorOP'].apply(list)
+    return dt_ipinfo
 
 
 def group_items_byadmmonth(dt):
-    dt_window = dt[['ptid', 'itemid', 'adm_month']].groupby(['ptid', 'adm_month'])['itemid'].apply(list)
-    dt_window = dt_window.reset_index()
-
+    dt = dt[['ptid', 'itemid', 'adm_month']].groupby(['ptid', 'adm_month'])['itemid'].apply(list)
+    dt = dt.reset_index()
+    pt_dict = {}
+    for i in dt.index:
+        ptid = dt['ptid'].loc[i]
+        if not pt_dict.__contains__(ptid):
+            pt_dict[ptid] = [[]] * 12
+        adm = dt['adm_month'].loc[i]
+        items = dt['itemid'].loc[i]
+        pt_dict[ptid][adm] = items
+    return pt_dict
 
 
 if __name__ == '__main__':
-
-    # =============== learn item embedding =================================
-    with open('./data/clinical_events_hospitalization.pickle', 'rb') as f:
-        data = pickle.load(f)
+    # =============== learn item embedding ================================
+    with open('./data/visit_items_for_w2v.pickle', 'rb') as f:
+        docs = pickle.load(f)
     f.close()
-    data = data[['vid', 'itemid']].drop_duplicates()
-    docs = data.groupby('vid')['itemid'].apply(list)
-    docs = docs.reset_index()
-    docs['length'] = docs['itemid'].apply(lambda x: len(x))
-    docs['length'].describe() # 80% quantile is 10; 92.5% quantile is 20; 98.75% quantile is 100
-    # all itemids by visit
-    vts = docs['itemid'].values.tolist()
+
     # run the skip-gram w2v model
     size = 100
     window = 100
@@ -61,28 +64,49 @@ if __name__ == '__main__':
     model = Word2Vec(docs, size=size, window=window, min_count=min_count, workers=workers, sg=sg, iter=iter)
     model.save(model_path)
     b = time.time()
-    print('training time (mins): %.3f' % ((b - a) / 60)) # 191 mins
-    # vocab = list(model.wv.vocab.keys())
-    # c = vocab[1]
-    # sims = model.most_similar(c)
-    # print(c)
-    # print(sims)
-    #
-    #
-    #
-    #
-    #
-    # with open('./data/hospitalization_data_pos_neg_ids.pickle', 'rb') as f:
-    #     pos_ids, neg_ids = pickle.load(f)
-    # f.close()
-    #
-    # with open('./data/hospitalization_data_1year.pickle', 'rb') as f:
-    #     dt = pickle.load(f)
-    # f.close()
-    #
-    # dt_pos = dt[dt['ptid'].isin(pos_ids)]
-    # dt_neg = dt[dt['ptid'].isin(neg_ids)]
-    # dt_pos['y'] = 1
-    # dt_neg['y'] = 1
-    # train_ids, valid_ids, test_ids = split_train_validate_test(pos_ids, neg_ids)
-    #
+    print('training time (mins): %.3f' % ((b - a) / 60))
+
+    # load model
+    model = Word2Vec.load(model_path)
+    vocab = list(model.wv.vocab.keys())
+    c = vocab[1]
+    sims = model.most_similar(c)
+    print(c)
+    print(sims)
+
+    # =============== prepare training, validate, and test data ==============
+    with open('./data/hospitalization_data_pos_neg_ids.pickle', 'rb') as f:
+        pos_ids, neg_ids = pickle.load(f)
+    f.close()
+
+    with open('./data/hospitalization_data_1year.pickle', 'rb') as f:
+        dt = pickle.load(f)
+    f.close()
+
+    dt_pos = dt[dt['ptid'].isin(pos_ids)]
+    dt_neg = dt[dt['ptid'].isin(neg_ids)]
+    dt1 = pd.concat([dt_pos, dt_neg], axis=0)
+    dt2 = group_items_byadmmonth(dt1)
+    dt_ipinfo = find_previous_IP(dt1)
+
+    train_ids, valid_ids, test_ids = split_train_validate_test(pos_ids, neg_ids)
+    train = [dt2[pid] for pid in train_ids]
+    validate = [dt2[pid] for pid in valid_ids]
+    test = [dt2[pid] for pid in test_ids]
+    train_ip = [1 if 'IP' in dt_ipinfo.loc[pid] else 0 for pid in train_ids]
+    validate_ip = [1 if 'IP' in dt_ipinfo.loc[pid] else 0 for pid in valid_ids]
+    test_ip = [1 if 'IP' in dt_ipinfo.loc[pid] else 0 for pid in test_ids]
+    train_y = [1 if pid in pos_ids else 0 for pid in train_ids]
+    validate_y = [1 if pid in pos_ids else 0 for pid in valid_ids]
+    test_y = [1 if pid in pos_ids else 0 for pid in test_ids]
+    with open('./data/hospitalization_train_data.pickle', 'wb') as f:
+        pickle.dump([train, train_ip, train_y], f)
+    f.close()
+
+    with open('./data/hospitalization_validate_data.pickle', 'wb') as f:
+        pickle.dump([validate, validate_ip, validate_y], f)
+    f.close()
+
+    with open('./data/hospitalization_test_data.pickle', 'wb') as f:
+        pickle.dump([test, test_ip, test_y], f)
+    f.close()
