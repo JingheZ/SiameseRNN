@@ -44,35 +44,35 @@ def group_items_byadmmonth(dt):
 
 
 if __name__ == '__main__':
-    # =============== learn item embedding ================================
-    with open('./data/visit_items_for_w2v.pickle', 'rb') as f:
-        docs = pickle.load(f)
-    f.close()
-
-    # run the skip-gram w2v model
+    # # =============== learn item embedding ================================
+    # with open('./data/visit_items_for_w2v.pickle', 'rb') as f:
+    #     docs = pickle.load(f)
+    # f.close()
+    #
+    # # run the skip-gram w2v model
     size = 100
     window = 100
-    min_count = 50
-    workers = 28
-    iter = 5
+    # min_count = 50
+    # workers = 28
+    # iter = 5
     sg = 1 # skip-gram:1; cbow: 0
     model_path = './results/w2v_size' + str(size) + '_window' + str(window) + '_sg' + str(sg)
-    # if os.path.exists(model_path):
-    #     model = Word2Vec.load(model_path)
-    # else:
-    a = time.time()
-    model = Word2Vec(docs, size=size, window=window, min_count=min_count, workers=workers, sg=sg, iter=iter)
-    model.save(model_path)
-    b = time.time()
-    print('training time (mins): %.3f' % ((b - a) / 60))
-
+    # # if os.path.exists(model_path):
+    # #     model = Word2Vec.load(model_path)
+    # # else:
+    # a = time.time()
+    # model = Word2Vec(docs, size=size, window=window, min_count=min_count, workers=workers, sg=sg, iter=iter)
+    # model.save(model_path)
+    # b = time.time()
+    # print('training time (mins): %.3f' % ((b - a) / 60))
+    #
     # load model
     model = Word2Vec.load(model_path)
     vocab = list(model.wv.vocab.keys())
-    c = vocab[1]
-    sims = model.most_similar(c)
-    print(c)
-    print(sims)
+    # c = vocab[1]
+    # sims = model.most_similar(c)
+    # print(c)
+    # print(sims)
 
     # =============== prepare training, validate, and test data ==============
     with open('./data/hospitalization_data_pos_neg_ids.pickle', 'rb') as f:
@@ -89,6 +89,16 @@ if __name__ == '__main__':
     dt1 = dt1[dt1['itemid'].isin(vocab)]
     dt2 = group_items_byadmmonth(dt1)
     dt_ipinfo = find_previous_IP(dt1)
+    ptids = set(dt1[dt1['ptid']].values)
+
+    print('original_total_pts %i' % (len(pos_ids) + len(neg_ids)))
+    print('updated_total_pts after excluding rare events %i' % len(ptids))
+    print('original_pos_pts %i' % len(pos_ids))
+    print('original_neg_pts %i' % len(neg_ids))
+    pos_ids = list(set(pos_ids).intersection(ptids))
+    neg_ids = list(set(neg_ids).intersection(ptids))
+    print('updated_pos_pts %i' % len(pos_ids))
+    print('updated_neg_pts %i' % len(neg_ids))
 
     train_ids, valid_ids, test_ids = split_train_validate_test(pos_ids, neg_ids)
     with open('./data/hospitalization_train_validate_test_ids.pickle', 'wb') as f:
