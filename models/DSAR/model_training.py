@@ -13,7 +13,7 @@ import torch.optim as optim
 # from models.Patient2Vec import Patient2Vec
 from torch.autograd import Variable
 from gensim.models import Word2Vec
-from models.DSAR.Baselines import RNNmodel, MLPmodel, LRmodel
+from models.DSAR.Baselines import RNNmodel, MLPmodel, LRmodel, RETAIN
 
 
 def create_batch(step, batch_size, data_x, data_y, w2v, vsize, pad_size):
@@ -155,28 +155,19 @@ if __name__ == '__main__':
 
     # Build and train/load the model
     print('Build Model...')
-    if model_type == 'lr':
-        model = LRmodel(input_size, output_size, initrange)
-    elif model_type == 'mlp':
+    # by default build a LR model
+    model = LRmodel(input_size, output_size, initrange)
+    if model_type == 'mlp':
         model = MLPmodel(input_size, mlp_hidden_size1, mlp_hidden_size2, output_size, initrange)
     elif model_type == 'rnn':
         model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
                          bi=False, dropout_p=drop)
     elif model_type == 'rnn-bi':
         model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
-                           bi=True, dropout_p=drop)
+                         bi=True, dropout_p=drop)
     elif model_type == 'retain':
         model = RETAIN(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
-                           bi=True, dropout_p=drop)
-    # elif model_type == 'rnn-rt':
-    #     model = RNNmodelRT(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
-    #                      dropout_p=drop)
-    # elif model_type == 'rnn-rt-bi':
-    #     model = RNNmodelRTBi(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
-    #                      dropout_p=drop)
-    # elif model_type == 'retain':
-    #     model = RNNmodelRTBi(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
-    #                      dropout_p=drop)
+                       dropout_p=drop)
     # elif model_type == 'patient2vec':
     #     model = Patient2Vec(input_size, embedding_size, hidden_size, n_layers, n_hops, att_dim, initrange, output_size,
     #                         rnn_type, seq_len, dropout_p=drop)

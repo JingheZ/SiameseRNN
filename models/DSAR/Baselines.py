@@ -96,7 +96,7 @@ class LRmodel(nn.Module):
     def forward(self, inputs):
         linear = self.linear(inputs)
         output = self.sigm(linear)
-        return output
+        return output, linear
 
 
 class MLPmodel(nn.Module):
@@ -117,7 +117,7 @@ class MLPmodel(nn.Module):
         out2 = self.sigm(linear2)
         linear3 = self.linear3(out2)
         output = self.sigm(linear3)
-        return output
+        return output, linear3
 
 
 class RETAIN(nn.Module):
