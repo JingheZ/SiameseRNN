@@ -13,7 +13,7 @@ import torch.optim as optim
 # from models.Patient2Vec import Patient2Vec
 from torch.autograd import Variable
 from gensim.models import Word2Vec
-from models.DSAR.RNNs import RNNmodel, RNNmodelBi
+from models.DSAR.Baselines import RNNmodel, MLPmodel, LRmodel
 
 
 def create_batch(step, batch_size, data_x, data_y, w2v, vsize, pad_size):
@@ -144,6 +144,10 @@ if __name__ == '__main__':
     initrange = 1
     att_dim = 100
     n_hops = 5
+
+    mlp_hidden_size1 = 128
+    mlp_hidden_size2 = 64
+
     batch_size = 100
     epoch_max = 30 # training for maximum 3 epochs of training data
     n_iter_max_dev = 1000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
@@ -151,10 +155,18 @@ if __name__ == '__main__':
 
     # Build and train/load the model
     print('Build Model...')
-    model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
-                     bi=False, dropout_p=drop)
-    if model_type == 'rnn-bi':
-        model = RNNmodelBi(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
+    if model_type == 'lr':
+        model = LRmodel(input_size, output_size, initrange)
+    elif model_type == 'mlp':
+        model = MLPmodel(input_size, mlp_hidden_size1, mlp_hidden_size2, output_size, initrange)
+    elif model_type == 'rnn':
+        model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
+                         bi=False, dropout_p=drop)
+    elif model_type == 'rnn-bi':
+        model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
+                           bi=True, dropout_p=drop)
+    elif model_type == 'retain':
+        model = RETAIN(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
                            bi=True, dropout_p=drop)
     # elif model_type == 'rnn-rt':
     #     model = RNNmodelRT(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
