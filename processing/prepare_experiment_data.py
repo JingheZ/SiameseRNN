@@ -131,6 +131,22 @@ if __name__ == '__main__':
     validate_y = [1 if pid in pos_ids else 0 for pid in valid_ids]
     test_y = [1 if pid in pos_ids else 0 for pid in test_ids]
 
+    # get demographics info:
+    with open('./data/orders_pt_info.pickle', 'rb') as f:
+        pt_info_orders = pickle.load(f)
+    f.close()
+    pt_info_orders = pt_info_orders[pt_info_orders['sex'].isin(['F', 'M'])]
+    ages = pt_info_orders[['ptid', 'age']].drop_duplicates().groupby('ptid').min()
+    ages = ages['age'].to_dict()
+
+    pt_info_orders['gender'] = pt_info_orders['sex'].map({'F': 1, 'M': 0})
+    genders = pt_info_orders[['ptid', 'gender']].drop_duplicates().groupby('ptid').first()
+    genders = genders['gender'].to_dict()
+    train_genders = [genders[pid] for pid in train_ids]
+    validate_genders = [genders[pid] for pid in valid_ids]
+    test_genders = [genders[pid] for pid in test_ids]
+
+    # save data
     with open('./data/hospitalization_train_data.pickle', 'wb') as f:
         pickle.dump([train, train_ip, train_y], f)
     f.close()
@@ -142,3 +158,6 @@ if __name__ == '__main__':
     with open('./data/hospitalization_test_data.pickle', 'wb') as f:
         pickle.dump([test, test_ip, test_y], f)
     f.close()
+
+
+

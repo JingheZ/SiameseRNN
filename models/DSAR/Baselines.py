@@ -15,7 +15,7 @@ class RNNmodel(nn.Module):
     A recurrent NN
     """
 
-    def __init__(self, input_size, embed_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len, bi, dropout_p=0.5):
+    def __init__(self, input_size, embed_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len, bi, ct, dropout_p=0.5):
         """
         Initilize a recurrent autoencoder
         """
@@ -34,6 +34,7 @@ class RNNmodel(nn.Module):
         self.hidden_size = hidden_size
         self.n_layers = n_layers
         self.seq_len = seq_len
+        self.ct = ct
         self.func_softmax = nn.Softmax()
         self.func_sigmoid = nn.Sigmoid()
         self.func_tanh = nn.Hardtanh(0, 1)
@@ -50,16 +51,19 @@ class RNNmodel(nn.Module):
             # param.data.normal_(0, 1)
 
     def embedding_layer(self, inputs):
-        inputs_agg = torch.sum(inputs, dim=2)
-        inputs_agg = torch.squeeze(inputs_agg, dim=2)
-        embedding = []
-        for i in range(self.seq_len):
-            embedded = self.embed(inputs_agg[:, i])
-            embedding.append(embedded)
-        embedding = torch.stack(embedding)
-        embedding = torch.transpose(embedding, 0, 1)
-        # embedding = self.tanh(embedding)
-        return embedding
+        if self.ct:
+            return inputs
+        else:
+            inputs_agg = torch.sum(inputs, dim=2)
+            inputs_agg = torch.squeeze(inputs_agg, dim=2)
+            embedding = []
+            for i in range(self.seq_len):
+                embedded = self.embed(inputs_agg[:, i])
+                embedding.append(embedded)
+            embedding = torch.stack(embedding)
+            embedding = torch.transpose(embedding, 0, 1)
+            # embedding = self.tanh(embedding)
+            return embedding
 
     def encode_rnn(self, embedding, batch_size):
         self.weight = next(self.parameters()).data
