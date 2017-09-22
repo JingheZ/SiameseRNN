@@ -135,7 +135,7 @@ if __name__ == '__main__':
     hidden_size = 64
     n_layers = 1
     seq_len = 12
-    output_size = 1
+    output_size = 2
     rnn_type = 'GRU'
     drop = 0.0
     learning_rate = 0.001
@@ -152,22 +152,22 @@ if __name__ == '__main__':
     # Build and train/load the model
     print('Build Model...')
     model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
-                     dropout_p=drop)
+                     bi=False, dropout_p=drop)
     if model_type == 'rnn-bi':
         model = RNNmodelBi(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
-                         dropout_p=drop)
-    elif model_type == 'rnn-rt':
-        model = RNNmodelRT(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
-                         dropout_p=drop)
-    elif model_type == 'rnn-rt-bi':
-        model = RNNmodelRTBi(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
-                         dropout_p=drop)
-    elif model_type == 'retain':
-        model = RNNmodelRTBi(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
-                         dropout_p=drop)
-    elif model_type == 'patient2vec':
-        model = Patient2Vec(input_size, embedding_size, hidden_size, n_layers, n_hops, att_dim, initrange, output_size,
-                            rnn_type, seq_len, dropout_p=drop)
+                           bi=True, dropout_p=drop)
+    # elif model_type == 'rnn-rt':
+    #     model = RNNmodelRT(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
+    #                      dropout_p=drop)
+    # elif model_type == 'rnn-rt-bi':
+    #     model = RNNmodelRTBi(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
+    #                      dropout_p=drop)
+    # elif model_type == 'retain':
+    #     model = RNNmodelRTBi(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
+    #                      dropout_p=drop)
+    # elif model_type == 'patient2vec':
+    #     model = Patient2Vec(input_size, embedding_size, hidden_size, n_layers, n_hops, att_dim, initrange, output_size,
+    #                         rnn_type, seq_len, dropout_p=drop)
 
     # criterion = nn.MultiLabelMarginLoss()
     criterion = nn.CrossEntropyLoss()
