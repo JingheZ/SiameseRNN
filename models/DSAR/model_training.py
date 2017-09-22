@@ -10,10 +10,10 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from models.Patient2Vec import Patient2Vec
+# from models.Patient2Vec import Patient2Vec
 from torch.autograd import Variable
 from gensim.models import Word2Vec
-from models.DSAR.RNNs import RNNmodel, RNNmodelRT, RNNmodelBi, RNNmodelRTBi
+from models.DSAR.RNNs import RNNmodel, RNNmodelBi
 
 
 def create_batch(step, batch_size, data_x, data_y, w2v, vsize, pad_size):
@@ -24,8 +24,8 @@ def create_batch(step, batch_size, data_x, data_y, w2v, vsize, pad_size):
         x = create_sequence(data_x[i], w2v, vsize, pad_size)
         batch_x.append(x)
     batch_y = data_y[start:end]
-    # return Variable(torch.FloatTensor(batch_x), requires_grad=False), Variable(torch.LongTensor(batch_y), requires_grad=False) # for cross-entropy loss
-    return Variable(torch.FloatTensor(batch_x), requires_grad=False), Variable(torch.FloatTensor(batch_y), requires_grad=False) # for cross-entropy loss
+    return Variable(torch.FloatTensor(batch_x), requires_grad=False), Variable(torch.LongTensor(batch_y), requires_grad=False) # for cross-entropy loss
+    # return Variable(torch.FloatTensor(batch_x), requires_grad=False), Variable(torch.FloatTensor(batch_y), requires_grad=False) # for cross-entropy loss
 
 
 def create_full_set(dt, y, w2v, vsize, pad_size):
@@ -53,8 +53,8 @@ def create_sequence(items, w2v, dim, pad_size):
 
 def list2tensor(x, y):
     x = Variable(torch.FloatTensor(x), requires_grad=False)
-    # y = Variable(torch.LongTensor(y), requires_grad=False)
-    y = Variable(torch.FloatTensor(y), requires_grad=False)
+    y = Variable(torch.LongTensor(y), requires_grad=False)
+    # y = Variable(torch.FloatTensor(y), requires_grad=False)
     return x, y
 
 
@@ -130,11 +130,11 @@ if __name__ == '__main__':
 
     # Model hyperparameters
     # model_type = 'rnn-rt'
-    input_size = len(size)
-    embedding_size = 50
+    input_size = size
+    embedding_size = 150
     hidden_size = 64
     n_layers = 1
-    seq_len = 25
+    seq_len = 12
     output_size = 1
     rnn_type = 'GRU'
     drop = 0.0
@@ -170,8 +170,8 @@ if __name__ == '__main__':
                             rnn_type, seq_len, dropout_p=drop)
 
     # criterion = nn.MultiLabelMarginLoss()
-    # criterion = nn.CrossEntropyLoss()
-    criterion = nn.MultiLabelSoftMarginLoss()
+    criterion = nn.CrossEntropyLoss()
+    # criterion = nn.MultiLabelSoftMarginLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
     model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '.dat'
     print('Start Training...')
