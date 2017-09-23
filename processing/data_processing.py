@@ -195,8 +195,8 @@ def proc2proccat(all_procs):
     all_procs['proccat'] = cats
     proc_data = all_procs[['PROC_ID', 'proccat']]
     proc_data['PROC_ID'] = proc_data['PROC_ID'].apply(lambda x: 'p' + x)
-    proc_data.index = proc_data['PROC_ID']
-    del proc_data['PROC_ID']
+    # proc_data.index = proc_data['PROC_ID']
+    # del proc_data['PROC_ID']
     return procgrps, all_procs, proc_data
 
 
@@ -275,9 +275,26 @@ def process_dxs(dxs, dxgrps_dict, dxgrps_dict2):
     dxs_df = pd.DataFrame([dxs, dxcats])
     dxs_df = dxs_df.transpose()
     dxs_df.columns = ['dx', 'dxcat']
-    dxs_df.index = dxs_df['dx']
-    del dxs_df['dx']
+    dxs_df['dx'] = dxs_df['dx'].apply(lambda x: 'dx' + x)
+    # dxs_df.index = dxs_df['dx']
+    # del dxs_df['dx']
     return dxs_df
+
+
+def get_all_item_categories(dx_df, proc_df, all_meds):
+    # dx_df.reset_index(inplace=True)
+    dx_df.columns = ['code', 'cat']
+    dx_df['cat'] = dx_df['cat'].apply(lambda x: 'dx' + x)
+    # proc_df.reset_index(inplace=True)
+    proc_df.columns = ['code', 'cat']
+    proc_df['cat'] = proc_df['cat'].apply(lambda x: 'p' + x)
+    med_df = pd.DataFrame([all_meds.tolist(), all_meds.tolist()])
+    med_df = med_df.transpose()
+    med_df.columns = ['code', 'cat']
+    item_cats = pd.concat([dx_df, med_df, proc_df], axis=0)
+    item_cats.index = item_cats['code']
+    del item_cats['code']
+    return item_cats
 
 
 if __name__ == '__main__':
@@ -619,7 +636,12 @@ if __name__ == '__main__':
     dxgrps, dxgrps_dict, dxgrps_dict2 = dx2dxcat()
     dx_df = process_dxs(all_dxs, dxgrps_dict, dxgrps_dict2)
     procgrps, all_procs, proc_df = proc2proccat(all_procs)
-    
-    with open('./data/ccs_codes_dx_proc.pickle', 'wb') as f:
-        pickle.dump([dx_df, proc_df], f)
+
+    with open('./data/ccs_codes_dx_proc_med.pickle', 'wb') as f:
+        pickle.dump([dx_df, proc_df, all_meds], f)
+    f.close()
+
+    item_cats = get_all_item_categories(dx_df, proc_df, all_meds)
+    with open('./data/ccs_codes_all_item_categories.pickle', 'wb') as f:
+        pickle.dump(item_cats, f)
     f.close()

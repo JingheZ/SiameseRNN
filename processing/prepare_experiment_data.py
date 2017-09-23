@@ -104,7 +104,7 @@ if __name__ == '__main__':
     # remove patients with more than 115 items in a month
     pts_115 = dt[dt['length'] > 115]
     dt1 = dt1[~dt1['ptid'].isin(set(pts_115['ptid'].values))]
-
+    # get the itemids by month
     dt2 = group_items_byadmmonth(dt1)
     dt_ipinfo = find_previous_IP(dt1)
     ptids = set(dt1['ptid'].values)
@@ -144,8 +144,6 @@ if __name__ == '__main__':
     ages_pts = [ages[pid] for pid in ptids]
     ages_scaled = preprocessing.scale(ages_pts)
 
-
-
     pt_info_orders['gender'] = pt_info_orders['sex'].map({'F': 1, 'M': 0})
     genders = pt_info_orders[['ptid', 'gender']].drop_duplicates().groupby('ptid').first()
     genders = genders['gender'].to_dict()
@@ -167,4 +165,10 @@ if __name__ == '__main__':
     f.close()
 
 
+    # get the counts of clinical events
+    with open('./data/ccs_codes_all_item_categories.pickle', 'rb') as f:
+        item_cats = pickle.load(f)
+    f.close()
+
+    dt1['itemcat'] = dt1['itemid'].apply(lambda x: item_cats.loc[x])
 
