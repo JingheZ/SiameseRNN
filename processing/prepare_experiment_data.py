@@ -48,6 +48,23 @@ def group_items_byadmmonth(dt):
     return pt_dict
 
 
+def get_counts_subwindow(df):
+    counts0 = df[['ptid', 'itemcat', 'adm_month']].groupby(['ptid', 'itemcat', 'adm_month']).size().unstack('itemcat')
+    counts0.reset_index(inplace=True)
+    dt = counts0[counts0['adm_month'] == 0]
+    del dt['adm_month']
+    dt.columns = ['ptid'] + ['t0_' + x for x in dt.columns[1:]]
+    for j in range(1, 12):
+        cts = counts0[counts0['adm_month'] == j]
+        del cts['adm_month']
+        cts.columns = ['ptid'] + ['t' + str(j) + '_' + x for x in cts.columns[1:]]
+        dt = pd.merge(dt, cts, on='ptid', how='outer')
+    dt.index = dt['ptid']
+    del dt['ptid']
+    dt.fillna(0, inplace=True)
+    return dt
+
+
 if __name__ == '__main__':
     # # =============== learn item embedding ================================
     # with open('./data/visit_items_for_w2v.pickle', 'rb') as f:
@@ -169,6 +186,23 @@ if __name__ == '__main__':
     with open('./data/ccs_codes_all_item_categories.pickle', 'rb') as f:
         item_cats = pickle.load(f)
     f.close()
+    itemdict = item_cats['cat'].to_dict()
+    dt1['itemcat'] = [itemdict[x] for x in dt1['itemid'].values.tolist()]
+    dt3 = dt1[['ptid', 'adm_month', 'itemcat']].drop_duplicates()
+    # get counts over the entire observation window
+    counts = dt3[['ptid', 'itemcat']].groupby(['ptid', 'itemcat']).size().unstack('itemcat').fillna(0)
+    counts.reset_index(inplace=True)
+    counts = counts[counts['ptid'].isin(ptids)]
+    counts_ptids = counts['ptid'].values
+    del counts['ptid']
+    counts_scaled = preprocessing.scale(counts.values, axis=0)
 
-    dt1['itemcat'] = dt1['itemid'].apply(lambda x: item_cats.loc[x])
+    counts_sub = get_counts_subwindow(dt3)
+    counts_sub = counts_sub[counts_sub['ptid'].isin(ptids)]
+    counts_sub_ptids = counts_sub['ptid'].values
+
+    def get_data_counts_demog():
+
+
+
 
