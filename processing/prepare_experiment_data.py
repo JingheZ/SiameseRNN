@@ -9,6 +9,7 @@ import pandas as pd
 from gensim.models import Word2Vec
 # import time
 import random
+from sklearn import preprocessing
 
 
 def split_train_validate_test(pos, neg):
@@ -138,6 +139,12 @@ if __name__ == '__main__':
     pt_info_orders = pt_info_orders[pt_info_orders['sex'].isin(['F', 'M'])]
     ages = pt_info_orders[['ptid', 'age']].drop_duplicates().groupby('ptid').min()
     ages = ages['age'].to_dict()
+    ptids = list(pos_ids) + list(neg_ids)
+    ptids = train_ids
+    ages_pts = [ages[pid] for pid in ptids]
+    ages_scaled = preprocessing.scale(ages_pts)
+
+
 
     pt_info_orders['gender'] = pt_info_orders['sex'].map({'F': 1, 'M': 0})
     genders = pt_info_orders[['ptid', 'gender']].drop_duplicates().groupby('ptid').first()

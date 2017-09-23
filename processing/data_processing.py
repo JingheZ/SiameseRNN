@@ -160,20 +160,44 @@ def dx2dxcat():
     return dxgrps, dxgrps_dict, dxgrps_dict2
 
 
-def process_dxs(data, dxgrps_dict, dxgrps_dict2):
-    data['dx'] = data['itemid'].str.replace('.', '')
-    dxs = data['dx'].values.tolist()
-    dxcats = []
-    for i in dxs:
-        if dxgrps_dict.__contains__(i):
-            dxcats.append(dxgrps_dict[i])
-        elif dxgrps_dict2.__contains__(i):
-            dxcats.append(dxgrps_dict2[i])
-        else:
-            dxcats.append('0')
-    data['dxcat'] = dxcats
-    data = data[data['dxcat'] != '0']
-    return data
+def proc2proccat(all_procs):
+    filename = './data/2017_ccs_services_procedures.csv'
+    # sed - i 's/,//g'. / data / 2017_ccs_services_procedures.csv
+    def CCS(filename):
+        data = pd.read_csv(filename, dtype=object)
+        cols = data.columns
+        data = data[cols[:3]]
+        data.columns = ['icd', 'category', 'name']
+        data['icd'] = data['icd'].str.replace("'", "")
+        data['category'] = data['category'].str.replace("'", "")
+        data['name'] = data['name'].str.replace("'", "")
+        data['icd'] = data['icd'].str.replace(" ", "")
+        data['category'] = data['category'].str.replace(" ", "")
+        left = data['icd'].apply(lambda x: x.split('-')[0])
+        right = data['icd'].apply(lambda x: x.split('-')[1])
+        data['left'] = left
+        data['right'] = right
+        proc_grps = data[['left', 'right', 'category']]
+        return proc_grps
+
+    procgrps = CCS(filename)
+    procgrps = procgrps.values.tolist()
+    cats = []
+    all_procs['PROC_ID'] = all_procs['PROC_ID'].astype(str)
+    for i in all_procs.index:
+        cat = '0'
+        proc = all_procs['PROC_ID'].loc[i]
+        for l, r, c in procgrps:
+            if proc >= l and proc <= r:
+                cat = c
+                break
+        cats.append(cat)
+    all_procs['proccat'] = cats
+    proc_data = all_procs[['PROC_ID', 'proccat']]
+    proc_data['PROC_ID'] = proc_data['PROC_ID'].apply(lambda x: 'p' + x)
+    proc_data.index = proc_data['PROC_ID']
+    del proc_data['PROC_ID']
+    return procgrps, all_procs, proc_data
 
 
 def process_pdxs(data, dxgrps_dict, dxgrps_dict2):
@@ -236,6 +260,24 @@ def get_counts_subwindow(df, y, vars, c):
     del dt['ptid']
     dt.fillna(0, inplace=True)
     return dt
+
+
+def process_dxs(dxs, dxgrps_dict, dxgrps_dict2):
+    dxs = [i.replace('.', '') for i in dxs]
+    dxcats = []
+    for i in dxs:
+        if dxgrps_dict.__contains__(i):
+            dxcats.append(dxgrps_dict[i])
+        elif dxgrps_dict2.__contains__(i):
+            dxcats.append(dxgrps_dict2[i])
+        else:
+            dxcats.append('0')
+    dxs_df = pd.DataFrame([dxs, dxcats])
+    dxs_df = dxs_df.transpose()
+    dxs_df.columns = ['dx', 'dxcat']
+    dxs_df.index = dxs_df['dx']
+    del dxs_df['dx']
+    return dxs_df
 
 
 if __name__ == '__main__':
@@ -565,3 +607,19 @@ if __name__ == '__main__':
     # The other solution is consider the visits by patients
 
 
+    # get the CCS categories for dx and proc codes
+    with open('./data/all_procs.pickle', 'rb') as f:
+        all_procs = pickle.load(f)
+    f.close()
+
+    with open('./data/all_dx_and_meds.pickle', 'rb') as f:
+        all_dxs, all_meds = pickle.load(f)
+    f.close()
+
+    dxgrps, dxgrps_dict, dxgrps_dict2 = dx2dxcat()
+    dx_df = process_dxs(all_dxs, dxgrps_dict, dxgrps_dict2)
+    procgrps, all_procs, proc_df = proc2proccat(all_procs)
+    
+    with open('./data/ccs_codes_dx_proc.pickle', 'wb') as f:
+        pickle.dump([dx_df, proc_df], f)
+    f.close()
