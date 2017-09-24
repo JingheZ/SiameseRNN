@@ -12,10 +12,47 @@ import torch.nn as nn
 import torch.optim as optim
 # from models.Patient2Vec import Patient2Vec
 from torch.autograd import Variable
-from gensim.models import Word2Vec
-from models.DSAR.Baselines import RNNmodel, LRmodel, MLPmodel, RETAIN
+# from gensim.models import Word2Vec
+# from models.DSAR.Baselines import LRmodel, MLPmodel
 import numpy as np
 from sklearn import metrics
+
+
+class LRmodel(nn.Module):
+    def __init__(self, input_dim, output_dim, initrange):
+        super(LRmodel, self).__init__()
+        self.linear = nn.Linear(input_dim, output_dim, bias=True)
+        self.sigm = nn.Sigmoid()
+        for param in self.parameters():
+            param.data.uniform_(-initrange, initrange)
+
+    def forward(self, inputs, inputs_demoips):
+        inputs = torch.cat((inputs, inputs_demoips), 1)
+        linear = self.linear(inputs)
+        output = self.sigm(linear)
+        return output, linear
+
+
+class MLPmodel(nn.Module):
+    def __init__(self, input_dim, hidden_dim1, hidden_dim2, output_dim, initrange):
+        super(MLPmodel, self).__init__()
+        self.linear1 = nn.Linear(input_dim, hidden_dim1, bias=True)
+        self.linear2 = nn.Linear(hidden_dim1, hidden_dim2, bias=True)
+        self.linear3 = nn.Linear(hidden_dim2, output_dim, bias=True)
+        self.sigm = nn.Sigmoid()
+        self.tanh = nn.Tanh()
+        for param in self.parameters():
+            param.data.uniform_(-initrange, initrange)
+
+    def forward(self, inputs, inputs_demoips):
+        inputs = torch.cat((inputs, inputs_demoips), 1)
+        linear1 = self.linear1(inputs)
+        out1 = self.sigm(linear1)
+        linear2 = self.linear2(out1)
+        out2 = self.sigm(linear2)
+        linear3 = self.linear3(out2)
+        output = self.sigm(linear3)
+        return output, linear3
 
 
 def create_batch(step, batch_size, data_x, data_demoip, data_y):
