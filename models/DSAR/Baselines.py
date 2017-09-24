@@ -50,20 +50,20 @@ class RNNmodel(nn.Module):
             param.data.uniform_(-initrange, initrange)
             # param.data.normal_(0, 1)
 
-    def embedding_layer(self, inputs):
+    def embedding_layer(self, inputs, inputs_demoips):
         if self.ct:
-            return inputs
+            inputs_agg = inputs
         else:
             inputs_agg = torch.sum(inputs, dim=2)
             inputs_agg = torch.squeeze(inputs_agg, dim=2)
-            embedding = []
-            for i in range(self.seq_len):
-                embedded = self.embed(inputs_agg[:, i])
-                embedding.append(embedded)
-            embedding = torch.stack(embedding)
-            embedding = torch.transpose(embedding, 0, 1)
+        embedding = []
+        for i in range(self.seq_len):
+            embedded = self.embed(torch.cat((inputs_agg[:, 0], inputs_demoips), 1))
+            embedding.append(embedded)
+        embedding = torch.stack(embedding)
+        embedding = torch.transpose(embedding, 0, 1)
             # embedding = self.tanh(embedding)
-            return embedding
+        return embedding
 
     def encode_rnn(self, embedding, batch_size):
         self.weight = next(self.parameters()).data
@@ -72,12 +72,12 @@ class RNNmodel(nn.Module):
         outputs_rnn, states_rnn = self.rnn(embedding, init_state)
         return outputs_rnn
 
-    def forward(self, inputs, batch_size):
+    def forward(self, inputs, inputs_demoips, batch_size):
         """
         the recurrent module
         """
         # Embedding
-        embedding = self.embedding_layer(inputs)
+        embedding = self.embedding_layer(inputs, inputs_demoips)
         # embedding = torch.transpose(inputs, 1, 2)
         # RNN
         states_rnn = self.encode_rnn(embedding, batch_size)

@@ -121,9 +121,6 @@ if __name__ == '__main__':
     # remove patients with more than 115 items in a month
     pts_115 = dt[dt['length'] > 115]
     dt1 = dt1[~dt1['ptid'].isin(set(pts_115['ptid'].values))]
-    # get the itemids by month
-    dt2 = group_items_byadmmonth(dt1)
-    dt_ipinfo = find_previous_IP(dt1)
     ptids = set(dt1['ptid'].values)
 
     print('original_total_pts %i' % (len(pos_ids) + len(neg_ids))) # 73877
@@ -134,53 +131,81 @@ if __name__ == '__main__':
     neg_ids = list(set(neg_ids).intersection(ptids))
     print('updated_pos_pts %i' % len(pos_ids)) # 3025
     print('updated_neg_pts %i' % len(neg_ids)) # 66730
-
+    ptids = list(pos_ids) + list(neg_ids)
     train_ids, valid_ids, test_ids = split_train_validate_test(pos_ids, neg_ids)
     with open('./data/hospitalization_train_validate_test_ids.pickle', 'wb') as f:
         pickle.dump([train_ids, valid_ids, test_ids], f)
     f.close()
-    train = [dt2[pid] for pid in train_ids]
-    validate = [dt2[pid] for pid in valid_ids]
-    test = [dt2[pid] for pid in test_ids]
+
+    # get IP info
+    dt_ipinfo = find_previous_IP(dt1)
     train_ip = [1 if 'IP' in dt_ipinfo.loc[pid] else 0 for pid in train_ids]
     validate_ip = [1 if 'IP' in dt_ipinfo.loc[pid] else 0 for pid in valid_ids]
     test_ip = [1 if 'IP' in dt_ipinfo.loc[pid] else 0 for pid in test_ids]
-    train_y = [1 if pid in pos_ids else 0 for pid in train_ids]
-    validate_y = [1 if pid in pos_ids else 0 for pid in valid_ids]
-    test_y = [1 if pid in pos_ids else 0 for pid in test_ids]
-
     # get demographics info:
     with open('./data/orders_pt_info.pickle', 'rb') as f:
         pt_info_orders = pickle.load(f)
     f.close()
+    #genders
     pt_info_orders = pt_info_orders[pt_info_orders['sex'].isin(['F', 'M'])]
-    ages = pt_info_orders[['ptid', 'age']].drop_duplicates().groupby('ptid').min()
-    ages = ages['age'].to_dict()
-    ptids = list(pos_ids) + list(neg_ids)
-    ptids = train_ids
-    ages_pts = [ages[pid] for pid in ptids]
-    ages_scaled = preprocessing.scale(ages_pts)
-
     pt_info_orders['gender'] = pt_info_orders['sex'].map({'F': 1, 'M': 0})
     genders = pt_info_orders[['ptid', 'gender']].drop_duplicates().groupby('ptid').first()
     genders = genders['gender'].to_dict()
     train_genders = [genders[pid] for pid in train_ids]
     validate_genders = [genders[pid] for pid in valid_ids]
     test_genders = [genders[pid] for pid in test_ids]
+    # ages
+    ages = pt_info_orders[['ptid', 'age']].drop_duplicates().groupby('ptid').min()
+    ages = ages['age'].to_dict()
+    # ptids = list(pos_ids) + list(neg_ids)
+    # ptids = train_ids
+    ages_pts = [ages[pid] for pid in ptids]
+    ages_scaled = preprocessing.scale(ages_pts)
+    ages_scaled_df = pd.DataFrame([ptids, list(ages_scaled)])
+    ages_scaled_df = ages_scaled_df.transpose()
+    ages_scaled_df.columns = ['ptid', 'age']
+    ages_scaled_df.index = ages_scaled_df['ptid']
+    del ages_scaled_df['ptid']
+    ages_scaled = ages_scaled_df['age'].to_dict()
+    train_ages = [ages_scaled[pid] for pid in train_ids]
+    validate_ages = [ages_scaled[pid] for pid in valid_ids]
+    test_ages = [ages_scaled[pid] for pid in test_ids]
 
-    # save data
+    # save static data: demographic and previous IP
+    with open('./data/hospitalization_train_data_demoip.pickle', 'wb') as f:
+        pickle.dump([train_genders, train_ages, train_ip], f)
+    f.close()
+
+    with open('./data/hospitalization_validate_data_demoip.pickle', 'wb') as f:
+        pickle.dump([validate_genders, validate_ages, validate_ip], f)
+    f.close()
+
+    with open('./data/hospitalization_test_data_demoip.pickle', 'wb') as f:
+        pickle.dump([test_genders, test_ages, test_ip], f)
+    f.close()
+
+    # get the itemids by month
+    dt2 = group_items_byadmmonth(dt1)
+    train = [dt2[pid] for pid in train_ids]
+    validate = [dt2[pid] for pid in valid_ids]
+    test = [dt2[pid] for pid in test_ids]
+
+    train_y = [1 if pid in pos_ids else 0 for pid in train_ids]
+    validate_y = [1 if pid in pos_ids else 0 for pid in valid_ids]
+    test_y = [1 if pid in pos_ids else 0 for pid in test_ids]
+
+    # save data of items in each month
     with open('./data/hospitalization_train_data.pickle', 'wb') as f:
-        pickle.dump([train, train_ip, train_y], f)
+        pickle.dump([train, train_y], f)
     f.close()
 
     with open('./data/hospitalization_validate_data.pickle', 'wb') as f:
-        pickle.dump([validate, validate_ip, validate_y], f)
+        pickle.dump([validate, validate_y], f)
     f.close()
 
     with open('./data/hospitalization_test_data.pickle', 'wb') as f:
-        pickle.dump([test, test_ip, test_y], f)
+        pickle.dump([test, test_y], f)
     f.close()
-
 
     # get the counts of clinical events
     with open('./data/ccs_codes_all_item_categories.pickle', 'rb') as f:
@@ -196,13 +221,49 @@ if __name__ == '__main__':
     counts_ptids = counts['ptid'].values
     del counts['ptid']
     counts_scaled = preprocessing.scale(counts.values, axis=0)
+    counts_scaled_dict = dict(zip(counts_ptids, counts_scaled.tolist()))
+    train_cts = [counts_scaled_dict[pid] for pid in train_ids]
+    validate_cts = [counts_scaled_dict[pid] for pid in valid_ids]
+    test_cts = [counts_scaled_dict[pid] for pid in test_ids]
+    # save counts of items
+    with open('./data/hospitalization_train_data_cts.pickle', 'wb') as f:
+        pickle.dump([train_cts, train_y], f)
+    f.close()
 
+    with open('./data/hospitalization_validate_data_cts.pickle', 'wb') as f:
+        pickle.dump([validate_cts, validate_y], f)
+    f.close()
+
+    with open('./data/hospitalization_test_data_cts.pickle', 'wb') as f:
+        pickle.dump([test_cts, test_y], f)
+    f.close()
+
+    with open('./data/hospitalization_cts_columns.pickle', 'wb') as f:
+        pickle.dump(counts.columns.tolist(), f)
+    f.close()
+
+    # get the counts of each month in the window
     counts_sub = get_counts_subwindow(dt3)
     counts_sub = counts_sub[counts_sub['ptid'].isin(ptids)]
     counts_sub_ptids = counts_sub['ptid'].values
+    del counts_sub['ptid']
+    counts_sub_dict = dict(zip(counts_sub_ptids, counts_sub.values.tolist()))
+    train_sub_cts = [counts_sub_dict[pid] for pid in train_ids]
+    validate_sub_cts = [counts_sub_dict[pid] for pid in valid_ids]
+    test_sub_cts = [counts_sub_dict[pid] for pid in test_ids]
+    # save
+    with open('./data/hospitalization_train_data_sub_cts.pickle', 'wb') as f:
+        pickle.dump([train_sub_cts, train_y], f)
+    f.close()
 
-    def get_data_counts_demog():
+    with open('./data/hospitalization_validate_data_sub_cts.pickle', 'wb') as f:
+        pickle.dump([validate_sub_cts, validate_y], f)
+    f.close()
 
+    with open('./data/hospitalization_test_data_sub_cts.pickle', 'wb') as f:
+        pickle.dump([test_sub_cts, test_y], f)
+    f.close()
 
-
-
+    with open('./data/hospitalization_cts_sub_columns.pickle', 'wb') as f:
+        pickle.dump(counts_sub.columns.tolist(), f)
+    f.close()
