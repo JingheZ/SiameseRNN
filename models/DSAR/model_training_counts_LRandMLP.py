@@ -196,7 +196,7 @@ if __name__ == '__main__':
     n_iter_max_dev = 1000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
-    model_type = 'LR'
+    model_type = 'MLP'
     # Build and train/load the model
     print('Build Model...')
     # by default build a LR model
