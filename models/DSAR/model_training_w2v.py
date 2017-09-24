@@ -15,6 +15,7 @@ from torch.autograd import Variable
 from gensim.models import Word2Vec
 from models.DSAR.Baselines import RNNmodel
 import numpy as np
+from sklearn import metrics
 
 
 def create_batch(step, batch_size, data_x, data_demoip, data_y, w2v, vsize, pad_size):
@@ -66,30 +67,6 @@ def tensor2scalor(mat):
     return mat.view(-1).data.tolist()[0]
 
 
-def get_loss(pred, y, criterion, seq_len):
-    loss = Variable(torch.FloatTensor([0]))
-    for t in range(seq_len):
-        loss = torch.add(loss, criterion(pred[:, t, :], y))
-    loss = torch.div(loss, seq_len)
-    return loss
-
-
-def CrossEntropy_Multi(out, label, n_class, criterion):
-    loss = Variable(torch.FloatTensor([0]))
-    for i in range(n_class):
-        loss = torch.add(loss, criterion(out[:, i], label[:, i]))
-    loss = torch.div(loss, n_class)
-    return loss
-
-
-def get_top_dxs_inds(response, n=10):
-    filename = './data/dxs_counts.csv'
-    data = pd.read_csv(filename)
-    dxs = data['dx'][:n].values
-    inds = [response.index(x) for x in dxs]
-    return inds
-
-
 def process_demoip():
     with open('./data/hospitalization_train_data_demoip.pickle', 'rb') as f:
         train_genders, train_ages, train_ip = pickle.load(f)
@@ -106,6 +83,40 @@ def process_demoip():
     validate = np.vstack((validate_genders, validate_ages, validate_ip)).transpose().tolist()
     test = np.vstack((test_genders, test_ages, test_ip)).transpose().tolist()
     return train, validate, test
+
+
+def model_testing_one_batch(model, batch_x, batch_demoip, batch_size):
+    y_pred, _ = model(batch_x, batch_demoip, batch_size)
+    _, predicted = torch.max(y_pred.data, 1)
+    pred = predicted.view(-1).tolist()
+    return pred
+
+
+def model_testing(model, test, test_y, test_demoips, w2v, vsize, pad_size, batch_size=1000):
+    i = 0
+    pred_all = []
+    while (i + 1) * batch_size <= len(test_y):
+        batch_x, batch_demoip, _ = create_batch(i, batch_size, test, test_demoips, test_y, w2v, vsize, pad_size)
+        pred = model_testing_one_batch(model, batch_x, batch_demoip, batch_size)
+        pred_all += pred
+        i += 1
+    # the remaining data less than one batch
+    batch_demoip = test_demoips[i * batch_size:]
+    batch_x = []
+    for i in range(i * batch_size, len(test_y)):
+        x = create_sequence(test[i], w2v, vsize, pad_size)
+        batch_x.append(x)
+    batch_x = Variable(torch.FloatTensor(batch_x), requires_grad=False)
+    pred = model_testing_one_batch(model, batch_x, batch_demoip, len(test_y) - i * batch_size)
+    pred_all += pred
+    return pred_all
+
+
+def calculate_performance(test_y, pred):
+    # calculate performance
+    perfm = metrics.classification_report(test_y, pred)
+    auc = metrics.roc_auc_score(test_y, pred)
+    return perfm, auc
 
 
 if __name__ == '__main__':
@@ -229,9 +240,16 @@ if __name__ == '__main__':
                     # Evaluate model performance on validation set
                     pred_dev, _ = model(validate_x, validate_demoips, len(valid_ids))
                     loss_dev = criterion(pred_dev, validate_y)
-                    # loss_dev = CrossEntropy_Multi(pred_dev, dev_y, output_size, criterion)
-                    # loss_dev = criterion(pred_dev[:, -1, :], dev_y)
-                    # acc_dev = calcualte_accuracy(pred_dev, dev_y, batch_size_dev)
+                    pred_ind_dev = model_testing_one_batch(model, validate_x, validate_demoips,
+                                                           len(valid_ids))
+                    perfm_dev, auc_dev = calculate_performance(validate_y, pred_ind_dev)
+                    print("Performance on dev set: AUC is %.3f" % auc_dev)
+                    print(perfm_dev)
+
+                    pred_ind_batch = model_testing_one_batch(model, batch_x, batch_demoip, batch_size)
+                    perfm_batch, auc_batch = calculate_performance(batch_y, pred_ind_batch)
+                    print("Performance on training set: AUC is %.3f" % auc_batch)
+                    print(perfm_batch)
                     print('Validation, loss: %.3f' % (loss_dev.data[0]))
                     # if loss_dev < best_loss_dev:
                     #     best_loss_dev = loss_dev
@@ -255,14 +273,13 @@ if __name__ == '__main__':
     output_file = './results/test_outputs_' + model_type + '_layer' + str(n_layers) + '.pickle'
 
     # # Evaluate the model
-    # model.eval()
-    # test_start_time = time.time()
-    # pred_test, output_test = model(test_x, test_demoips, batch_size_test)
-    # loss_test = criterion(pred_test, test_y)
-    # # loss_test = criterion(pred_test[:, -1, :], test_y)
-    # # loss_test = CrossEntropy_Multi(pred_test, test_y, output_size, criterion)
-    # elapsed_test = time.time() - test_start_time
-    # print('Testing, elapsed time: %.2f, loss: %.3f' % (elapsed_test, loss_test.data[0]))
+    model.eval()
+    test_start_time = time.time()
+    pred_test = model_testing(model, test, test_y, test_demoips, w2v_model, size, pad_size, batch_size=1000)
+    perfm, auc = calculate_performance(test_y, pred_test)
+    elapsed_test = time.time() - test_start_time
+    print(auc)
+    print(perfm)
     # with open(result_file, 'wb') as f:
     #     pickle.dump([pred_test, test_y], f)
     # f.close()

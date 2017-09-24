@@ -26,7 +26,10 @@ class RNNmodel(nn.Module):
         # RNN
         self.rnn = getattr(nn, rnn_type)(embed_size, hidden_size, n_layers, dropout=dropout_p,
                                              batch_first=True, bias=True, bidirectional=bi)
-        self.linear = nn.Linear(hidden_size, output_size, bias=True)
+        self.b = 1
+        if bi:
+            self.b = 2
+        self.linear = nn.Linear(hidden_size * self.b, output_size, bias=True)
         self.tanh = nn.Hardtanh()
         self.init_weights(initrange)
         self.input_size = input_size
@@ -58,7 +61,7 @@ class RNNmodel(nn.Module):
             inputs_agg = torch.squeeze(inputs_agg, dim=2)
         embedding = []
         for i in range(self.seq_len):
-            embedded = self.embed(torch.cat((inputs_agg[:, 0], inputs_demoips), 1))
+            embedded = self.embed(torch.cat((inputs_agg[:, i], inputs_demoips), 1))
             embedding.append(embedded)
         embedding = torch.stack(embedding)
         embedding = torch.transpose(embedding, 0, 1)
@@ -67,7 +70,7 @@ class RNNmodel(nn.Module):
 
     def encode_rnn(self, embedding, batch_size):
         self.weight = next(self.parameters()).data
-        init_state = (Variable(self.weight.new(self.n_layers, batch_size, self.hidden_size).zero_()))
+        init_state = (Variable(self.weight.new(self.n_layers * self.b, batch_size, self.hidden_size).zero_()))
         # embedding_d = self.dropout(embedding)
         outputs_rnn, states_rnn = self.rnn(embedding, init_state)
         return outputs_rnn
@@ -97,7 +100,8 @@ class LRmodel(nn.Module):
         for param in self.parameters():
             param.data.uniform_(-initrange, initrange)
 
-    def forward(self, inputs):
+    def forward(self, inputs, inputs_demoips):
+        inputs = torch.cat((inputs, inputs_demoips), 1)
         linear = self.linear(inputs)
         output = self.sigm(linear)
         return output, linear
@@ -114,7 +118,8 @@ class MLPmodel(nn.Module):
         for param in self.parameters():
             param.data.uniform_(-initrange, initrange)
 
-    def forward(self, inputs):
+    def forward(self, inputs, inputs_demoips):
+        inputs = torch.cat((inputs, inputs_demoips), 1)
         linear1 = self.linear1(inputs)
         out1 = self.sigm(linear1)
         linear2 = self.linear2(out1)
@@ -176,11 +181,12 @@ class RETAIN(nn.Module):
         for param in self.parameters():
             param.data.uniform_(-initrange, initrange)
 
-    def embedding_layer(self, inputs):
+    def embedding_layer(self, inputs, inputs_demoips):
         # embedding_f = []
         embedding_b = []
         for i in range(self.seq_len):
-            embedded = self.embed(inputs[:, :, i])
+            # embedded = self.embed(inputs[:, :, i])
+            embedded = self.embed(torch.cat((inputs[:, i], inputs_demoips), 1))
             # embedding_f.append(embedded)
             embedding_b.insert(0, embedded)
         embedding_b = torch.stack(embedding_b)
@@ -191,14 +197,14 @@ class RETAIN(nn.Module):
     def encode_rnn_l(self, embedding, batch_size):
         self.weight = next(self.parameters()).data
         init_state = (Variable(self.weight.new(self.n_layers, batch_size, self.hidden_size).zero_()))
-        embedding = self.dropout(embedding)
+        # embedding = self.dropout(embedding)
         outputs_rnn, states_rnn = self.rnn_l(embedding, init_state)
         return outputs_rnn
 
     def encode_rnn_r(self, embedding, batch_size):
         self.weight = next(self.parameters()).data
         init_state = (Variable(self.weight.new(self.n_layers, batch_size, self.hidden_size).zero_()))
-        embedding = self.dropout(embedding)
+        # embedding = self.dropout(embedding)
         outputs_rnn, states_rnn = self.rnn_r(embedding, init_state)
         return outputs_rnn
 
@@ -246,12 +252,12 @@ class RETAIN(nn.Module):
         out = torch.transpose(out, 0, 1)
         return out
 
-    def forward(self, inputs, batch_size):
+    def forward(self, inputs, inputs_demoips, batch_size):
         """
         the recurrent module of the autoencoder
         """
         # Embedding
-        embedding_b = self.embedding_layer(inputs)
+        embedding_b = self.embedding_layer(inputs, inputs_demoips)
         # RNN on the left for variable level attention, backward RNN
         states_rnn_l = self.encode_rnn_l(embedding_b, batch_size)
         # RNN on the right for visit level attention, backward RNN
