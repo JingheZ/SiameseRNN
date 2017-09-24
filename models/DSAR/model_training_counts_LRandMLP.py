@@ -119,8 +119,8 @@ def process_demoip():
     return train, validate, test
 
 
-def model_testing_one_batch(model, batch_x, batch_demoip, batch_size):
-    y_pred, _ = model(batch_x, batch_demoip, batch_size)
+def model_testing_one_batch(model, batch_x, batch_demoip):
+    y_pred, _ = model(batch_x, batch_demoip)
     _, predicted = torch.max(y_pred.data, 1)
     pred = predicted.view(-1).tolist()
     return pred
@@ -131,7 +131,7 @@ def model_testing(model, test, test_y, test_demoips, batch_size=1000):
     pred_all = []
     while (i + 1) * batch_size <= len(test_y):
         batch_x, batch_demoip, _ = create_batch(i, batch_size, test, test_demoips, test_y)
-        pred = model_testing_one_batch(model, batch_x, batch_demoip, batch_size)
+        pred = model_testing_one_batch(model, batch_x, batch_demoip)
         pred_all += pred
         i += 1
     # the remaining data less than one batch
@@ -139,7 +139,7 @@ def model_testing(model, test, test_y, test_demoips, batch_size=1000):
     batch_demoip = test_demoips[i * batch_size:]
     batch_y = test_y[i * batch_size:]
     batch_x, batch_y = list2tensor(batch_x, batch_y)
-    pred = model_testing_one_batch(model, batch_x, batch_demoip, len(test_y) - i * batch_size)
+    pred = model_testing_one_batch(model, batch_x, batch_demoip)
     pred_all += pred
     return pred_all
 
@@ -240,13 +240,12 @@ if __name__ == '__main__':
                 # Evaluate model performance on validation set
                 pred_dev, _ = model(validate_x, validate_demoips)
                 loss_dev = criterion(pred_dev, validate_y)
-                pred_ind_dev = model_testing_one_batch(model, validate_x, validate_demoips,
-                                                       len(valid_ids))
+                pred_ind_dev = model_testing_one_batch(model, validate_x, validate_demoips)
                 perfm_dev, auc_dev = calculate_performance(validate_y, pred_ind_dev)
                 print("Performance on dev set: AUC is %.3f" % auc_dev)
                 print(perfm_dev)
 
-                pred_ind_batch = model_testing_one_batch(model, batch_x, batch_demoip, batch_size)
+                pred_ind_batch = model_testing_one_batch(model, batch_x, batch_demoip)
                 perfm_batch, auc_batch = calculate_performance(batch_y, pred_ind_batch)
                 print("Performance on training set: AUC is %.3f" % auc_batch)
                 print(perfm_batch)
