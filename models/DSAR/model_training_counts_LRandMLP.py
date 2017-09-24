@@ -196,11 +196,11 @@ if __name__ == '__main__':
     n_iter_max_dev = 1000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
-    model_type = 'LR'
+    model_type = 'MLP'
     # Build and train/load the model
     print('Build Model...')
     # by default build a LR model
-    if model_type == 'LR':
+    if model_type == 'LR': # 5, 10 epochs are enough
         model = LRmodel(input_size, output_size, initrange)
     if model_type == 'MLP':
         model = MLPmodel(input_size, mlp_hidden_size1, mlp_hidden_size2, output_size, initrange)
