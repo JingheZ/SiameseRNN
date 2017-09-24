@@ -10,7 +10,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
-# from models.Patient2Vec import Patient2Vec
+from models.Patient2Vec import Patient2Vec, Patient2Vec0
 from torch.autograd import Variable
 from gensim.models import Word2Vec
 from models.DSAR.Baselines import RNNmodel
@@ -165,7 +165,7 @@ if __name__ == '__main__':
     f.close()
     validate_x, validate_y = list2tensor(validate_x, validate_y)
     validate_demoips = Variable(torch.FloatTensor(validate_demoips), requires_grad=False)
-        # Model hyperparameters
+    # Model hyperparameters
     # model_type = 'rnn-rt'
     input_size = size + 3
     embedding_size = 150
@@ -179,12 +179,8 @@ if __name__ == '__main__':
     decay = 0.01
     interval = 10
     initrange = 1
-    att_dim = 100
+    att_dim = 1
     n_hops = 5
-
-    mlp_hidden_size1 = 128
-    mlp_hidden_size2 = 64
-
     batch_size = 100
     epoch_max = 30 # training for maximum 3 epochs of training data
     n_iter_max_dev = 1000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
@@ -199,9 +195,12 @@ if __name__ == '__main__':
     elif model_type == 'rnn-bi':
         model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
                          ct=False, bi=True, dropout_p=drop)
-    # elif model_type == 'patient2vec':
-    #     model = Patient2Vec(input_size, embedding_size, hidden_size, n_layers, n_hops, att_dim, initrange, output_size,
-    #                         rnn_type, seq_len, dropout_p=drop)
+    elif model_type == 'patient2vec':
+        model = Patient2Vec(input_size, embedding_size, hidden_size, n_layers, n_hops, att_dim, initrange, output_size,
+                            rnn_type, seq_len, pad_size, dropout_p=drop)
+    elif model_type == 'patient2vec':
+        model = Patient2Vec0(input_size, embedding_size, hidden_size, n_layers, n_hops, att_dim, initrange, output_size,
+                            rnn_type, seq_len, pad_size, dropout_p=drop)
 
     # criterion = nn.MultiLabelMarginLoss()
     criterion = nn.CrossEntropyLoss()
