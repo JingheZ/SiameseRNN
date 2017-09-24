@@ -34,12 +34,11 @@ class LRmodel(nn.Module):
 
 
 class MLPmodel(nn.Module):
-    def __init__(self, input_dim, hidden_dim1, hidden_dim2, hidden_dim3, output_dim, initrange):
+    def __init__(self, input_dim, hidden_dim1, hidden_dim2, output_dim, initrange):
         super(MLPmodel, self).__init__()
         self.linear1 = nn.Linear(input_dim, hidden_dim1, bias=True)
         self.linear2 = nn.Linear(hidden_dim1, hidden_dim2, bias=True)
-        self.linear3 = nn.Linear(hidden_dim2, hidden_dim3, bias=True)
-        self.linear4 = nn.Linear(hidden_dim3, output_dim, bias=True)
+        self.linear3 = nn.Linear(hidden_dim2, output_dim, bias=True)
         self.sigm = nn.Sigmoid()
         self.tanh = nn.Tanh()
         for param in self.parameters():
@@ -52,10 +51,8 @@ class MLPmodel(nn.Module):
         linear2 = self.linear2(out1)
         out2 = self.sigm(linear2)
         linear3 = self.linear3(out2)
-        out3 = self.sigm(linear3)
-        linear4 = self.linear4(out3)
-        output = self.sigm(linear4)
-        return output, linear4
+        output = self.sigm(linear3)
+        return output, linear3
 
 
 def create_batch(step, batch_size, data_x, data_demoip, data_y):
@@ -191,9 +188,9 @@ if __name__ == '__main__':
     decay = 0.01
     interval = 10
     initrange = 1
-    mlp_hidden_size1 = 128
-    mlp_hidden_size2 = 64
-    mlp_hidden_size3 = 32
+    mlp_hidden_size1 = 512
+    mlp_hidden_size2 = 1024
+
     batch_size = 100
     epoch_max = 5 # training for maximum 3 epochs of training data
     n_iter_max_dev = 1000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
@@ -206,7 +203,7 @@ if __name__ == '__main__':
     if model_type == 'LR': # 5, 10 epochs are enough
         model = LRmodel(input_size, output_size, initrange)
     if model_type == 'MLP':
-        model = MLPmodel(input_size, mlp_hidden_size1, mlp_hidden_size2, mlp_hidden_size3, output_size, initrange)
+        model = MLPmodel(input_size, mlp_hidden_size1, mlp_hidden_size2, output_size, initrange)
 
     criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 20]))
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
