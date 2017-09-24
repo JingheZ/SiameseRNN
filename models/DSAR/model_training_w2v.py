@@ -239,12 +239,12 @@ if __name__ == '__main__':
                     loss_dev = criterion(pred_dev, validate_y)
                     pred_ind_dev = model_testing_one_batch(model, validate_x, validate_demoips,
                                                            len(valid_ids))
-                    perfm_dev, auc_dev = calculate_performance(validate_y, pred_ind_dev)
+                    perfm_dev, auc_dev = calculate_performance(validate_y.data.tolist(), pred_ind_dev)
                     print("Performance on dev set: AUC is %.3f" % auc_dev)
                     print(perfm_dev)
 
                     pred_ind_batch = model_testing_one_batch(model, batch_x, batch_demoip, batch_size)
-                    perfm_batch, auc_batch = calculate_performance(batch_y, pred_ind_batch)
+                    perfm_batch, auc_batch = calculate_performance(batch_y.data.tolist(), pred_ind_batch)
                     print("Performance on training set: AUC is %.3f" % auc_batch)
                     print(perfm_batch)
                     print('Validation, loss: %.3f' % (loss_dev.data[0]))
