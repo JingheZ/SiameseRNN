@@ -184,12 +184,12 @@ if __name__ == '__main__':
     input_size = len(features) + 3
     output_size = 2
     drop = 0.0
-    learning_rate = 0.0002
+    learning_rate = 0.005
     decay = 0.01
     interval = 10
     initrange = 1
-    mlp_hidden_size1 = 512
-    mlp_hidden_size2 = 512
+    mlp_hidden_size1 = 1024
+    mlp_hidden_size2 = 1024
 
     batch_size = 100
     epoch_max = 5 # training for maximum 3 epochs of training data
