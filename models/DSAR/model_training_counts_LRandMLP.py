@@ -188,7 +188,7 @@ if __name__ == '__main__':
     decay = 0.01
     interval = 10
     initrange = 1
-    mlp_hidden_size1 = 128
+    mlp_hidden_size1 = 256
     # mlp_hidden_size2 = 1024
 
     batch_size = 200
