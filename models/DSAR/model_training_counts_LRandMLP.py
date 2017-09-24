@@ -189,7 +189,7 @@ if __name__ == '__main__':
     interval = 10
     initrange = 1
     mlp_hidden_size1 = 1024
-    mlp_hidden_size2 = 1024
+    # mlp_hidden_size2 = 1024
 
     batch_size = 100
     epoch_max = 5 # training for maximum 3 epochs of training data
