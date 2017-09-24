@@ -10,7 +10,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from models.Patient2Vec import Patient2Vec, Patient2Vec0
+from models.DSAR.Patient2Vec import Patient2Vec, Patient2Vec0
 from torch.autograd import Variable
 from gensim.models import Word2Vec
 from models.DSAR.Baselines import RNNmodel
@@ -199,12 +199,10 @@ if __name__ == '__main__':
         model = Patient2Vec(input_size, embedding_size, hidden_size, n_layers, n_hops, att_dim, initrange, output_size,
                             rnn_type, seq_len, pad_size, dropout_p=drop)
     elif model_type == 'patient2vec':
-        model = Patient2Vec0(input_size, embedding_size, hidden_size, n_layers, n_hops, att_dim, initrange, output_size,
+        model = Patient2Vec0(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
                             rnn_type, seq_len, pad_size, dropout_p=drop)
 
-    # criterion = nn.MultiLabelMarginLoss()
     criterion = nn.CrossEntropyLoss()
-    # criterion = nn.MultiLabelSoftMarginLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
     model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '.dat'
     print('Start Training...')
