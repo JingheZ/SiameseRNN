@@ -116,7 +116,7 @@ class Patient2Vec(nn.Module):
         context = context.view(batch_size, -1)
         return alpha_actv, context
 
-    def forward(self, inputs, batch_size, inputs_demoip):
+    def forward(self, inputs, inputs_demoip, batch_size):
         """
         the recurrent module
         """
@@ -129,7 +129,7 @@ class Patient2Vec(nn.Module):
         # Add attentions and get context vector
         alpha, context = self.add_attention(states_rnn, batch_size)
         # alpha = self.add_attention(states_rnn, batch_size)
-        # Final linear layer with demographics and previous IP info added 
+        # Final linear layer with demographics and previous IP info added
         context_v2 = torch.cat((context, inputs_demoip), 1)
         linear_y = self.linear(context_v2)
         out = self.func_softmax(linear_y)
@@ -235,7 +235,7 @@ class Patient2Vec0(nn.Module):
         context = context.view(batch_size, -1)
         return alpha, context
 
-    def forward(self, inputs, batch_size, inputs_demoip):
+    def forward(self, inputs, inputs_demoip, batch_size):
         """
         the recurrent module
         """
