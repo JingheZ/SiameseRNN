@@ -137,8 +137,8 @@ def model_testing(model, test, test_y, test_demoips, batch_size=1000):
     # the remaining data less than one batch
     batch_x = test[i * batch_size:]
     batch_demoip = test_demoips[i * batch_size:]
-    batch_y = test_y[i * batch_size:]
-    batch_x, batch_y = list2tensor(batch_x, batch_y)
+    batch_x = Variable(torch.FloatTensor(batch_x), requires_grad=False)
+    batch_demoip = Variable(torch.FloatTensor(batch_demoip), requires_grad=False)
     pred = model_testing_one_batch(model, batch_x, batch_demoip)
     pred_all += pred
     return pred_all

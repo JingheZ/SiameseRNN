@@ -107,6 +107,7 @@ def model_testing(model, test, test_y, test_demoips, w2v, vsize, pad_size, batch
         x = create_sequence(test[i], w2v, vsize, pad_size)
         batch_x.append(x)
     batch_x = Variable(torch.FloatTensor(batch_x), requires_grad=False)
+    batch_demoip = Variable(torch.FloatTensor(batch_demoip), requires_grad=False)
     pred = model_testing_one_batch(model, batch_x, batch_demoip, len(test_y) - i * batch_size)
     pred_all += pred
     return pred_all
