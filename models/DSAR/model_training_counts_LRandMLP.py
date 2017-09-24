@@ -192,7 +192,7 @@ if __name__ == '__main__':
     mlp_hidden_size2 = 64
 
     batch_size = 100
-    epoch_max = 10 # training for maximum 3 epochs of training data
+    epoch_max = 30 # training for maximum 3 epochs of training data
     n_iter_max_dev = 1000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
