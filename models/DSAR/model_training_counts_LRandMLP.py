@@ -205,7 +205,7 @@ if __name__ == '__main__':
     if model_type == 'MLP':
         model = MLPmodel(input_size, mlp_hidden_size1, mlp_hidden_size2, output_size, initrange)
 
-    criterion = nn.CrossEntropyLoss(weight=Variable(torch.FloatTensor([1, 20]), requires_grad=False))
+    criterion = nn.CrossEntropyLoss(weight=Variable(torch.FloatTensor([20]), requires_grad=False))
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
     model_path = './saved_models/model_' + model_type + '.dat'
     print('Start Training...')
