@@ -157,7 +157,7 @@ class Patient2Vec0(nn.Module):
         self.embed = nn.Linear(input_size, embed_size, bias=False)
         # Bidirectional RNN
         self.rnn = getattr(nn, rnn_type)(embed_size, hidden_size, n_layers, dropout=dropout_p,
-                                         batch_first=True, bias=True, bidirectional=False)
+                                         batch_first=True, bias=True, bidirectional=True)
         # initialize 2-layer attention weight matrics
         self.att_w1 = nn.Linear(hidden_size * 2, att_dim, bias=False)
 

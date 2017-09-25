@@ -122,10 +122,10 @@ class Patient2Vec0(nn.Module):
         self.rnn = getattr(nn, rnn_type)(embed_size, hidden_size, n_layers, dropout=dropout_p,
                                          batch_first=True, bias=True, bidirectional=False)
         # initialize 2-layer attention weight matrics
-        self.att_w1 = nn.Linear(hidden_size * 2, att_dim, bias=False)
+        self.att_w1 = nn.Linear(hidden_size, att_dim, bias=False)
 
         # final linear layer
-        self.linear = nn.Linear(hidden_size * 2 + 3, output_size, bias=True)
+        self.linear = nn.Linear(hidden_size + 3, output_size, bias=True)
 
         self.init_weights()
         self.pad_size = pad_size
@@ -178,7 +178,7 @@ class Patient2Vec0(nn.Module):
 
     def encode_rnn(self, embedding, batch_size):
         self.weight = next(self.parameters()).data
-        init_state = (Variable(self.weight.new(self.n_layers * 2, batch_size, self.hidden_size).zero_()))
+        init_state = (Variable(self.weight.new(self.n_layers, batch_size, self.hidden_size).zero_()))
         embedding = self.dropout(embedding)
         outputs_rnn, states_rnn = self.rnn(embedding, init_state)
         return outputs_rnn
@@ -369,7 +369,7 @@ if __name__ == '__main__':
     # model_type = 'rnn-rt'
     input_size = size + 3
     embedding_size = 300
-    hidden_size = 256
+    hidden_size = 128
     n_layers = 1
     seq_len = 12
     output_size = 2
@@ -386,7 +386,7 @@ if __name__ == '__main__':
     n_iter_max_dev = 1000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
-    model_type = 'rnn'
+    model_type = 'crnn'
     # Build and train/load the model
     print('Build Model...')
     # by default build a LR model
@@ -399,8 +399,8 @@ if __name__ == '__main__':
     # elif model_type == 'patient2vec':
     #     model = Patient2Vec(input_size, embedding_size, hidden_size, n_layers, n_hops, att_dim, initrange, output_size,
     #                         rnn_type, seq_len, pad_size, dropout_p=drop)
-    elif model_type == 'patient2vec':
-        model = Patient2Vec0(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
+    elif model_type == 'crnn':
+        model = Patient2Vec0(input_size - 3, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
                             rnn_type, seq_len, pad_size, dropout_p=drop)
 
     criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 20]))
