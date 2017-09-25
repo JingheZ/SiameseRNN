@@ -13,9 +13,90 @@ import torch.optim as optim
 # from models.DSAR.Patient2Vec import Patient2Vec, Patient2Vec0
 from torch.autograd import Variable
 from gensim.models import Word2Vec
-from models.DSAR.Baselines import RNNmodel
+# from models.DSAR.Baselines import RNNmodel
 import numpy as np
 from sklearn import metrics
+
+
+class RNNmodel(nn.Module):
+    """
+    A recurrent NN
+    """
+    def __init__(self, input_size, embed_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len, bi, ct, dropout_p=0.5):
+        """
+        Initilize a recurrent autoencoder
+        """
+        super(RNNmodel, self).__init__()
+
+        # Embedding
+        self.embed = nn.Linear(input_size, embed_size, bias=False)
+        # RNN
+        self.rnn = getattr(nn, rnn_type)(embed_size, hidden_size, n_layers, dropout=dropout_p,
+                                             batch_first=True, bias=True, bidirectional=bi)
+        self.b = 1
+        if bi:
+            self.b = 2
+        self.linear = nn.Linear(hidden_size * self.b, output_size, bias=True)
+        self.tanh = nn.Hardtanh()
+        self.init_weights(initrange)
+        self.input_size = input_size
+        self.embed_size = embed_size
+        self.hidden_size = hidden_size
+        self.n_layers = n_layers
+        self.seq_len = seq_len
+        self.ct = ct
+        self.func_softmax = nn.Softmax()
+        self.func_sigmoid = nn.Sigmoid()
+        self.func_tanh = nn.Hardtanh(0, 1)
+        # Add dropout
+        self.dropout_p = dropout_p
+        self.dropout = nn.Dropout(p=self.dropout_p)
+
+    def init_weights(self, initrange=1):
+        """
+        weight initialization
+        """
+        for param in self.parameters():
+            param.data.uniform_(-initrange, initrange)
+            # param.data.normal_(0, 1)
+
+    def embedding_layer(self, inputs, inputs_demoips):
+        if self.ct:
+            inputs_agg = inputs
+        else:
+            inputs_agg = torch.sum(inputs, dim=2)
+            inputs_agg = torch.squeeze(inputs_agg, dim=2)
+        embedding = []
+        for i in range(self.seq_len):
+            embedded = self.embed(torch.cat((inputs_agg[:, i], inputs_demoips), 1))
+            embedding.append(embedded)
+        embedding = torch.stack(embedding)
+        embedding = torch.transpose(embedding, 0, 1)
+            # embedding = self.tanh(embedding)
+        return embedding
+
+    def encode_rnn(self, embedding, batch_size):
+        self.weight = next(self.parameters()).data
+        init_state = (Variable(self.weight.new(self.n_layers * self.b, batch_size, self.hidden_size).zero_()))
+        # embedding_d = self.dropout(embedding)
+        outputs_rnn, states_rnn = self.rnn(embedding, init_state)
+        return outputs_rnn
+
+    def forward(self, inputs, inputs_demoips, batch_size):
+        """
+        the recurrent module
+        """
+        # Embedding
+        embedding = self.embedding_layer(inputs, inputs_demoips)
+        # embedding = torch.transpose(inputs, 1, 2)
+        # RNN
+        states_rnn = self.encode_rnn(embedding, batch_size)
+        # linear for context vector to get final output
+        linear_y = self.linear(states_rnn[:, -1])
+        out = self.func_softmax(linear_y)
+        # out = self.func_sigmoid(linear_y)
+        # out = self.func_tanh(linear_y)
+        return out, [states_rnn, embedding, linear_y]
 
 
 class Patient2Vec0(nn.Module):
