@@ -373,13 +373,13 @@ if __name__ == '__main__':
     # model_type = 'rnn-rt'
     input_size = int(len(features)/12) + 3
     embedding_size = 150
-    hidden_size = 256
+    hidden_size = 128
     n_layers = 1
     seq_len = 12
     output_size = 2
     rnn_type = 'GRU'
     drop = 0.0
-    learning_rate = 0.0005
+    learning_rate = 0.001
     decay = 0.005
     interval = 100
     initrange = 1
