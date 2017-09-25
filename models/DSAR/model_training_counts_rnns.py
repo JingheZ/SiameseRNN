@@ -378,8 +378,8 @@ if __name__ == '__main__':
     seq_len = 12
     output_size = 2
     rnn_type = 'GRU'
-    drop = 0.0
-    learning_rate = 0.001
+    drop = 0.2
+    learning_rate = 0.0005
     decay = 0.005
     interval = 100
     initrange = 1
@@ -402,7 +402,7 @@ if __name__ == '__main__':
         model = RETAIN(input_size, embedding_size, hidden_size, n_layers, initrange, output_size,
                             rnn_type, seq_len, dropout_p=drop)
     # criterion = nn.MultiLabelMarginLoss()
-    criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 25]))
+    criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 20]))
     # criterion = nn.MultiLabelSoftMarginLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
     model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '.dat'
@@ -446,12 +446,12 @@ if __name__ == '__main__':
                                                                 len(valid_ids))
                 perfm_dev, auc_dev = calculate_performance(validate_y.data.tolist(), pred_ind_dev)
                 print("Performance on dev set: AUC is %.3f" % auc_dev)
-                print(perfm_dev)
+                # print(perfm_dev)
 
                 pred_ind_batch = model_testing_one_batch(model, model_type, batch_x, batch_demoip, batch_size)
                 perfm_batch, auc_batch = calculate_performance(batch_y.data.tolist(), pred_ind_batch)
                 print("Performance on training set: AUC is %.3f" % auc_batch)
-                print(perfm_batch)
+                # print(perfm_batch)
                 print('Validation, loss: %.3f' % (loss_dev.data[0]))
                 # if loss_dev < best_loss_dev:
                 #     best_loss_dev = loss_dev
