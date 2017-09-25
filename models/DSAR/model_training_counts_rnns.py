@@ -111,8 +111,8 @@ def calculate_performance(test_y, pred):
     auc = metrics.roc_auc_score(test_y, pred)
     return perfm, auc
 
-if __name__ == '__main__':
 
+if __name__ == '__main__':
     #  ============== Prepare Data ===========================
     # get demographic and previous IP info
     train_demoips, validate_demoips, test_demoips = process_demoip()
@@ -158,7 +158,7 @@ if __name__ == '__main__':
     n_hops = 5
 
     batch_size = 100
-    epoch_max = 30 # training for maximum 3 epochs of training data
+    epoch_max = 10 # training for maximum 3 epochs of training data
     n_iter_max_dev = 1000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
     model_type = 'rnn'
