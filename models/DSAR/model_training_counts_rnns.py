@@ -373,18 +373,17 @@ if __name__ == '__main__':
     # model_type = 'rnn-rt'
     input_size = int(len(features)/12) + 3
     embedding_size = 150
-    hidden_size = 64
+    hidden_size = 256
     n_layers = 1
     seq_len = 12
     output_size = 2
     rnn_type = 'GRU'
     drop = 0.0
-    learning_rate = 0.001
-    decay = 0.01
+    learning_rate = 0.0005
+    decay = 0.005
     interval = 100
     initrange = 1
     att_dim = 100
-    n_hops = 5
 
     batch_size = 100
     epoch_max = 5 # training for maximum 3 epochs of training data
