@@ -200,7 +200,7 @@ if __name__ == '__main__':
     # Build and train/load the model
     print('Build Model...')
     # by default build a LR model
-    if model_type == 'LR': # 5 epochs, lr=0.001, decay=0.01, weight=1:20; auc: 0.698
+    if model_type == 'LR': # 5 epochs, lr=0.001, decay=0.01, weight=1:20; auc: 0.698; with current parameters: 0.640
         model = LRmodel(input_size, output_size, initrange)
     if model_type == 'MLP':
         model = MLPmodel(input_size, mlp_hidden_size1, output_size, initrange)
