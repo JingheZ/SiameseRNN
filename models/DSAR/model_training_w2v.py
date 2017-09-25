@@ -386,7 +386,7 @@ if __name__ == '__main__':
     n_iter_max_dev = 1000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
-    model_type = 'rnn-bi'
+    model_type = 'rnn'
     # Build and train/load the model
     print('Build Model...')
     # by default build a LR model
@@ -403,7 +403,7 @@ if __name__ == '__main__':
         model = Patient2Vec0(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
                             rnn_type, seq_len, pad_size, dropout_p=drop)
 
-    criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 20]))
+    criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 25]))
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
     model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '.dat'
     print('Start Training...')
