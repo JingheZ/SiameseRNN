@@ -372,7 +372,7 @@ if __name__ == '__main__':
     # Model hyperparameters
     # model_type = 'rnn-rt'
     input_size = int(len(features)/12) + 3
-    embedding_size = 150
+    embedding_size = 200
     hidden_size = 128
     n_layers = 1
     seq_len = 12
