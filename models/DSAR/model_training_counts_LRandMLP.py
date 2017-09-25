@@ -185,10 +185,10 @@ if __name__ == '__main__':
     output_size = 2
     drop = 0.0
     learning_rate = 0.0005
-    decay = 0.001
+    decay = 0.005
     interval = 10
     initrange = 1
-    mlp_hidden_size1 = 256
+    mlp_hidden_size1 = 128
     # mlp_hidden_size2 = 1024
 
     batch_size = 100
