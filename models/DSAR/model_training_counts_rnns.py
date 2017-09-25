@@ -372,8 +372,8 @@ if __name__ == '__main__':
     # Model hyperparameters
     # model_type = 'rnn-rt'
     input_size = int(len(features)/12) + 3
-    embedding_size = 250
-    hidden_size = 256
+    embedding_size = 150
+    hidden_size = 128
     n_layers = 1
     seq_len = 12
     output_size = 2
@@ -389,7 +389,7 @@ if __name__ == '__main__':
     epoch_max = 3 # training for maximum 3 epochs of training data
     n_iter_max_dev = 1000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
-    model_type = 'rnn'
+    model_type = 'retain'
     # Build and train/load the model
     print('Build Model...')
     # by default build a RNN model
@@ -402,7 +402,7 @@ if __name__ == '__main__':
         model = RETAIN(input_size, embedding_size, hidden_size, n_layers, initrange, output_size,
                             rnn_type, seq_len, dropout_p=drop)
     # criterion = nn.MultiLabelMarginLoss()
-    criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 25]))
+    criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 20]))
     # criterion = nn.MultiLabelSoftMarginLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
     model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '.dat'
