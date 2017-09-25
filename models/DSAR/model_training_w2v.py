@@ -370,15 +370,15 @@ if __name__ == '__main__':
     # model_type = 'rnn-rt'
     input_size = size + 3
     embedding_size = 150
-    hidden_size = 64
+    hidden_size = 128
     n_layers = 1
     seq_len = 12
     output_size = 2
     rnn_type = 'GRU'
     drop = 0.0
-    learning_rate = 0.001
+    learning_rate = 0.0005
     decay = 0.01
-    interval = 10
+    interval = 100
     initrange = 1
     att_dim = 1
     n_hops = 5
@@ -407,63 +407,63 @@ if __name__ == '__main__':
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
     model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '.dat'
     print('Start Training...')
-    if os.path.exists(model_path):
-        saved_model = torch.load(model_path)
-        model.load_state_dict(saved_model)
+    # if os.path.exists(model_path):
+    #     saved_model = torch.load(model_path)
+    #     model.load_state_dict(saved_model)
     # # else:
-    #     # model.init_weights(initrange)
-    #     # Train the model
-    # start_time = time.time()
-    # best_loss_dev = 100
-    # best_dev_iter = 0
-    # n_iter = 0
-    # epoch = 0
-    # while epoch < epoch_max:
-    #     step = 0
-    #     while (step + 1) * batch_size < train_iters:
-    #         batch_x, batch_demoip, batch_y = create_batch(step, batch_size, train, train_demoips, train_y, w2v_model, size, pad_size)
-    #         optimizer.zero_grad()
-    #         y_pred, _ = model(batch_x, batch_demoip, batch_size)
-    #         # states, alpha, beta = model(batch_x, batch_size)
-    #         loss = criterion(y_pred, batch_y)
-    #         # loss = CrossEntropy_Multi(y_pred, batch_y, output_size, criterion)
-    #         # loss = get_loss(y_pred, batch_y, criterion, seq_len)
-    #         loss.backward()
-    #         optimizer.step()
-    #
-    #         if step % interval == 0:
-    #             elapsed = time.time() - start_time
-    #             # acc = calcualte_accuracy(y_pred, batch_y, batch_size)
-    #             print('%i epoch, %i batches, elapsed time: %.2f, loss: %.3f' % (epoch + 1, step + 1, elapsed, loss.data[0]))
-    #             # Evaluate model performance on validation set
-    #             pred_dev, _ = model(validate_x, validate_demoips, len(valid_ids))
-    #             loss_dev = criterion(pred_dev, validate_y)
-    #             pred_ind_dev = model_testing_one_batch(model, validate_x, validate_demoips,
-    #                                                    len(valid_ids))
-    #             perfm_dev, auc_dev = calculate_performance(validate_y.data.tolist(), pred_ind_dev)
-    #             print("Performance on dev set: AUC is %.3f" % auc_dev)
-    #             print(perfm_dev)
-    #
-    #             pred_ind_batch = model_testing_one_batch(model, batch_x, batch_demoip, batch_size)
-    #             perfm_batch, auc_batch = calculate_performance(batch_y.data.tolist(), pred_ind_batch)
-    #             print("Performance on training set: AUC is %.3f" % auc_batch)
-    #             print(perfm_batch)
-    #             print('Validation, loss: %.3f' % (loss_dev.data[0]))
-    #             # if loss_dev < best_loss_dev:
-    #             #     best_loss_dev = loss_dev
-    #             #     best_dev_iter = n_iter
-    #             # if n_iter - best_dev_iter >= n_iter_max_dev:
-    #             #     break
-    #         step += 1
-    #         # n_iter += 1
-    #     # if n_iter - best_dev_iter >= n_iter_max_dev:
-    #     #     break
-    #     epoch += 1
-    # # save trained model
-    # state_to_save = model.state_dict()
-    # torch.save(state_to_save, model_path)
-    # elapsed = time.time() - start_time
-    # print('Training Finished! Total Training Time is: % .2f' % elapsed)
+        # model.init_weights(initrange)
+        # Train the model
+    start_time = time.time()
+    best_loss_dev = 100
+    best_dev_iter = 0
+    n_iter = 0
+    epoch = 0
+    while epoch < epoch_max:
+        step = 0
+        while (step + 1) * batch_size < train_iters:
+            batch_x, batch_demoip, batch_y = create_batch(step, batch_size, train, train_demoips, train_y, w2v_model, size, pad_size)
+            optimizer.zero_grad()
+            y_pred, _ = model(batch_x, batch_demoip, batch_size)
+            # states, alpha, beta = model(batch_x, batch_size)
+            loss = criterion(y_pred, batch_y)
+            # loss = CrossEntropy_Multi(y_pred, batch_y, output_size, criterion)
+            # loss = get_loss(y_pred, batch_y, criterion, seq_len)
+            loss.backward()
+            optimizer.step()
+
+            if step % interval == 0:
+                elapsed = time.time() - start_time
+                # acc = calcualte_accuracy(y_pred, batch_y, batch_size)
+                print('%i epoch, %i batches, elapsed time: %.2f, loss: %.3f' % (epoch + 1, step + 1, elapsed, loss.data[0]))
+                # Evaluate model performance on validation set
+                pred_dev, _ = model(validate_x, validate_demoips, len(valid_ids))
+                loss_dev = criterion(pred_dev, validate_y)
+                pred_ind_dev = model_testing_one_batch(model, validate_x, validate_demoips,
+                                                       len(valid_ids))
+                perfm_dev, auc_dev = calculate_performance(validate_y.data.tolist(), pred_ind_dev)
+                print("Performance on dev set: AUC is %.3f" % auc_dev)
+                print(perfm_dev)
+
+                pred_ind_batch = model_testing_one_batch(model, batch_x, batch_demoip, batch_size)
+                perfm_batch, auc_batch = calculate_performance(batch_y.data.tolist(), pred_ind_batch)
+                print("Performance on training set: AUC is %.3f" % auc_batch)
+                print(perfm_batch)
+                print('Validation, loss: %.3f' % (loss_dev.data[0]))
+                # if loss_dev < best_loss_dev:
+                #     best_loss_dev = loss_dev
+                #     best_dev_iter = n_iter
+                # if n_iter - best_dev_iter >= n_iter_max_dev:
+                #     break
+            step += 1
+            # n_iter += 1
+        # if n_iter - best_dev_iter >= n_iter_max_dev:
+        #     break
+        epoch += 1
+    # save trained model
+    state_to_save = model.state_dict()
+    torch.save(state_to_save, model_path)
+    elapsed = time.time() - start_time
+    print('Training Finished! Total Training Time is: % .2f' % elapsed)
     #
     # # ============================ To evaluate model using testing set =============================================
     print('Start Testing...')
