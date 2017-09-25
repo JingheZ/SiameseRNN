@@ -303,8 +303,8 @@ def model_testing(model, test, test_y, test_demoips, w2v, vsize, pad_size, batch
     # the remaining data less than one batch
     batch_demoip = test_demoips[i * batch_size:]
     batch_x = []
-    for i in range(i * batch_size, len(test_y)):
-        x = create_sequence(test[i], w2v, vsize, pad_size)
+    for j in range(i * batch_size, len(test_y)):
+        x = create_sequence(test[j], w2v, vsize, pad_size)
         batch_x.append(x)
     batch_x = Variable(torch.FloatTensor(batch_x), requires_grad=False)
     batch_demoip = Variable(torch.FloatTensor(batch_demoip), requires_grad=False)
