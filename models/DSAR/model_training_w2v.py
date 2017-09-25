@@ -369,7 +369,7 @@ if __name__ == '__main__':
     # Model hyperparameters
     # model_type = 'rnn-rt'
     input_size = size + 3
-    embedding_size = 300
+    embedding_size = 400
     hidden_size = 128
     n_layers = 1
     seq_len = 12
@@ -442,12 +442,12 @@ if __name__ == '__main__':
                                                        len(valid_ids))
                 perfm_dev, auc_dev = calculate_performance(validate_y.data.tolist(), pred_ind_dev)
                 print("Performance on dev set: AUC is %.3f" % auc_dev)
-                print(perfm_dev)
+                # print(perfm_dev)
 
                 pred_ind_batch = model_testing_one_batch(model, batch_x, batch_demoip, batch_size)
                 perfm_batch, auc_batch = calculate_performance(batch_y.data.tolist(), pred_ind_batch)
                 print("Performance on training set: AUC is %.3f" % auc_batch)
-                print(perfm_batch)
+                # print(perfm_batch)
                 print('Validation, loss: %.3f' % (loss_dev.data[0]))
                 # if loss_dev < best_loss_dev:
                 #     best_loss_dev = loss_dev
