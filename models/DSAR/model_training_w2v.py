@@ -326,7 +326,6 @@ if __name__ == '__main__':
     # get demographic and previous IP info
     train_demoips, validate_demoips, test_demoips = process_demoip()
 
-    model_type = 'rnn'
     # model_type = 'rnn-rt'
     # model_type = 'retain'
     # model_type = 'rnn-bi'
@@ -387,6 +386,7 @@ if __name__ == '__main__':
     n_iter_max_dev = 1000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
+    model_type = 'rnn-bi'
     # Build and train/load the model
     print('Build Model...')
     # by default build a LR model
