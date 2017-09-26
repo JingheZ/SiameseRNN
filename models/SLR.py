@@ -806,7 +806,11 @@ if __name__ == '__main__':
     data_dm4[data_dm4['ptid'] == '769052'].to_csv('./data/example_dmpt.csv') # rf predicted proba: 0.782
     data_control4[data_control4['ptid'] =='1819093'].to_csv('./data/example_controlpt.csv') # rf predicted proba: 0.033
 
-
+    data['adm_day'] = data['adm_date'].apply(lambda x: int(x / 60 / 24))
+    data['adm_month'] = data['adm_day'].apply(lambda x: int(x / 30))
+    del data['rank']
+    del data['dis_date']
+    del data['adm_date']
     # ============= Add t-sne or pca for visualization ==========================================================
 
     train_tsne0 = tsne(train_x0)
