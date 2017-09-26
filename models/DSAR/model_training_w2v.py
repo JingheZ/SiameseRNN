@@ -382,11 +382,11 @@ if __name__ == '__main__':
     att_dim = 1
     n_hops = 5
     batch_size = 100
-    epoch_max = 5 # training for maximum 3 epochs of training data
+    epoch_max = 1 # training for maximum 3 epochs of training data
     n_iter_max_dev = 1000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
-    model_type = 'crnn'
+    model_type = 'rnn'
     # Build and train/load the model
     print('Build Model...')
     # by default build a LR model
