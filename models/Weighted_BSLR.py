@@ -687,3 +687,15 @@ if __name__ == '__main__':
         data_dm[data_dm['ptid'] == '387115'].to_csv('./data/comorbid_risk_neg_example2_withselectvar_obswindow.csv')  # rf predicted proba: 0.782
         data_dm5[data_dm5['ptid'] == '387115'].to_csv('./data/comorbid_risk_neg_example2_obswindow.csv')
         data_dm2[data_dm2['ptid'] == '387115'].to_csv('./data/comorbid_risk_neg_example2_all.csv')
+
+        # # analysis on example patient
+        #
+        #
+        # import pandas as pd
+        # exm1 = pd.read_csv('./data/comorbid_risk_neg_example2_all.csv')
+        # exm1['adm_day'] = exm1['adm_date'].apply(lambda x: int(x / 60 / 24))
+        # exm1['adm_month'] = exm1['adm_day'].apply(lambda x: int(x / 30))
+        # del exm1['rank']
+        # del exm1['dis_date']
+        # del exm1['adm_date']
+        # exm1 = exm1[['dxcat', 'adm_day', 'adm_month', 'first_dm_date']]
