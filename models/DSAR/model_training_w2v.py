@@ -360,9 +360,9 @@ if __name__ == '__main__':
     size = 100
     # Prepare validation data for the model
     validate_x, validate_y = create_full_set(validate, validate_y, w2v_model, size, pad_size)
-    with open('./data/hospitalization_validate_data_padded.pickle', 'wb') as f:
-        pickle.dump([validate_x, validate_y], f)
-    f.close()
+    # with open('./data/hospitalization_validate_data_padded.pickle', 'wb') as f:
+    #     pickle.dump([validate_x, validate_y], f)
+    # f.close()
     validate_x, validate_y = list2tensor(validate_x, validate_y)
     validate_demoips = Variable(torch.FloatTensor(validate_demoips), requires_grad=False)
     # Model hyperparameters
@@ -382,7 +382,7 @@ if __name__ == '__main__':
     att_dim = 1
     n_hops = 5
     batch_size = 100
-    epoch_max = 3 # training for maximum 3 epochs of training data
+    epoch_max = 5 # training for maximum 3 epochs of training data
     n_iter_max_dev = 1000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
