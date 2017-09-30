@@ -689,8 +689,6 @@ if __name__ == '__main__':
 
 
         # # analysis on example patient
-        #
-        #
         # import pandas as pd
         # exm1 = pd.read_csv('./data/comorbid_risk_neg_example2_all.csv')
         # exm1['adm_day'] = exm1['adm_date'].apply(lambda x: int(x / 60 / 24))
@@ -730,7 +728,7 @@ if __name__ == '__main__':
                                          disp=0)
             return x
 
-        n = 50
+        n = 30
         preds_bagslr = pd.read_csv('./data/comorbid_risk_pred_y_' + str(n) + '.csv', index_col=0)
         y = preds_bagslr['response'].values
         del preds_bagslr['response']
