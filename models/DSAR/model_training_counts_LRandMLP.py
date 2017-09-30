@@ -202,10 +202,11 @@ if __name__ == '__main__':
     # by default build a LR model
     if model_type == 'LR': # 5 epochs, lr=0.001, decay=0.01, weight=1:20; auc: 0.698; with current parameters: 0.640
         model = LRmodel(input_size, output_size, initrange)
-    if model_type == 'MLP':
+    elif model_type == 'MLP':
         model = MLPmodel(input_size, mlp_hidden_size1, output_size, initrange)
 
-    criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 20]))
+    # criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 11]))
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
     model_path = './saved_models/model_' + model_type + '.dat'
     print('Start Training...')

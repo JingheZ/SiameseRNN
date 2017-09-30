@@ -435,7 +435,9 @@ if __name__ == '__main__':
     #     visits_v3 = pickle.load(f)
     # f.close()
 
-
+    with open('./data/visits_v2.pickle', 'rb') as f:
+        visits_v2 = pickle.load(f)
+    f.close()
     # get all patients who have a 1.5 year history
     visits_v3 = visits_v2[visits_v2['anon_dis_date_y'] >= 1.5 * 360 * 24 * 60]
     visits_v3_ids = set(visits_v3['ptid'].values) # 103363 pts
@@ -514,42 +516,46 @@ if __name__ == '__main__':
         pickle.dump(dt, f)
     f.close()
 
-    # to exclude some inhospitalization
-    with open('./data/clinical_events_hospitalization.pickle', 'rb') as f:
-        dt = pickle.load(f)
-    f.close()
+    # # to exclude some inhospitalization
+    # with open('./data/clinical_events_hospitalization.pickle', 'rb') as f:
+    #     dt = pickle.load(f)
+    # f.close()
+    #
+    # with open('./data/dxs_data_v2.pickle', 'rb') as f:
+    #     dxs = pickle.load(f)
+    # f.close()
+    #
+    # dt2 = pd.merge(left=dt, right=dxs[['vid', 'pdx']],
+    #               left_on='vid', right_on='vid', how='inner')
+    # dt2_ips = dt2[dt2['cdrIPorOP'] == 'IP']
+    # dt2_ips = dt2[~dt2['pdx'].isnull()]
+    # dxgrps0, dxgrps_dict0, dxgrps_dict20 = dx2dxcat()
+    # dt2_ips2 = process_pdxs(dt2_ips, dxgrps_dict0, dxgrps_dict20)
+    # # cts = dt2_ips2[['ptid', 'pdxcat']].drop_duplicates().groupby('pdxcat').count()
+    # # cts.reset_index(inplace=True)
+    # # cts.columns = ['pdxcat', 'ct']
+    # # cts = cts.sort(['ct'], ascending=[0])
+    # # # cts2 = cts[cts['pdxcat'].isin(['49', '50', '108', '127', '158'])]
+    # # cts['pdxcat'] = cts['pdxcat'].astype(int)
+    # # cts = cts[~cts['pdxcat'].between(176, 239)]
+    # # cts = cts[~cts['pdxcat'].between(2601, 2621)]
+    # # cts['pdxcat'] = cts['pdxcat'].astype(str)
+    # dt2_ips2['pdxcat'] = dt2_ips2['pdxcat'].astype(int)
+    # dt2_ips3 = dt2_ips2[dt2_ips2['pdxcat'].between(2601, 2621)] # E codes
+    # dt2_ips4 = dt2_ips2[dt2_ips2['pdxcat'].between(212, 240)] # dxs at birth, injuries, fractures, etc.
+    # dt2_ips5 = dt2_ips2[dt2_ips2['pdxcat'] == 196]
+    # unavoid_ip_ptids = set(dt2_ips3['ptid'].values).union(set(dt2_ips4['ptid'].values)).union(set(dt2_ips5['ptid'].values))
+    # # unavoid_ip_ptids = set(dt2_ips3['ptid'].values)
+    # other_ip_ids = set(dt2_ips2['ptid'].values).difference(unavoid_ip_ptids)
+    # final_pos_ids = set(other_ip_ids).intersection(set(pos_ids)) # 4,463
+    # final_neg_ids = set(neg_ids).difference(set(unavoid_ip_ptids)) # 72,677
+    #
+    # with open('./data/hospitalization_data_pos_neg_ids.pickle', 'wb') as f:
+    #     pickle.dump([final_pos_ids, final_neg_ids], f)
+    # f.close()
 
-    with open('./data/dxs_data_v2.pickle', 'rb') as f:
-        dxs = pickle.load(f)
-    f.close()
-
-    dt2 = pd.merge(left=dt, right=dxs[['vid', 'pdx']],
-                  left_on='vid', right_on='vid', how='inner')
-    dt2_ips = dt2[dt2['cdrIPorOP'] == 'IP']
-    dt2_ips = dt2[~dt2['pdx'].isnull()]
-    dxgrps0, dxgrps_dict0, dxgrps_dict20 = dx2dxcat()
-    dt2_ips2 = process_pdxs(dt2_ips, dxgrps_dict0, dxgrps_dict20)
-    # cts = dt2_ips2[['ptid', 'pdxcat']].drop_duplicates().groupby('pdxcat').count()
-    # cts.reset_index(inplace=True)
-    # cts.columns = ['pdxcat', 'ct']
-    # cts = cts.sort(['ct'], ascending=[0])
-    # # cts2 = cts[cts['pdxcat'].isin(['49', '50', '108', '127', '158'])]
-    # cts['pdxcat'] = cts['pdxcat'].astype(int)
-    # cts = cts[~cts['pdxcat'].between(176, 239)]
-    # cts = cts[~cts['pdxcat'].between(2601, 2621)]
-    # cts['pdxcat'] = cts['pdxcat'].astype(str)
-    dt2_ips2['pdxcat'] = dt2_ips2['pdxcat'].astype(int)
-    dt2_ips3 = dt2_ips2[dt2_ips2['pdxcat'].between(2601, 2621)] # E codes
-    dt2_ips4 = dt2_ips2[dt2_ips2['pdxcat'].between(212, 240)] # dxs at birth, injuries, fractures, etc.
-    dt2_ips5 = dt2_ips2[dt2_ips2['pdxcat'] == 196]
-    unavoid_ip_ptids = set(dt2_ips3['ptid'].values).union(set(dt2_ips4['ptid'].values)).union(set(dt2_ips5['ptid'].values))
-    # unavoid_ip_ptids = set(dt2_ips3['ptid'].values)
-    other_ip_ids = set(dt2_ips2['ptid'].values).difference(unavoid_ip_ptids)
-    final_pos_ids = set(other_ip_ids).intersection(set(pos_ids)) # 4,463
-    final_neg_ids = set(neg_ids).difference(set(unavoid_ip_ptids)) # 72,677
-
-    with open('./data/hospitalization_data_pos_neg_ids.pickle', 'wb') as f:
-        pickle.dump([final_pos_ids, final_neg_ids], f)
+    with open('./data/hospitalization_data_pos_neg_ids_v0.pickle', 'wb') as f:
+        pickle.dump([pos_ids, neg_ids], f)
     f.close()
 
     dt = dt[['ptid', 'adm_month', 'itemid', 'cdrIPorOP']].drop_duplicates()
@@ -560,18 +566,18 @@ if __name__ == '__main__':
         pickle.dump(dt_1yr, f)
     f.close()
 
-    # get the primary dx of hospitalization of interest
-    IPs = dt2_ips2[dt2_ips2['adm_month'] > 17]
-    IP_adm = IPs[['ptid', 'adm_month']].drop_duplicates().groupby(['ptid']).min()
-    IP_adm = IP_adm.reset_index()
-    IP_adm_pdx = pd.merge(left=IPs[['ptid', 'adm_month', 'pdxcat']].drop_duplicates(), right=IP_adm,
-                  left_on='ptid', right_on='ptid', how='inner')
-    IP_adm_pdx = IP_adm_pdx[IP_adm_pdx['adm_month_x'] == IP_adm_pdx['adm_month_y']]
-    del IP_adm_pdx['adm_month_y']
-    IP_adm_pdx.columns = ['ptid', 'adm_month', 'pdxcat']
-    with open('./data/IP_adm_month_pdx.pickle', 'wb') as f:
-        pickle.dump(IP_adm_pdx, f)
-    f.close()
+    # # get the primary dx of hospitalization of interest
+    # IPs = dt2_ips2[dt2_ips2['adm_month'] > 17]
+    # IP_adm = IPs[['ptid', 'adm_month']].drop_duplicates().groupby(['ptid']).min()
+    # IP_adm = IP_adm.reset_index()
+    # IP_adm_pdx = pd.merge(left=IPs[['ptid', 'adm_month', 'pdxcat']].drop_duplicates(), right=IP_adm,
+    #               left_on='ptid', right_on='ptid', how='inner')
+    # IP_adm_pdx = IP_adm_pdx[IP_adm_pdx['adm_month_x'] == IP_adm_pdx['adm_month_y']]
+    # del IP_adm_pdx['adm_month_y']
+    # IP_adm_pdx.columns = ['ptid', 'adm_month', 'pdxcat']
+    # with open('./data/IP_adm_month_pdx.pickle', 'wb') as f:
+    #     pickle.dump(IP_adm_pdx, f)
+    # f.close()
 
     # prepare data for word embedding w2v
     with open('./data/clinical_events_hospitalization.pickle', 'rb') as f:

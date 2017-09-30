@@ -658,7 +658,7 @@ if __name__ == '__main__':
             test_proba.to_csv('./data/comorbid_risk_test_proba_baseline_LSR_r' + str(r) + '_bs' + str(n) + '.csv', index=False)
 
         # get the features of the model with the highest weight in the proposed framework
-        features5_all = pd.read_csv('./data/sgl_coefs_alpha7_r0_bootstrap67.csv')
+        features5_all = pd.read_csv('./data/sgl_coefs_alpha7_r0_bootstrap29.csv')
         i = features5_all.columns[1]
         features5_inds = features5_all[i]
         features5 = [(features5a[j], features5_inds.loc[j]) for j in features5_inds.index if features5_inds.loc[j] != 0]
@@ -669,7 +669,6 @@ if __name__ == '__main__':
         # tune the threshold for the proposed model on validation set
         valid_proba = pd.read_csv('./data/comorbid_risk_prediction_valid_50.csv')
         tune_proba_threshold_pred(valid_proba['pred'].values, valid_proba['response'], 1)
-        # threshold: bs size = 20 (0.96); rf size = 50 (0.99);
 
         # get example pt records
         data_dmckd[data_dmckd['ptid'] == '1658503'].to_csv('./data/comorbid_risk_pos_example1_withselectvar_obswindow.csv')  # rf predicted proba: 0.782
@@ -687,3 +686,42 @@ if __name__ == '__main__':
         data_dm[data_dm['ptid'] == '387115'].to_csv('./data/comorbid_risk_neg_example2_withselectvar_obswindow.csv')  # rf predicted proba: 0.782
         data_dm5[data_dm5['ptid'] == '387115'].to_csv('./data/comorbid_risk_neg_example2_obswindow.csv')
         data_dm2[data_dm2['ptid'] == '387115'].to_csv('./data/comorbid_risk_neg_example2_all.csv')
+
+
+        import scipy as sp
+        from scipy import optimize as opt
+        import random
+
+        def nnlr(X, y):
+            """
+            Non-negative Logistic Regression
+            """
+
+            def lr_cost(X, y, theta):
+                m = len(y)
+                return (1. / m) * (sp.dot(-y, sp.log(sigmoid(sp.dot(X, theta)))) - sp.dot((1 - y), sp.log(1 - sigmoid(sp.dot(X, theta)))))
+
+            def lr_grad(X, y, theta):
+                m = len(y)
+                return (1. / m) * (sp.dot(X.T, sigmoid(sp.dot(X, theta)) - y))
+
+            def sigmoid(z):
+                return 1 / (1 + sp.exp(-z))
+
+            N = X.shape[1]
+            J = lambda theta: lr_cost(X, y, theta)
+            J_grad = lambda theta: lr_grad(X, y, theta)
+            random.seed(1)
+            theta0 = np.random.uniform(0, 1, N)
+            x, nfeval, rc = opt.fmin_tnc(J, theta0, fprime=J_grad, bounds=[(0, None)] * N,
+                                         disp=0)
+            return x
+
+        n = 50
+        preds_bagslr = pd.read_csv('./data/comorbid_risk_pred_y_' + str(n) + '.csv', index_col=0)
+        y = preds_bagslr['response'].values
+        del preds_bagslr['response']
+        coefs = nnlr(preds_bagslr, y)
+        pd.Series(coefs).to_csv('./data/comorbid_risk_bagging_weights_' + str(n) + '.csv')
+
+

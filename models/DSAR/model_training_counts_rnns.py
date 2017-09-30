@@ -372,14 +372,14 @@ if __name__ == '__main__':
     # Model hyperparameters
     # model_type = 'rnn-rt'
     input_size = int(len(features)/12) + 3
-    embedding_size = 100
+    embedding_size = 300
     hidden_size = 128
     n_layers = 1
     seq_len = 12
     output_size = 2
     rnn_type = 'GRU'
     drop = 0.0
-    learning_rate = 0.0005
+    learning_rate = 0.001
     decay = 0.005
     interval = 100
     initrange = 1
@@ -389,7 +389,7 @@ if __name__ == '__main__':
     epoch_max = 5 # training for maximum 3 epochs of training data
     n_iter_max_dev = 1000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
-    model_type = 'retain'
+    model_type = 'rnn'
     # Build and train/load the model
     print('Build Model...')
     # by default build a RNN model
@@ -402,7 +402,7 @@ if __name__ == '__main__':
         model = RETAIN(input_size, embedding_size, hidden_size, n_layers, initrange, output_size,
                             rnn_type, seq_len, dropout_p=drop)
     # criterion = nn.MultiLabelMarginLoss()
-    criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 20]))
+    criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 11]))
     # criterion = nn.MultiLabelSoftMarginLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
     model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '.dat'
@@ -485,7 +485,7 @@ if __name__ == '__main__':
     with open(result_file, 'wb') as f:
         pickle.dump([pred_test, test_y], f)
     f.close()
-    # print('Testing Finished!')
+    print('Testing Finished!')
     # with open(output_file, 'wb') as f:
     #     pickle.dump(output_test, f)
     # f.close()

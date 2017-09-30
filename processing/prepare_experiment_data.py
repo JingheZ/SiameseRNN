@@ -18,13 +18,14 @@ def split_train_validate_test(pos, neg):
     rs = StratifiedShuffleSplit(n_splits=1, train_size=0.7, test_size=0.2, random_state=1)
     train_ids = []
     test_ids = []
+    valid_ids = []
     for train_ind, test_ind in rs.split(ids, ys):
         train_ids, test_ids = ids[train_ind], ids[test_ind]
-    valid_pos = set(pos).difference(set(train_ids).union(set(test_ids)))
-    rest_neg = set(neg).difference(set(train_ids).union(set(test_ids)))
-    valid_neg = random.sample(list(rest_neg), len(valid_pos))
-    valid_ids = list(valid_pos) + list(valid_neg)
-        # valid_ids = set(ids).difference(set(train_ids).union(set(test_ids)))
+    # valid_pos = set(pos).difference(set(train_ids).union(set(test_ids)))
+    # rest_neg = set(neg).difference(set(train_ids).union(set(test_ids)))
+    # valid_neg = random.sample(list(rest_neg), len(valid_pos))
+    # valid_ids = list(valid_pos) + list(valid_neg)
+        valid_ids = set(ids).difference(set(train_ids).union(set(test_ids)))
     return train_ids, valid_ids, test_ids
 
 
@@ -97,7 +98,7 @@ if __name__ == '__main__':
     # print(sims)
 
     # =============== prepare training, validate, and test data ==============
-    with open('./data/hospitalization_data_pos_neg_ids.pickle', 'rb') as f:
+    with open('./data/hospitalization_data_pos_neg_ids_v0.pickle', 'rb') as f:
         pos_ids, neg_ids = pickle.load(f)
     f.close()
 
@@ -109,7 +110,7 @@ if __name__ == '__main__':
     dt_neg = dt[dt['ptid'].isin(neg_ids)]
     dt1 = pd.concat([dt_pos, dt_neg], axis=0)
 
-    # dt1 = dt_pos
+    dt1 = dt_pos
     item_cts = dt1[['ptid', 'itemid']].drop_duplicates().groupby('itemid').count()
     item_cts_100 = item_cts[item_cts['ptid'] > 50]
     dt1 = dt1[dt1['itemid'].isin(vocab)]
@@ -118,9 +119,9 @@ if __name__ == '__main__':
     dt = dt1[['ptid', 'itemid', 'adm_month']].groupby(['ptid', 'adm_month'])['itemid'].apply(list)
     dt = dt.reset_index()
     dt['length'] = dt['itemid'].apply(lambda x: len(x))
-    # remove patients with more than 115 items in a month
-    pts_115 = dt[dt['length'] > 115]
-    dt1 = dt1[~dt1['ptid'].isin(set(pts_115['ptid'].values))]
+    # remove patients with more than 76 items in a month # 5% of all population are removed
+    pts_76 = dt[dt['length'] > 76]
+    dt1 = dt1[~dt1['ptid'].isin(set(pts_76['ptid'].values))]
     ptids = set(dt1['ptid'].values)
 
     print('original_total_pts %i' % (len(pos_ids) + len(neg_ids))) # 73877
@@ -244,6 +245,7 @@ if __name__ == '__main__':
 
     # get the counts of each month in the window
     counts_sub = get_counts_subwindow(dt3)
+    counts_sub['ptid'] = counts_sub.index.values
     counts_sub = counts_sub[counts_sub['ptid'].isin(ptids)]
     counts_sub_ptids = counts_sub['ptid'].values
     del counts_sub['ptid']
