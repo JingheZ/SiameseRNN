@@ -811,7 +811,43 @@ if __name__ == '__main__':
     del data['rank']
     del data['dis_date']
     del data['adm_date']
-    # ============= Add t-sne or pca for visualization ==========================================================
+    # analysis on example patient
+    # import pandas as pd
+    # import pickle
+    # test_proba = pd.read_csv('./data/test_proba_v3.csv')
+    #
+    # with open('./data/train_test_ptids.pickle', 'rb') as f:
+    #     train_ids, test_ids = pickle.load(f)
+    #
+    # test_proba['ptid'] = test_ids
+    # test_proba.sort(['b5_rf', 'b5_lasso'], ascending=[1, 1], inplace=True)
+    #
+    # with open('./data/visits_v4.pickle', 'rb') as f:
+    #     visits = pickle.load(f)
+    #
+    # visits.columns = ['ptid', 'vid', 'IPorOP', 'adm_date', 'dis_date', 'rank']
+    # with open('./data/dxs_data_v2.pickle', 'rb') as f:
+    #     data_dx = pickle.load(f)
+    #
+    #
+    # dxgrps, dxgrps_dict, dxgrps_dict2 = dx2dxcat()
+    # data_dx2 = process_dxs(data_dx, dxgrps_dict, dxgrps_dict2)
+    # data_dx2.head()
+    #
+    # data = merge_visit_and_dx(data_dx2,
+    #                           visits)
+    #
+    # # exm1 = data[data['ptid']=='1094444']
+    # # exm1 = data[data['ptid']=='750517']
+    # exm1 = data[data['ptid']=='1407189']
+    # exm1['adm_day'] = exm1['adm_date'].apply(lambda x: int(x / 60 / 24))
+    # exm1['adm_month'] = exm1['adm_day'].apply(lambda x: int(x / 30))
+    # del exm1['rank']
+    # del exm1['dis_date']
+    # del exm1['adm_date']
+
+
+# ============= Add t-sne or pca for visualization ==========================================================
 
     train_tsne0 = tsne(train_x0)
     test_tsne0 = tsne(test_x0)
