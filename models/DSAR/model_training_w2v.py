@@ -386,7 +386,7 @@ if __name__ == '__main__':
     n_iter_max_dev = 1000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
-    model_type = 'rnn'
+    model_type = 'crnn'
     # Build and train/load the model
     print('Build Model...')
     # by default build a LR model
@@ -481,7 +481,7 @@ if __name__ == '__main__':
     with open(result_file, 'wb') as f:
         pickle.dump([pred_test, test_y], f)
     f.close()
-    # print('Testing Finished!')
+    print('Testing Finished!')
     # with open(output_file, 'wb') as f:
     #     pickle.dump(output_test, f)
     # f.close()
