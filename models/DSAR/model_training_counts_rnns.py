@@ -385,7 +385,7 @@ if __name__ == '__main__':
     initrange = 1
     att_dim = 100
 
-    batch_size = 200
+    batch_size = 100
     epoch_max = 8 # training for maximum 3 epochs of training data
     n_iter_max_dev = 1000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
