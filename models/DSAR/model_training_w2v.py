@@ -332,7 +332,7 @@ if __name__ == '__main__':
 
     # get demographic and previous IP info
     train_demoips, validate_demoips, test_demoips = process_demoip()
-    l = 1
+    l = 3
 
     with open('./data/hospitalization_train_validate_test_ids.pickle', 'rb') as f:
         train_ids, valid_ids, test_ids = pickle.load(f)
@@ -352,7 +352,7 @@ if __name__ == '__main__':
 
 
     # create input tensor and pad each visit to length of 200
-    pad_size = 76
+    pad_size = 150
     size = 100
     # Prepare validation data for the model
     validate_x, validate_y = create_full_set(validate, validate_y, w2v_model, size, pad_size)

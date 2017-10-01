@@ -345,7 +345,7 @@ if __name__ == '__main__':
     #  ============== Prepare Data ===========================
     # get demographic and previous IP info
     train_demoips, validate_demoips, test_demoips = process_demoip()
-    l = 1
+    l = 3
     with open('./data/hospitalization_train_validate_test_ids.pickle', 'rb') as f:
         train_ids, valid_ids, test_ids = pickle.load(f)
     f.close()
