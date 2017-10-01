@@ -148,7 +148,7 @@ if __name__ == '__main__':
     validate_ip = [1 if 'IP' in dt_ipinfo.loc[pid] else 0 for pid in valid_ids]
     test_ip = [1 if 'IP' in dt_ipinfo.loc[pid] else 0 for pid in test_ids]
     # get demographics info:
-    with open('./data/orders_pt_info_by_' + str(l) + 'month.pickle', 'rb') as f:
+    with open('./data/orders_pt_info.pickle', 'rb') as f:
         pt_info_orders = pickle.load(f)
     f.close()
     #genders

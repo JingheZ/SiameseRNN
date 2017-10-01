@@ -375,7 +375,7 @@ if __name__ == '__main__':
     embedding_size = 300
     hidden_size = 128
     n_layers = 1
-    seq_len = 12
+    seq_len = int(12/l)
     output_size = 2
     rnn_type = 'GRU'
     drop = 0.0
