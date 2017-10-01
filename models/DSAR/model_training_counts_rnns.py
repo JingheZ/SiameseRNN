@@ -379,13 +379,13 @@ if __name__ == '__main__':
     output_size = 2
     rnn_type = 'GRU'
     drop = 0.0
-    learning_rate = 0.001
+    learning_rate = 0.0005
     decay = 0.005
     interval = 100
     initrange = 1
     att_dim = 100
 
-    batch_size = 100
+    batch_size = 200
     epoch_max = 30 # training for maximum 3 epochs of training data
     n_iter_max_dev = 1000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
