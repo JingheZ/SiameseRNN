@@ -241,10 +241,10 @@ def create_full_set(dt, y, w2v, vsize, pad_size):
     return x, y
 
 
-def create_sequence(items, w2v, dim, pad_size):
+def create_sequence(items, w2v, dim, pad_size, l):
     seq = [[], [], [], [], [], [], [], [], [], [], [], []]
-    seq_flag = [0] * 12
-    for l in range(12):
+    seq_flag = [0] * int(12/l)
+    for l in range(int(12/l)):
         seq_flag[l] = len(items[l])
         if seq_flag[l] > 0:
             for j in range(seq_flag[l]):
