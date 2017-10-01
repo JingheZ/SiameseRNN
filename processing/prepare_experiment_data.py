@@ -118,7 +118,7 @@ if __name__ == '__main__':
 
     l = 3
     dt1['adm'] = dt1['adm_month'].apply(lambda x: int(x/l))
-    del dt1['adm']
+    del dt1['adm_month']
     dt = dt1[['ptid', 'itemid', 'adm']].groupby(['ptid', 'adm'])['itemid'].apply(list)
     dt = dt.reset_index()
     dt['length'] = dt['itemid'].apply(lambda x: len(x))
