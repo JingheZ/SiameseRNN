@@ -218,12 +218,12 @@ class Patient2Vec0(nn.Module):
         return out, [states_rnn, context, alpha]
 
 
-def create_batch(step, batch_size, data_x, data_demoip, data_y, w2v, vsize, pad_size):
+def create_batch(step, batch_size, data_x, data_demoip, data_y, w2v, vsize, pad_size, l):
     start = step * batch_size
     end = (step + 1) * batch_size
     batch_x = []
     for i in range(start, end):
-        x = create_sequence(data_x[i], w2v, vsize, pad_size)
+        x = create_sequence(data_x[i], w2v, vsize, pad_size, l)
         batch_x.append(x)
     batch_demoip = data_demoip[start:end]
     batch_y = data_y[start:end]
@@ -233,16 +233,17 @@ def create_batch(step, batch_size, data_x, data_demoip, data_y, w2v, vsize, pad_
     # return Variable(torch.FloatTensor(batch_x), requires_grad=False), Variable(torch.FloatTensor(batch_y), requires_grad=False) # for cross-entropy loss
 
 
-def create_full_set(dt, y, w2v, vsize, pad_size):
+def create_full_set(dt, y, w2v, vsize, pad_size, l):
     x = []
     for i in range(len(dt)):
-        seq = create_sequence(dt[i], w2v, vsize, pad_size)
+        seq = create_sequence(dt[i], w2v, vsize, pad_size, l)
         x.append(seq)
     return x, y
 
 
 def create_sequence(items, w2v, dim, pad_size, l):
-    seq = [[], [], [], [], [], [], [], [], [], [], [], []]
+    # seq = [[], [], [], [], [], [], [], [], [], [], [], []]
+    seq = [[] for _ in range(int(12/l))]
     seq_flag = [0] * int(12/l)
     for l in range(int(12/l)):
         seq_flag[l] = len(items[l])
@@ -292,11 +293,11 @@ def model_testing_one_batch(model, batch_x, batch_demoip, batch_size):
     return pred
 
 
-def model_testing(model, test, test_y, test_demoips, w2v, vsize, pad_size, batch_size=1000):
+def model_testing(model, test, test_y, test_demoips, w2v, vsize, pad_size, l, batch_size=1000):
     i = 0
     pred_all = []
     while (i + 1) * batch_size <= len(test_y):
-        batch_x, batch_demoip, _ = create_batch(i, batch_size, test, test_demoips, test_y, w2v, vsize, pad_size)
+        batch_x, batch_demoip, _ = create_batch(i, batch_size, test, test_demoips, test_y, w2v, vsize, pad_size, l)
         pred = model_testing_one_batch(model, batch_x, batch_demoip, batch_size)
         pred_all += pred
         i += 1
@@ -304,7 +305,7 @@ def model_testing(model, test, test_y, test_demoips, w2v, vsize, pad_size, batch
     batch_demoip = test_demoips[i * batch_size:]
     batch_x = []
     for j in range(i * batch_size, len(test_y)):
-        x = create_sequence(test[j], w2v, vsize, pad_size)
+        x = create_sequence(test[j], w2v, vsize, pad_size, l)
         batch_x.append(x)
     batch_x = Variable(torch.FloatTensor(batch_x), requires_grad=False)
     batch_demoip = Variable(torch.FloatTensor(batch_demoip), requires_grad=False)
@@ -355,7 +356,7 @@ if __name__ == '__main__':
     pad_size = 150
     size = 100
     # Prepare validation data for the model
-    validate_x, validate_y = create_full_set(validate, validate_y, w2v_model, size, pad_size)
+    validate_x, validate_y = create_full_set(validate, validate_y, w2v_model, size, pad_size, l)
     # with open('./data/hospitalization_validate_data_padded.pickle', 'wb') as f:
     #     pickle.dump([validate_x, validate_y], f)
     # f.close()
@@ -417,7 +418,7 @@ if __name__ == '__main__':
     while epoch < epoch_max:
         step = 0
         while (step + 1) * batch_size < train_iters:
-            batch_x, batch_demoip, batch_y = create_batch(step, batch_size, train, train_demoips, train_y, w2v_model, size, pad_size)
+            batch_x, batch_demoip, batch_y = create_batch(step, batch_size, train, train_demoips, train_y, w2v_model, size, pad_size, l)
             optimizer.zero_grad()
             y_pred, _ = model(batch_x, batch_demoip, batch_size)
             # states, alpha, beta = model(batch_x, batch_size)
@@ -469,7 +470,7 @@ if __name__ == '__main__':
     # # Evaluate the model
     model.eval()
     test_start_time = time.time()
-    pred_test = model_testing(model, test, test_y, test_demoips, w2v_model, size, pad_size, batch_size=1000)
+    pred_test = model_testing(model, test, test_y, test_demoips, w2v_model, size, pad_size, l, batch_size=1000)
     perfm, auc = calculate_performance(test_y, pred_test)
     elapsed_test = time.time() - test_start_time
     print(auc)
