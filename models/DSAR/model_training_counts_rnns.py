@@ -371,7 +371,7 @@ if __name__ == '__main__':
     f.close()
     # Model hyperparameters
     # model_type = 'rnn-rt'
-    input_size = int(len(features)/12) + 3
+    input_size = int(len(features)/int(12/l)) + 3
     embedding_size = 300
     hidden_size = 128
     n_layers = 1
