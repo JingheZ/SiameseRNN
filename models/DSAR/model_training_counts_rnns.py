@@ -244,22 +244,22 @@ class RETAIN(nn.Module):
         # return alpha, beta
 
 
-def create_batch(step, batch_size, data_x, data_demoip, data_y):
+def create_batch(step, batch_size, data_x, data_demoip, data_y, l):
     start = step * batch_size
     end = (step + 1) * batch_size
     batch_x = data_x[start:end]
     batch_demoip = data_demoip[start:end]
     batch_y = data_y[start:end]
-    batch_x, batch_y = list2tensor(batch_x, batch_y)
+    batch_x, batch_y = list2tensor(batch_x, batch_y, l)
     return batch_x, Variable(torch.FloatTensor(batch_demoip), requires_grad=False), batch_y # for cross-entropy loss
     # return Variable(torch.FloatTensor(batch_x), requires_grad=False), Variable(torch.FloatTensor(batch_y), requires_grad=False) # for cross-entropy loss
 
 
-def list2tensor(x, y):
+def list2tensor(x, y, l):
     x = Variable(torch.FloatTensor(x), requires_grad=False)
     y = Variable(torch.LongTensor(y), requires_grad=False)
     # y = Variable(torch.FloatTensor(y), requires_grad=False)
-    x = torch.split(x, split_size=12, dim=1)
+    x = torch.split(x, split_size=int(12/l), dim=1)
     x = torch.stack(x, dim=1)
     x = torch.transpose(x, 1, 2)
     return x, y
@@ -313,18 +313,18 @@ def model_testing_one_batch(model, model_type, batch_x, batch_demoip, batch_size
     return pred
 
 
-def model_testing(model, model_type, test, test_y, test_demoips, batch_size=1000):
+def model_testing(model, model_type, test, test_y, test_demoips, l, batch_size=1000):
     i = 0
     pred_all = []
     while (i + 1) * batch_size <= len(test_y):
-        batch_x, batch_demoip, _ = create_batch(i, batch_size, test, test_demoips, test_y)
+        batch_x, batch_demoip, _ = create_batch(i, batch_size, test, test_demoips, test_y, l)
         pred = model_testing_one_batch(model, model_type, batch_x, batch_demoip, batch_size)
         pred_all += pred
         i += 1
     # the remaining data less than one batch
     batch_x = test[i * batch_size:]
     batch_x = Variable(torch.FloatTensor(batch_x), requires_grad=False)
-    batch_x = torch.split(batch_x, split_size=12, dim=1)
+    batch_x = torch.split(batch_x, split_size=int(12/l), dim=1)
     batch_x = torch.stack(batch_x, dim=1)
     batch_x = torch.transpose(batch_x, 1, 2)
     batch_demoip = test_demoips[i * batch_size:]
@@ -363,7 +363,7 @@ if __name__ == '__main__':
     f.close()
 
     # # Prepare validation data for the model
-    validate_x, validate_y = list2tensor(validate, validate_y)
+    validate_x, validate_y = list2tensor(validate, validate_y, l)
     validate_demoips = Variable(torch.FloatTensor(validate_demoips), requires_grad=False)
 
     with open('./data/hospitalization_cts_sub_columns.pickle', 'rb') as f:
@@ -421,7 +421,7 @@ if __name__ == '__main__':
     while epoch < epoch_max:
         step = 0
         while (step + 1) * batch_size < train_iters:
-            batch_x, batch_demoip, batch_y = create_batch(step, batch_size, train, train_demoips, train_y)
+            batch_x, batch_demoip, batch_y = create_batch(step, batch_size, train, train_demoips, train_y, l)
             optimizer.zero_grad()
             y_pred, _ = model(batch_x, batch_demoip, batch_size)
             # states, alpha, beta = model(batch_x, batch_size)
@@ -477,7 +477,7 @@ if __name__ == '__main__':
     # Evaluate the model
     model.eval()
     test_start_time = time.time()
-    pred_test = model_testing(model, model_type, test, test_y, test_demoips, batch_size=1000)
+    pred_test = model_testing(model, model_type, test, test_y, test_demoips, l, batch_size=1000)
     perfm, auc = calculate_performance(test_y, pred_test)
     elapsed_test = time.time() - test_start_time
     print(auc)
