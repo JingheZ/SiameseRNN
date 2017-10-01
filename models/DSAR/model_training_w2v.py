@@ -364,8 +364,8 @@ if __name__ == '__main__':
     # Model hyperparameters
     # model_type = 'rnn-rt'
     input_size = size + 3
-    embedding_size = 300
-    hidden_size = 256
+    embedding_size = 100
+    hidden_size = 128
     n_layers = 1
     seq_len = int(12 / l)
     output_size = 2
@@ -378,7 +378,7 @@ if __name__ == '__main__':
     att_dim = 1
     n_hops = 5
     batch_size = 100
-    epoch_max = 10 # training for maximum 3 epochs of training data
+    epoch_max = 5 # training for maximum 3 epochs of training data
     n_iter_max_dev = 1000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
