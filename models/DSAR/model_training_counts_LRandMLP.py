@@ -184,7 +184,7 @@ if __name__ == '__main__':
     input_size = len(features) + 3
     output_size = 2
     drop = 0.0
-    learning_rate = 0.01
+    learning_rate = 0.001
     decay = 0.005
     interval = 10
     initrange = 1
@@ -192,7 +192,7 @@ if __name__ == '__main__':
     # mlp_hidden_size2 = 1024
 
     batch_size = 100
-    epoch_max = 10 # training for maximum 3 epochs of training data
+    epoch_max = 30 # training for maximum 3 epochs of training data
     n_iter_max_dev = 1000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
