@@ -35,29 +35,29 @@ def find_previous_IP(dt):
     return dt_ipinfo
 
 
-def group_items_byadmmonth(dt):
-    dt = dt[['ptid', 'itemid', 'adm_month']].groupby(['ptid', 'adm_month'])['itemid'].apply(list)
+def group_items_byadmmonth(dt, l):
+    dt = dt[['ptid', 'itemid', 'adm']].groupby(['ptid', 'adm'])['itemid'].apply(list)
     dt = dt.reset_index()
     pt_dict = {}
     for i in dt.index:
         ptid = dt['ptid'].loc[i]
         if not pt_dict.__contains__(ptid):
-            pt_dict[ptid] = [[]] * 12
-        adm = dt['adm_month'].loc[i]
+            pt_dict[ptid] = [[]] * int(12/l)
+        adm = dt['adm'].loc[i]
         items = dt['itemid'].loc[i]
         pt_dict[ptid][adm] = items
     return pt_dict
 
 
-def get_counts_subwindow(df):
-    counts0 = df[['ptid', 'itemcat', 'adm_month']].groupby(['ptid', 'itemcat', 'adm_month']).size().unstack('itemcat')
+def get_counts_subwindow(df, l):
+    counts0 = df[['ptid', 'itemcat', 'adm']].groupby(['ptid', 'itemcat', 'adm']).size().unstack('itemcat')
     counts0.reset_index(inplace=True)
-    dt = counts0[counts0['adm_month'] == 0]
-    del dt['adm_month']
+    dt = counts0[counts0['adm'] == 0]
+    del dt['adm']
     dt.columns = ['ptid'] + ['t0_' + x for x in dt.columns[1:]]
-    for j in range(1, 12):
-        cts = counts0[counts0['adm_month'] == j]
-        del cts['adm_month']
+    for j in range(1, int(12/l)):
+        cts = counts0[counts0['adm'] == j]
+        del cts['adm']
         cts.columns = ['ptid'] + ['t' + str(j) + '_' + x for x in cts.columns[1:]]
         dt = pd.merge(dt, cts, on='ptid', how='outer')
     dt.index = dt['ptid']
@@ -100,28 +100,32 @@ if __name__ == '__main__':
     # =============== prepare training, validate, and test data ==============
     with open('./data/hospitalization_data_pos_neg_ids_v0.pickle', 'rb') as f:
         pos_ids, neg_ids = pickle.load(f)
-    f.close()
+    # f.close()
 
     with open('./data/hospitalization_data_1year.pickle', 'rb') as f:
         dt = pickle.load(f)
-    f.close()
+    # f.close()
 
     dt_pos = dt[dt['ptid'].isin(pos_ids)]
     dt_neg = dt[dt['ptid'].isin(neg_ids)]
     dt1 = pd.concat([dt_pos, dt_neg], axis=0)
 
-    dt1 = dt_pos
+    # dt1 = dt_pos
     item_cts = dt1[['ptid', 'itemid']].drop_duplicates().groupby('itemid').count()
     item_cts_100 = item_cts[item_cts['ptid'] > 50]
     dt1 = dt1[dt1['itemid'].isin(vocab)]
     dt1 = dt1[dt1['itemid'].isin(item_cts_100.index.tolist())]
 
-    dt = dt1[['ptid', 'itemid', 'adm_month']].groupby(['ptid', 'adm_month'])['itemid'].apply(list)
+    l = 3
+    dt1['adm'] = dt1['adm_month'].apply(lambda x: int(x/l))
+    del dt1['adm']
+    dt = dt1[['ptid', 'itemid', 'adm']].groupby(['ptid', 'adm'])['itemid'].apply(list)
     dt = dt.reset_index()
     dt['length'] = dt['itemid'].apply(lambda x: len(x))
-    # remove patients with more than 76 items in a month # 5% of all population are removed
-    pts_76 = dt[dt['length'] > 76]
-    dt1 = dt1[~dt1['ptid'].isin(set(pts_76['ptid'].values))]
+    dt['length'].describe()
+    # remove patients with more than 125 items in the subsequence
+    pts_150 = dt[dt['length'] > 150]
+    dt1 = dt1[~dt1['ptid'].isin(set(pts_150['ptid'].values))]
     ptids = set(dt1['ptid'].values)
 
     print('original_total_pts %i' % (len(pos_ids) + len(neg_ids))) # 73877
@@ -134,7 +138,7 @@ if __name__ == '__main__':
     print('updated_neg_pts %i' % len(neg_ids)) # 66730
     ptids = list(pos_ids) + list(neg_ids)
     train_ids, valid_ids, test_ids = split_train_validate_test(pos_ids, neg_ids)
-    with open('./data/hospitalization_train_validate_test_ids.pickle', 'wb') as f:
+    with open('./data/hospitalization_train_validate_test_ids_by_' + str(l) + 'month.pickle', 'wb') as f:
         pickle.dump([train_ids, valid_ids, test_ids], f)
     f.close()
 
@@ -144,7 +148,7 @@ if __name__ == '__main__':
     validate_ip = [1 if 'IP' in dt_ipinfo.loc[pid] else 0 for pid in valid_ids]
     test_ip = [1 if 'IP' in dt_ipinfo.loc[pid] else 0 for pid in test_ids]
     # get demographics info:
-    with open('./data/orders_pt_info.pickle', 'rb') as f:
+    with open('./data/orders_pt_info_by_' + str(l) + 'month.pickle', 'rb') as f:
         pt_info_orders = pickle.load(f)
     f.close()
     #genders
@@ -186,7 +190,7 @@ if __name__ == '__main__':
     f.close()
 
     # get the itemids by month
-    dt2 = group_items_byadmmonth(dt1)
+    dt2 = group_items_byadmmonth(dt1, l)
     train = [dt2[pid] for pid in train_ids]
     validate = [dt2[pid] for pid in valid_ids]
     test = [dt2[pid] for pid in test_ids]
@@ -196,15 +200,15 @@ if __name__ == '__main__':
     test_y = [1 if pid in pos_ids else 0 for pid in test_ids]
 
     # save data of items in each month
-    with open('./data/hospitalization_train_data.pickle', 'wb') as f:
+    with open('./data/hospitalization_train_data_by_' + str(l) + 'month.pickle', 'wb') as f:
         pickle.dump([train, train_y], f)
     f.close()
 
-    with open('./data/hospitalization_validate_data.pickle', 'wb') as f:
+    with open('./data/hospitalization_validate_data_by_' + str(l) + 'month.pickle', 'wb') as f:
         pickle.dump([validate, validate_y], f)
     f.close()
 
-    with open('./data/hospitalization_test_data.pickle', 'wb') as f:
+    with open('./data/hospitalization_test_data_by_' + str(l) + 'month.pickle', 'wb') as f:
         pickle.dump([test, test_y], f)
     f.close()
 
@@ -214,7 +218,7 @@ if __name__ == '__main__':
     f.close()
     itemdict = item_cats['cat'].to_dict()
     dt1['itemcat'] = [itemdict[x] for x in dt1['itemid'].values.tolist()]
-    dt3 = dt1[['ptid', 'adm_month', 'itemcat']].drop_duplicates()
+    dt3 = dt1[['ptid', 'adm', 'itemcat']].drop_duplicates()
     # get counts over the entire observation window
     counts = dt3[['ptid', 'itemcat']].groupby(['ptid', 'itemcat']).size().unstack('itemcat').fillna(0)
     counts.reset_index(inplace=True)
@@ -244,7 +248,7 @@ if __name__ == '__main__':
     f.close()
 
     # get the counts of each month in the window
-    counts_sub = get_counts_subwindow(dt3)
+    counts_sub = get_counts_subwindow(dt3, l)
     counts_sub['ptid'] = counts_sub.index.values
     counts_sub = counts_sub[counts_sub['ptid'].isin(ptids)]
     counts_sub_ptids = counts_sub['ptid'].values
@@ -254,15 +258,15 @@ if __name__ == '__main__':
     validate_sub_cts = [counts_sub_dict[pid] for pid in valid_ids]
     test_sub_cts = [counts_sub_dict[pid] for pid in test_ids]
     # save
-    with open('./data/hospitalization_train_data_sub_cts.pickle', 'wb') as f:
+    with open('./data/hospitalization_train_data_sub_cts_by_' + str(l) + 'month.pickle', 'wb') as f:
         pickle.dump([train_sub_cts, train_y], f)
     f.close()
 
-    with open('./data/hospitalization_validate_data_sub_cts.pickle', 'wb') as f:
+    with open('./data/hospitalization_validate_data_sub_cts_by_' + str(l) + 'month.pickle', 'wb') as f:
         pickle.dump([validate_sub_cts, validate_y], f)
     f.close()
 
-    with open('./data/hospitalization_test_data_sub_cts.pickle', 'wb') as f:
+    with open('./data/hospitalization_test_data_sub_cts_by_' + str(l) + 'month.pickle', 'wb') as f:
         pickle.dump([test_sub_cts, test_y], f)
     f.close()
 

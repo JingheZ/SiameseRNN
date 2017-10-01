@@ -323,14 +323,6 @@ def calculate_performance(test_y, pred):
 if __name__ == '__main__':
 
     #  ============== Prepare Data ===========================
-    # get demographic and previous IP info
-    train_demoips, validate_demoips, test_demoips = process_demoip()
-
-    # model_type = 'rnn-rt'
-    # model_type = 'retain'
-    # model_type = 'rnn-bi'
-    # model_type = 'rnn-rt-bi'
-    # model_type = 'patient2vec'
     # ----- load word2vec embedding model
     size = 100
     window = 100
@@ -338,19 +330,23 @@ if __name__ == '__main__':
     model_path = './results/w2v_size' + str(size) + '_window' + str(window) + '_sg' + str(sg)
     w2v_model = Word2Vec.load(model_path)
 
+    # get demographic and previous IP info
+    train_demoips, validate_demoips, test_demoips = process_demoip()
+    l = 1
+
     with open('./data/hospitalization_train_validate_test_ids.pickle', 'rb') as f:
         train_ids, valid_ids, test_ids = pickle.load(f)
     f.close()
 
-    with open('./data/hospitalization_train_data.pickle', 'rb') as f:
+    with open('./data/hospitalization_train_data_by_' + str(l) + 'month.pickle', 'rb') as f:
         train, train_y = pickle.load(f)
     f.close()
 
-    with open('./data/hospitalization_validate_data.pickle', 'rb') as f:
+    with open('./data/hospitalization_validate_data_by_' + str(l) + 'month.pickle', 'rb') as f:
         validate, validate_y = pickle.load(f)
     f.close()
 
-    with open('./data/hospitalization_test_data.pickle', 'rb') as f:
+    with open('./data/hospitalization_test_data_by_' + str(l) + 'month.pickle', 'rb') as f:
         test, test_y = pickle.load(f)
     f.close()
 
