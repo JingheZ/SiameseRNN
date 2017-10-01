@@ -369,7 +369,7 @@ if __name__ == '__main__':
     # model_type = 'rnn-rt'
     input_size = size + 3
     embedding_size = 300
-    hidden_size = 128
+    hidden_size = 256
     n_layers = 1
     seq_len = 12
     output_size = 2
