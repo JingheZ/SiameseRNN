@@ -156,8 +156,8 @@ if __name__ == '__main__':
     #  ============== Prepare Data ===========================
     # get demographic and previous IP info
     train_demoips, validate_demoips, test_demoips = process_demoip()
-
-    with open('./data/hospitalization_train_validate_test_ids.pickle', 'rb') as f:
+    l = 3
+    with open('./data/hospitalization_train_validate_test_ids_by_' + str(l) + 'month.pickle', 'rb') as f:
         train_ids, valid_ids, test_ids = pickle.load(f)
     f.close()
 
@@ -184,8 +184,8 @@ if __name__ == '__main__':
     input_size = len(features) + 3
     output_size = 2
     drop = 0.0
-    learning_rate = 0.0005
-    decay = 0.005
+    learning_rate = 0.001
+    decay = 0.01
     interval = 10
     initrange = 1
     mlp_hidden_size1 = 256
@@ -196,7 +196,7 @@ if __name__ == '__main__':
     n_iter_max_dev = 1000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
-    model_type = 'MLP'
+    model_type = 'LR'
     # Build and train/load the model
     print('Build Model...')
     # by default build a LR model
