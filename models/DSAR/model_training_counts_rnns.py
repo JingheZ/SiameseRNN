@@ -391,10 +391,10 @@ if __name__ == '__main__':
     # Build and train/load the model
     print('Build Model...')
     # by default build a RNN model
-    model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
+    model = RNNmodel(input_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
                      bi=False, dropout_p=drop)
     if model_type == 'rnn-bi':
-        model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
+        model = RNNmodel(input_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
                          bi=True, dropout_p=drop)
     elif model_type == 'retain':
         model = RETAIN(input_size, embedding_size, hidden_size, n_layers, initrange, output_size,
