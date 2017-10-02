@@ -125,7 +125,7 @@ class RETAIN(nn.Module):
         self.linear_att_func1 = nn.Linear(hidden_size, 1, bias=True)
         self.linear_att_func2 = nn.Linear(hidden_size, embed_size, bias=True)
         # final linear layer
-        self.linear = nn.Linear(embed_size, output_size, bias=True)
+        self.linear = nn.Linear(embed_size + 3, output_size, bias=True)
 
         self.init_weights(initrange)
         self.input_size = input_size
@@ -149,12 +149,12 @@ class RETAIN(nn.Module):
         for param in self.parameters():
             param.data.uniform_(-initrange, initrange)
 
-    def embedding_layer(self, inputs, inputs_demoips):
+    def embedding_layer(self, inputs):
         # embedding_f = []
         embedding_b = []
         for i in range(self.seq_len):
             # embedded = self.embed(inputs[:, :, i])
-            embedded = self.embed(torch.cat((inputs[:, i], inputs_demoips), 1))
+            embedded = self.embed(inputs[:, i])
             # embedding_f.append(embedded)
             embedding_b.insert(0, embedded)
         embedding_b = torch.stack(embedding_b)
@@ -208,12 +208,13 @@ class RETAIN(nn.Module):
         context = torch.squeeze(context)
         return context
 
-    def make_step_pred(self, alpha, beta, embedding):
+    def make_step_pred(self, alpha, beta, embedding, inputs_demoips):
         # linear for context vector to get output at each step
         out = []
         for i in range(self.seq_len):
             context = self.get_context_vector(alpha[:, :i+1], beta[:, :i+1, :], embedding[:, :i+1, :])
-            linear_y = self.linear(context)
+            # linear_y = self.linear(context)
+            linear_y = self.linear(torch.cat((context, inputs_demoips), 1))
             out.append(self.func_sigmoid(linear_y))
         out = torch.stack(out)
         out = torch.squeeze(out)
@@ -225,7 +226,7 @@ class RETAIN(nn.Module):
         the recurrent module of the autoencoder
         """
         # Embedding
-        embedding_b = self.embedding_layer(inputs, inputs_demoips)
+        embedding_b = self.embedding_layer(inputs)
         # RNN on the left for variable level attention, backward RNN
         states_rnn_l = self.encode_rnn_l(embedding_b, batch_size)
         # RNN on the right for visit level attention, backward RNN
@@ -237,7 +238,7 @@ class RETAIN(nn.Module):
         # context = self.get_context_vector(alpha, beta, embedding_b)
         # linear_y = self.linear(context)
         # out = self.func_softmax(linear_y)
-        out = self.make_step_pred(alpha, beta, embedding_b)
+        out = self.make_step_pred(alpha, beta, embedding_b, inputs_demoips)
         return out, [alpha, beta]
         # return alpha, beta
 
