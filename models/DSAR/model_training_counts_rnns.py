@@ -22,16 +22,16 @@ class RNNmodel(nn.Module):
     """
     A recurrent NN
     """
-    def __init__(self, input_size, embed_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len, bi, dropout_p=0.5):
+    def __init__(self, input_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len, bi, dropout_p=0.5):
         """
         Initilize a recurrent autoencoder
         """
         super(RNNmodel, self).__init__()
 
         # Embedding
-        self.embed = nn.Linear(input_size, embed_size, bias=False)
+        # self.embed = nn.Linear(input_size, embed_size, bias=False)
         # RNN
-        self.rnn = getattr(nn, rnn_type)(embed_size, hidden_size, n_layers, dropout=dropout_p,
+        self.rnn = getattr(nn, rnn_type)(input_size, hidden_size, n_layers, dropout=dropout_p,
                                              batch_first=True, bias=True, bidirectional=bi)
         self.b = 1
         if bi:
@@ -40,7 +40,7 @@ class RNNmodel(nn.Module):
         self.tanh = nn.Hardtanh()
         self.init_weights(initrange)
         self.input_size = input_size
-        self.embed_size = embed_size
+        # self.embed_size = embed_size
         self.hidden_size = hidden_size
         self.n_layers = n_layers
         self.seq_len = seq_len
@@ -88,7 +88,7 @@ class RNNmodel(nn.Module):
         # RNN
         states_rnn = self.encode_rnn(embedding, batch_size)
         # linear for context vector to get final output
-        linear_y = self.linear(states_rnn[:, -1])
+        # linear_y = self.linear(states_rnn[:, -1])
         linear_y = self.linear(torch.cat((states_rnn[:, -1], inputs_demoips), 1))
         out = self.func_softmax(linear_y)
         # out = self.func_sigmoid(linear_y)
