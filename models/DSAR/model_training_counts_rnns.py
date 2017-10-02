@@ -22,7 +22,7 @@ class RNNmodel(nn.Module):
     """
     A recurrent NN
     """
-    def __init__(self, input_size, embed_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len, bi, ct, dropout_p=0.5):
+    def __init__(self, input_size, embed_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len, bi, dropout_p=0.5):
         """
         Initilize a recurrent autoencoder
         """
@@ -36,7 +36,7 @@ class RNNmodel(nn.Module):
         self.b = 1
         if bi:
             self.b = 2
-        self.linear = nn.Linear(hidden_size * self.b, output_size, bias=True)
+        self.linear = nn.Linear(hidden_size * self.b + 3, output_size, bias=True)
         self.tanh = nn.Hardtanh()
         self.init_weights(initrange)
         self.input_size = input_size
@@ -44,7 +44,6 @@ class RNNmodel(nn.Module):
         self.hidden_size = hidden_size
         self.n_layers = n_layers
         self.seq_len = seq_len
-        self.ct = ct
         self.func_softmax = nn.Softmax()
         self.func_sigmoid = nn.Sigmoid()
         self.func_tanh = nn.Hardtanh(0, 1)
@@ -60,20 +59,16 @@ class RNNmodel(nn.Module):
             param.data.uniform_(-initrange, initrange)
             # param.data.normal_(0, 1)
 
-    def embedding_layer(self, inputs, inputs_demoips):
-        if self.ct:
-            inputs_agg = inputs
-        else:
-            inputs_agg = torch.sum(inputs, dim=2)
-            inputs_agg = torch.squeeze(inputs_agg, dim=2)
-        embedding = []
-        for i in range(self.seq_len):
-            embedded = self.embed(torch.cat((inputs_agg[:, i], inputs_demoips), 1))
-            embedding.append(embedded)
-        embedding = torch.stack(embedding)
-        embedding = torch.transpose(embedding, 0, 1)
-            # embedding = self.tanh(embedding)
-        return embedding
+    # def embedding_layer(self, inputs, inputs_demoips):
+    #     inputs_agg = inputs
+    #     embedding = []
+    #     for i in range(self.seq_len):
+    #         embedded = self.embed(torch.cat((inputs_agg[:, i], inputs_demoips), 1))
+    #         embedding.append(embedded)
+    #     embedding = torch.stack(embedding)
+    #     embedding = torch.transpose(embedding, 0, 1)
+    #         # embedding = self.tanh(embedding)
+    #     return embedding
 
     def encode_rnn(self, embedding, batch_size):
         self.weight = next(self.parameters()).data
@@ -87,14 +82,17 @@ class RNNmodel(nn.Module):
         the recurrent module
         """
         # Embedding
-        embedding = self.embedding_layer(inputs, inputs_demoips)
+        # embedding = self.embedding_layer(inputs, inputs_demoips)
         # embedding = torch.transpose(inputs, 1, 2)
+        embedding = inputs
         # RNN
         states_rnn = self.encode_rnn(embedding, batch_size)
         # linear for context vector to get final output
         linear_y = self.linear(states_rnn[:, -1])
+        linear_y = self.linear(torch.cat((states_rnn[:, -1], inputs_demoips), 1))
         out = self.func_softmax(linear_y)
         # out = self.func_sigmoid(linear_y)
+
         # out = self.func_tanh(linear_y)
         return out, [states_rnn, embedding, linear_y]
 
@@ -371,7 +369,7 @@ if __name__ == '__main__':
     f.close()
     # Model hyperparameters
     # model_type = 'rnn-rt'
-    input_size = int(len(features)/int(12/l)) + 3
+    input_size = int(len(features)/int(12/l))
     embedding_size = 300
     hidden_size = 256
     n_layers = 1
@@ -379,8 +377,8 @@ if __name__ == '__main__':
     output_size = 2
     rnn_type = 'GRU'
     drop = 0.0
-    learning_rate = 0.0005
-    decay = 0.005
+    learning_rate = 0.001
+    decay = 0.01
     interval = 100
     initrange = 1
     att_dim = 100
@@ -394,15 +392,15 @@ if __name__ == '__main__':
     print('Build Model...')
     # by default build a RNN model
     model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
-                     bi=False, ct=True, dropout_p=drop)
+                     bi=False, dropout_p=drop)
     if model_type == 'rnn-bi':
         model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
-                         bi=True, ct=True, dropout_p=drop)
+                         bi=True, dropout_p=drop)
     elif model_type == 'retain':
         model = RETAIN(input_size, embedding_size, hidden_size, n_layers, initrange, output_size,
                             rnn_type, seq_len, dropout_p=drop)
     # criterion = nn.MultiLabelMarginLoss()
-    criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 11]))
+    criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 10]))
     # criterion = nn.MultiLabelSoftMarginLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
     model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '.dat'
