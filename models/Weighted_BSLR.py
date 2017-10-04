@@ -631,14 +631,18 @@ if __name__ == '__main__':
         # # # data_dm4[data_dm4['ptid'] == '769052'].to_csv('./data/example_dmpt.csv') # rf predicted proba: 0.782
         # # # data_control4[data_control4['ptid'] =='1819093'].to_csv('./data/example_controlpt.csv') # rf predicted proba: 0.033
 
-        # for p in range(200):
-        #     np.random.seed(p)
-        #     sp = np.random.choice(train_ids, size=int(0.7 * len(train_ids)), replace=True)
-        #     pd.Series(sp).to_csv('./data/comorbid_risk_train_ids_r' + str(r) + '_bootstrap' + str(p) + '.csv', index=False)
-        #
+        for p in range(100):
+            random.seed(p)
+            sp = random.choices(list(enumerate(train_ids)), k=len(train_ids))
+            sp_ptids = [i[1] for i in sp]
+            sp_inds = [i[0] for i in sp]
+            sp_dt = pd.DataFrame([sp_ptids, sp_inds]).transpose()
+            sp_dt.columns = ['ptid', 'ind']
+            sp_dt.to_csv('./data/comorbid_risk_train_ids_bootstrap' + str(p) + '.csv', index=False)
 
 
-        features5_all = pd.read_csv('./data/sgl_coefs_alpha7_r0_bootstrap5.csv')
+
+        features5_all = pd.read_csv('./data/sgl_coefs_alpha7_r0_bootstrap28.csv')
         i = features5_all.columns[1]
         features5_inds = features5_all[i]
         features5 = [features5a[j] for j in features5_inds.index if features5_inds.loc[j] != 0]
@@ -658,7 +662,7 @@ if __name__ == '__main__':
             test_proba.to_csv('./data/comorbid_risk_test_proba_baseline_LSR_r' + str(r) + '_bs' + str(n) + '.csv', index=False)
 
         # get the features of the model with the highest weight in the proposed framework
-        features5_all = pd.read_csv('./data/sgl_coefs_alpha7_r0_bootstrap29.csv')
+        features5_all = pd.read_csv('./data/sgl_coefs_alpha7_r0_bootstrap28.csv')
         i = features5_all.columns[1]
         features5_inds = features5_all[i]
         features5 = [(features5a[j], features5_inds.loc[j]) for j in features5_inds.index if features5_inds.loc[j] != 0]
@@ -667,7 +671,7 @@ if __name__ == '__main__':
             pickle.dump(features5, f)
         f.close()
         # tune the threshold for the proposed model on validation set
-        valid_proba = pd.read_csv('./data/comorbid_risk_prediction_valid_50.csv')
+        valid_proba = pd.read_csv('./data/comorbid_risk_prediction_valid_20.csv')
         tune_proba_threshold_pred(valid_proba['pred'].values, valid_proba['response'], 1)
 
         # get example pt records
