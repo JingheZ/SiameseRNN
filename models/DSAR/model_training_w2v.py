@@ -366,8 +366,8 @@ if __name__ == '__main__':
     # model_type = 'rnn-rt'
     input_size = size + 3
     embedding_size = 500
-    hidden_size = 512
-    n_layers = 1
+    hidden_size = 256
+    n_layers = 2
     seq_len = int(12 / l)
     output_size = 2
     rnn_type = 'GRU'
