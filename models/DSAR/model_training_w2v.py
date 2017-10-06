@@ -335,7 +335,7 @@ if __name__ == '__main__':
     train_demoips, validate_demoips, test_demoips = process_demoip()
     l = 2
 
-    with open('./data/hospitalization_train_validate_test_ids_by_' + str(l) + 'month.pickle', 'rb') as f:
+    with open('./data/hospitalization_train_validate_test_ids.pickle', 'rb') as f:
         train_ids, valid_ids, test_ids = pickle.load(f)
     f.close()
 

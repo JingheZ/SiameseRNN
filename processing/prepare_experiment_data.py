@@ -36,6 +36,7 @@ def find_previous_IP(dt):
 
 
 def group_items_byadmmonth(dt, l):
+    dt['adm'] = dt['adm_month'].apply(lambda x: int(x / l))
     dt = dt[['ptid', 'itemid', 'adm']].groupby(['ptid', 'adm'])['itemid'].apply(list)
     dt = dt.reset_index()
     pt_dict = {}
@@ -240,50 +241,50 @@ if __name__ == '__main__':
     # ============================ by time interval data =============================================
     # l = 1
     # l = 2
-    l = 3
-    # get the itemids by month
-    dt2 = group_items_byadmmonth(dt1, l)
-    train = [dt2[pid] for pid in train_ids]
-    validate = [dt2[pid] for pid in valid_ids]
-    test = [dt2[pid] for pid in test_ids]
+    # l = 3
+    for l in [1, 2, 3]:
+        # get the itemids by month
+        dt2 = group_items_byadmmonth(dt1, l)
+        train = [dt2[pid] for pid in train_ids]
+        validate = [dt2[pid] for pid in valid_ids]
+        test = [dt2[pid] for pid in test_ids]
 
-    # save data of items in each month
-    with open('./data/hospitalization_train_data_by_' + str(l) + 'month.pickle', 'wb') as f:
-        pickle.dump([train, train_y], f)
-    f.close()
+        # save data of items in each month
+        with open('./data/hospitalization_train_data_by_' + str(l) + 'month.pickle', 'wb') as f:
+            pickle.dump([train, train_y], f)
+        f.close()
 
-    with open('./data/hospitalization_validate_data_by_' + str(l) + 'month.pickle', 'wb') as f:
-        pickle.dump([validate, validate_y], f)
-    f.close()
+        with open('./data/hospitalization_validate_data_by_' + str(l) + 'month.pickle', 'wb') as f:
+            pickle.dump([validate, validate_y], f)
+        f.close()
 
-    with open('./data/hospitalization_test_data_by_' + str(l) + 'month.pickle', 'wb') as f:
-        pickle.dump([test, test_y], f)
-    f.close()
+        with open('./data/hospitalization_test_data_by_' + str(l) + 'month.pickle', 'wb') as f:
+            pickle.dump([test, test_y], f)
+        f.close()
 
+        # get the counts of each month in the window
+        counts_sub = get_counts_subwindow(dt3, l)
+        counts_sub['ptid'] = counts_sub.index.values
+        counts_sub = counts_sub[counts_sub['ptid'].isin(ptids)]
+        counts_sub_ptids = counts_sub['ptid'].values
+        del counts_sub['ptid']
+        counts_sub_dict = dict(zip(counts_sub_ptids, counts_sub.values.tolist()))
+        train_sub_cts = [counts_sub_dict[pid] for pid in train_ids]
+        validate_sub_cts = [counts_sub_dict[pid] for pid in valid_ids]
+        test_sub_cts = [counts_sub_dict[pid] for pid in test_ids]
+        # save
+        with open('./data/hospitalization_train_data_sub_cts_by_' + str(l) + 'month.pickle', 'wb') as f:
+            pickle.dump([train_sub_cts, train_y], f)
+        f.close()
 
-    # get the counts of each month in the window
-    counts_sub = get_counts_subwindow(dt3, l)
-    counts_sub['ptid'] = counts_sub.index.values
-    counts_sub = counts_sub[counts_sub['ptid'].isin(ptids)]
-    counts_sub_ptids = counts_sub['ptid'].values
-    del counts_sub['ptid']
-    counts_sub_dict = dict(zip(counts_sub_ptids, counts_sub.values.tolist()))
-    train_sub_cts = [counts_sub_dict[pid] for pid in train_ids]
-    validate_sub_cts = [counts_sub_dict[pid] for pid in valid_ids]
-    test_sub_cts = [counts_sub_dict[pid] for pid in test_ids]
-    # save
-    with open('./data/hospitalization_train_data_sub_cts_by_' + str(l) + 'month.pickle', 'wb') as f:
-        pickle.dump([train_sub_cts, train_y], f)
-    f.close()
+        with open('./data/hospitalization_validate_data_sub_cts_by_' + str(l) + 'month.pickle', 'wb') as f:
+            pickle.dump([validate_sub_cts, validate_y], f)
+        f.close()
 
-    with open('./data/hospitalization_validate_data_sub_cts_by_' + str(l) + 'month.pickle', 'wb') as f:
-        pickle.dump([validate_sub_cts, validate_y], f)
-    f.close()
+        with open('./data/hospitalization_test_data_sub_cts_by_' + str(l) + 'month.pickle', 'wb') as f:
+            pickle.dump([test_sub_cts, test_y], f)
+        f.close()
 
-    with open('./data/hospitalization_test_data_sub_cts_by_' + str(l) + 'month.pickle', 'wb') as f:
-        pickle.dump([test_sub_cts, test_y], f)
-    f.close()
-
-    with open('./data/hospitalization_cts_sub_columns_by_' + str(l) + 'month.pickle', 'wb') as f:
-        pickle.dump(counts_sub.columns.tolist(), f)
-    f.close()
+        with open('./data/hospitalization_cts_sub_columns_by_' + str(l) + 'month.pickle', 'wb') as f:
+            pickle.dump(counts_sub.columns.tolist(), f)
+        f.close()
