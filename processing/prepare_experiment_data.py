@@ -66,6 +66,19 @@ def get_counts_subwindow(df, l):
     return dt
 
 
+def pts_with_more_items(dt1, thres, l):
+    dt1['adm'] = dt1['adm_month'].apply(lambda x: int(x/l))
+    # del dt1['adm_month']
+    dt = dt1[['ptid', 'itemid', 'adm']].groupby(['ptid', 'adm'])['itemid'].apply(list)
+    dt = dt.reset_index()
+    dt['length'] = dt['itemid'].apply(lambda x: len(x))
+    # dt['length'].describe()
+    # remove patients with items nums in 95%+ quantile
+    pts_100 = dt[dt['length'] > thres]
+    ids = set(pts_100['ptid'].values)
+    return ids
+
+
 if __name__ == '__main__':
     # # =============== learn item embedding ================================
     # with open('./data/visit_items_for_w2v.pickle', 'rb') as f:
@@ -116,16 +129,11 @@ if __name__ == '__main__':
     dt1 = dt1[dt1['itemid'].isin(vocab)]
     dt1 = dt1[dt1['itemid'].isin(item_cts_100.index.tolist())]
 
-    l = 3
-    dt1['adm'] = dt1['adm_month'].apply(lambda x: int(x/l))
-    del dt1['adm_month']
-    dt = dt1[['ptid', 'itemid', 'adm']].groupby(['ptid', 'adm'])['itemid'].apply(list)
-    dt = dt.reset_index()
-    dt['length'] = dt['itemid'].apply(lambda x: len(x))
-    dt['length'].describe()
-    # remove patients with more than 125 items in the subsequence
-    pts_150 = dt[dt['length'] > 150]
-    dt1 = dt1[~dt1['ptid'].isin(set(pts_150['ptid'].values))]
+    ids1 = pts_with_more_items(dt1, 109, 1)
+    ids2 = pts_with_more_items(dt1, 126, 2)
+    ids3 = pts_with_more_items(dt1, 142, 3)
+    ids = ids1.union(ids2).union(ids3)
+    dt1 = dt1[~dt1['ptid'].isin(ids)]
     ptids = set(dt1['ptid'].values)
 
     print('original_total_pts %i' % (len(pos_ids) + len(neg_ids))) # 73877
@@ -138,7 +146,7 @@ if __name__ == '__main__':
     print('updated_neg_pts %i' % len(neg_ids)) # 66730
     ptids = list(pos_ids) + list(neg_ids)
     train_ids, valid_ids, test_ids = split_train_validate_test(pos_ids, neg_ids)
-    with open('./data/hospitalization_train_validate_test_ids_by_' + str(l) + 'month.pickle', 'wb') as f:
+    with open('./data/hospitalization_train_validate_test_ids.pickle', 'wb') as f:
         pickle.dump([train_ids, valid_ids, test_ids], f)
     f.close()
 
@@ -189,28 +197,10 @@ if __name__ == '__main__':
         pickle.dump([test_genders, test_ages, test_ip], f)
     f.close()
 
-    # get the itemids by month
-    dt2 = group_items_byadmmonth(dt1, l)
-    train = [dt2[pid] for pid in train_ids]
-    validate = [dt2[pid] for pid in valid_ids]
-    test = [dt2[pid] for pid in test_ids]
-
+    # get response
     train_y = [1 if pid in pos_ids else 0 for pid in train_ids]
     validate_y = [1 if pid in pos_ids else 0 for pid in valid_ids]
     test_y = [1 if pid in pos_ids else 0 for pid in test_ids]
-
-    # save data of items in each month
-    with open('./data/hospitalization_train_data_by_' + str(l) + 'month.pickle', 'wb') as f:
-        pickle.dump([train, train_y], f)
-    f.close()
-
-    with open('./data/hospitalization_validate_data_by_' + str(l) + 'month.pickle', 'wb') as f:
-        pickle.dump([validate, validate_y], f)
-    f.close()
-
-    with open('./data/hospitalization_test_data_by_' + str(l) + 'month.pickle', 'wb') as f:
-        pickle.dump([test, test_y], f)
-    f.close()
 
     # get the counts of clinical events
     with open('./data/ccs_codes_all_item_categories.pickle', 'rb') as f:
@@ -247,6 +237,30 @@ if __name__ == '__main__':
         pickle.dump(counts.columns.tolist(), f)
     f.close()
 
+    # ============================ by time interval data =============================================
+    # l = 1
+    # l = 2
+    l = 3
+    # get the itemids by month
+    dt2 = group_items_byadmmonth(dt1, l)
+    train = [dt2[pid] for pid in train_ids]
+    validate = [dt2[pid] for pid in valid_ids]
+    test = [dt2[pid] for pid in test_ids]
+
+    # save data of items in each month
+    with open('./data/hospitalization_train_data_by_' + str(l) + 'month.pickle', 'wb') as f:
+        pickle.dump([train, train_y], f)
+    f.close()
+
+    with open('./data/hospitalization_validate_data_by_' + str(l) + 'month.pickle', 'wb') as f:
+        pickle.dump([validate, validate_y], f)
+    f.close()
+
+    with open('./data/hospitalization_test_data_by_' + str(l) + 'month.pickle', 'wb') as f:
+        pickle.dump([test, test_y], f)
+    f.close()
+
+
     # get the counts of each month in the window
     counts_sub = get_counts_subwindow(dt3, l)
     counts_sub['ptid'] = counts_sub.index.values
@@ -270,6 +284,6 @@ if __name__ == '__main__':
         pickle.dump([test_sub_cts, test_y], f)
     f.close()
 
-    with open('./data/hospitalization_cts_sub_columns.pickle', 'wb') as f:
+    with open('./data/hospitalization_cts_sub_columns_by_' + str(l) + 'month.pickle', 'wb') as f:
         pickle.dump(counts_sub.columns.tolist(), f)
     f.close()
