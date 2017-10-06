@@ -333,8 +333,11 @@ if __name__ == '__main__':
 
     # get demographic and previous IP info
     train_demoips, validate_demoips, test_demoips = process_demoip()
-    l = 2
 
+    l = 2
+    # pad_size = 109
+    pad_size = 126
+    # pad_size = 142
     with open('./data/hospitalization_train_validate_test_ids.pickle', 'rb') as f:
         train_ids, valid_ids, test_ids = pickle.load(f)
     f.close()
@@ -351,12 +354,6 @@ if __name__ == '__main__':
         test, test_y = pickle.load(f)
     f.close()
 
-
-    # create input tensor and pad each visit to length of 200
-    # pad_size = 109
-    pad_size = 126
-    # pad_size = 142
-    size = 100
     # Prepare validation data for the model
     validate_x, validate_y = create_full_set(validate, validate_y, w2v_model, size, pad_size, l)
     # with open('./data/hospitalization_validate_data_padded.pickle', 'wb') as f:
@@ -367,7 +364,7 @@ if __name__ == '__main__':
     # Model hyperparameters
     # model_type = 'rnn-rt'
     input_size = size + 3
-    embedding_size = 500
+    embedding_size = 300
     hidden_size = 128
     n_layers = 1
     seq_len = int(12 / l)

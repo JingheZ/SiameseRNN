@@ -156,8 +156,7 @@ if __name__ == '__main__':
     #  ============== Prepare Data ===========================
     # get demographic and previous IP info
     train_demoips, validate_demoips, test_demoips = process_demoip()
-    l = 3
-    with open('./data/hospitalization_train_validate_test_ids_by_' + str(l) + 'month.pickle', 'rb') as f:
+    with open('./data/hospitalization_train_validate_test_ids.pickle', 'rb') as f:
         train_ids, valid_ids, test_ids = pickle.load(f)
     f.close()
 
@@ -184,15 +183,15 @@ if __name__ == '__main__':
     input_size = len(features) + 3
     output_size = 2
     drop = 0.0
-    learning_rate = 0.005
-    decay = 0.01
+    learning_rate = 0.001
+    decay = 0.005
     interval = 100
     initrange = 1
     mlp_hidden_size1 = 256
     # mlp_hidden_size2 = 1024
 
     batch_size = 100
-    epoch_max = 1 # training for maximum 3 epochs of training data
+    epoch_max = 30 # training for maximum 3 epochs of training data
     n_iter_max_dev = 1000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
@@ -206,7 +205,7 @@ if __name__ == '__main__':
         model = MLPmodel(input_size, mlp_hidden_size1, output_size, initrange)
 
     # criterion = nn.CrossEntropyLoss()
-    criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 11]))
+    criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 10]))
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
     model_path = './saved_models/model_' + model_type + '.dat'
     print('Start Training...')
@@ -244,12 +243,12 @@ if __name__ == '__main__':
                 pred_ind_dev = model_testing_one_batch(model, validate_x, validate_demoips)
                 perfm_dev, auc_dev = calculate_performance(validate_y.data.tolist(), pred_ind_dev)
                 print("Performance on dev set: AUC is %.3f" % auc_dev)
-                print(perfm_dev)
-
-                pred_ind_batch = model_testing_one_batch(model, batch_x, batch_demoip)
-                perfm_batch, auc_batch = calculate_performance(batch_y.data.tolist(), pred_ind_batch)
-                print("Performance on training set: AUC is %.3f" % auc_batch)
-                print(perfm_batch)
+                # print(perfm_dev)
+                #
+                # pred_ind_batch = model_testing_one_batch(model, batch_x, batch_demoip)
+                # perfm_batch, auc_batch = calculate_performance(batch_y.data.tolist(), pred_ind_batch)
+                # print("Performance on training set: AUC is %.3f" % auc_batch)
+                # print(perfm_batch)
                 print('Validation, loss: %.3f' % (loss_dev.data[0]))
                 # if loss_dev < best_loss_dev:
                 #     best_loss_dev = loss_dev
