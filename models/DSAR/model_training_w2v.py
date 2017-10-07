@@ -365,13 +365,13 @@ if __name__ == '__main__':
     # model_type = 'rnn-rt'
     input_size = size + 3
     embedding_size = 300
-    hidden_size = 128
+    hidden_size = 256
     n_layers = 1
     seq_len = int(12 / l)
     output_size = 2
     rnn_type = 'GRU'
     drop = 0.0
-    learning_rate = 0.002
+    learning_rate = 0.003
     decay = 0.01
     interval = 100
     initrange = 1
