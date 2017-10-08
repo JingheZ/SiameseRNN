@@ -160,6 +160,9 @@ class Patient2Vec0(nn.Module):
             convolution_one_month = torch.squeeze(convolution_one_month, dim=3)
             convolution_one_month = torch.transpose(convolution_one_month, 0, 1)
             convolution_one_month = torch.transpose(convolution_one_month, 1, 2)
+            convolution_one_month = torch.squeeze(convolution_one_month, dim=1)
+            convolution_one_month = self.func_softmax(convolution_one_month)
+            convolution_one_month = torch.unsqueeze(convolution_one_month, dim=1)
             vec = torch.bmm(convolution_one_month, inputs[:, i])
             convolution_all.append(vec)
         convolution_all = torch.stack(convolution_all, dim=1)
@@ -216,6 +219,127 @@ class Patient2Vec0(nn.Module):
         linear_y = self.linear(context_v2)
         out = self.func_softmax(linear_y)
         return out, [states_rnn, context, alpha]
+#
+#
+# class Patient2Vec1(nn.Module):
+#     """
+#     A convolutional embedding layer, then recurrent autoencoder with an encoder, recurrent module, and a decoder.
+#     In addition, a linear layer is on top of each decode step and the weights are shared at these step.
+#     """
+#
+#     def __init__(self, input_size, embed_size, hidden_size, n_layers, att_dim, initrange,
+#                  output_size, rnn_type, seq_len, pad_size, n_filters, dropout_p=0.5):
+#         """
+#         Initilize a recurrent model
+#         """
+#         super(Patient2Vec1, self).__init__()
+#
+#         self.initrange = initrange
+#         # convolution
+#         self.conv = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=input_size, stride=2)
+#
+#         # Embedding
+#         self.embed = nn.Linear(input_size, embed_size, bias=False)
+#         # Bidirectional RNN
+#         self.rnn = getattr(nn, rnn_type)(embed_size, hidden_size, n_layers, dropout=dropout_p,
+#                                          batch_first=True, bias=True, bidirectional=False)
+#         # initialize 2-layer attention weight matrics
+#         self.att_w1 = nn.Linear(hidden_size, att_dim, bias=False)
+#
+#         # final linear layer
+#         self.linear = nn.Linear(hidden_size + 3, output_size, bias=True)
+#
+#         self.func_softmax = nn.Softmax()
+#         self.func_sigmoid = nn.Sigmoid()
+#         self.func_tanh = nn.Hardtanh()
+#         # Add dropout
+#         self.dropout_p = dropout_p
+#         self.dropout = nn.Dropout(p=self.dropout_p)
+#         self.init_weights()
+#
+#         self.pad_size = pad_size
+#         self.input_size = input_size
+#         self.embed_size = embed_size
+#         self.hidden_size = hidden_size
+#         self.output_size = output_size
+#         self.n_layers = n_layers
+#         self.seq_len = seq_len
+#         self.n_filters = n_filters
+#
+#     def init_weights(self):
+#         """
+#         weight initialization
+#         """
+#         for param in self.parameters():
+#             param.data.uniform_(-self.initrange, self.initrange)
+#
+#     def convolutional_layer(self, inputs):
+#         convolution_all = []
+#         for i in range(self.seq_len):
+#             convolution_one_month = []
+#             for j in range(self.pad_size):
+#                 convolution = self.conv(torch.unsqueeze(inputs[:, i, j], dim=1))
+#                 convolution_one_month.append(convolution)
+#             convolution_one_month = torch.stack(convolution_one_month)
+#             convolution_one_month = torch.squeeze(convolution_one_month, dim=3)
+#             convolution_one_month = torch.transpose(convolution_one_month, 0, 1)
+#             convolution_one_month = torch.transpose(convolution_one_month, 1, 2)
+#             vec = torch.bmm(convolution_one_month, inputs[:, i])
+#             convolution_all.append(vec)
+#         convolution_all = torch.stack(convolution_all, dim=1)
+#         convolution_all = torch.squeeze(convolution_all, dim=2)
+#         return convolution_all
+#
+#     def embedding_layer(self, convolutions):
+#         embedding_f = []
+#         for i in range(self.seq_len):
+#             embedded = self.embed(convolutions[:, i])
+#             embedding_f.append(embedded)
+#         embedding_f = torch.stack(embedding_f)
+#         embedding_f = torch.transpose(embedding_f, 0, 1)
+#         embedding_f = self.func_tanh(embedding_f)
+#         return embedding_f
+#
+#     def encode_rnn(self, embedding, batch_size):
+#         self.weight = next(self.parameters()).data
+#         init_state = (Variable(self.weight.new(self.n_layers, batch_size, self.hidden_size).zero_()))
+#         embedding = self.dropout(embedding)
+#         outputs_rnn, states_rnn = self.rnn(embedding, init_state)
+#         return outputs_rnn
+#
+#     def add_attention(self, states, batch_size):
+#         # attention
+#         alpha = []
+#         for i in range(self.seq_len):
+#             m1 = self.att_w1(states[:, i])
+#             m1_actv = self.func_softmax(m1)
+#             # m2 = self.att_w2(m1_actv)
+#             alpha.append(m1_actv)
+#         alpha = torch.stack(alpha)
+#         alpha = torch.transpose(alpha, 0, 1)
+#         alpha = torch.transpose(alpha, 1, 2)
+#         context = torch.bmm(alpha, states)
+#         context = context.view(batch_size, -1)
+#         return alpha, context
+#
+#     def forward(self, inputs, inputs_demoip, batch_size):
+#         """
+#         the recurrent module
+#         """
+#         # Convolutional
+#         convolutions = self.convolutional_layer(inputs)
+#         # Embedding
+#         embedding = self.embedding_layer(convolutions)
+#         # RNN
+#         states_rnn = self.encode_rnn(embedding, batch_size)
+#         # Add attentions and get context vector
+#         alpha, context = self.add_attention(states_rnn, batch_size)
+#         # alpha = self.add_attention(states_rnn, batch_size)
+#         # Final linear layer with demographic and previous IP info added as extra variables
+#         context_v2 = torch.cat((context, inputs_demoip), 1)
+#         linear_y = self.linear(context_v2)
+#         out = self.func_softmax(linear_y)
+#         return out, [states_rnn, context, alpha]
 
 
 def create_batch(step, batch_size, data_x, data_demoip, data_y, w2v, vsize, pad_size, l):
@@ -371,7 +495,7 @@ if __name__ == '__main__':
     output_size = 2
     rnn_type = 'GRU'
     drop = 0.0
-    learning_rate = 0.003
+    learning_rate = 0.0001
     decay = 0.01
     interval = 100
     initrange = 1

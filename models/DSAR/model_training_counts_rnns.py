@@ -344,8 +344,8 @@ if __name__ == '__main__':
     #  ============== Prepare Data ===========================
     # get demographic and previous IP info
     train_demoips, validate_demoips, test_demoips = process_demoip()
-    l = 3
-    with open('./data/hospitalization_train_validate_test_ids_by_' + str(l) + 'month.pickle', 'rb') as f:
+    l = 2
+    with open('./data/hospitalization_train_validate_test_ids.pickle', 'rb') as f:
         train_ids, valid_ids, test_ids = pickle.load(f)
     f.close()
 
@@ -378,7 +378,7 @@ if __name__ == '__main__':
     output_size = 2
     rnn_type = 'GRU'
     drop = 0.0
-    learning_rate = 0.001
+    learning_rate = 0.0001
     decay = 0.01
     interval = 100
     initrange = 1
@@ -388,7 +388,7 @@ if __name__ == '__main__':
     epoch_max = 15 # training for maximum 3 epochs of training data
     n_iter_max_dev = 1000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
-    model_type = 'rnn-bi'
+    model_type = 'rnn'
     # Build and train/load the model
     print('Build Model...')
     # by default build a RNN model
@@ -447,11 +447,11 @@ if __name__ == '__main__':
                 print("Performance on dev set: AUC is %.3f" % auc_dev)
                 # print(perfm_dev)
 
-                pred_ind_batch = model_testing_one_batch(model, model_type, batch_x, batch_demoip, batch_size)
-                perfm_batch, auc_batch = calculate_performance(batch_y.data.tolist(), pred_ind_batch)
-                print("Performance on training set: AUC is %.3f" % auc_batch)
-                # print(perfm_batch)
-                print('Validation, loss: %.3f' % (loss_dev.data[0]))
+                # pred_ind_batch = model_testing_one_batch(model, model_type, batch_x, batch_demoip, batch_size)
+                # perfm_batch, auc_batch = calculate_performance(batch_y.data.tolist(), pred_ind_batch)
+                # print("Performance on training set: AUC is %.3f" % auc_batch)
+                # # print(perfm_batch)
+                # print('Validation, loss: %.3f' % (loss_dev.data[0]))
                 # if loss_dev < best_loss_dev:
                 #     best_loss_dev = loss_dev
                 #     best_dev_iter = n_iter
