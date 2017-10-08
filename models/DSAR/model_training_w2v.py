@@ -191,14 +191,15 @@ class Patient2Vec0(nn.Module):
         alpha = []
         for i in range(self.seq_len):
             m1 = self.att_w1(states[:, i])
-            m1_actv = self.func_softmax(m1)
+            # m1_actv = self.func_softmax(m1)
             # m2 = self.att_w2(m1_actv)
-            alpha.append(m1_actv)
-        alpha = torch.stack(alpha)
-        alpha = torch.transpose(alpha, 0, 1)
-        alpha = torch.transpose(alpha, 1, 2)
+            alpha.append(m1)
+        alpha = torch.stack(alpha, dim=1)
+        alpha = torch.squeeze(alpha, dim=2)
+        alpha = self.func_softmax(alpha)
+        alpha = torch.unsqueeze(alpha, dim=1)
         context = torch.bmm(alpha, states)
-        context = context.view(batch_size, -1)
+        context = torch.squeeze(context, dim=1)
         return alpha, context
 
     def forward(self, inputs, inputs_demoip, batch_size):
@@ -495,7 +496,7 @@ if __name__ == '__main__':
     output_size = 2
     rnn_type = 'GRU'
     drop = 0.0
-    learning_rate = 0.0001
+    learning_rate = 0.0005
     decay = 0.01
     interval = 100
     initrange = 1
