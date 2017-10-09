@@ -503,13 +503,13 @@ if __name__ == '__main__':
     drop = 0.0
     learning_rate = 0.0005
     decay = 0.01
-    interval = 100
+    interval = 10
     initrange = 1
     att_dim = 1
     n_filters = 5
     batch_size = 100
     epoch_max = 10 # training for maximum 3 epochs of training data
-    n_iter_max_dev = 100 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
+    n_iter_max_dev = 10 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
     model_type = 'rnn'
