@@ -7,8 +7,7 @@ from sklearn.model_selection import StratifiedShuffleSplit
 import numpy as np
 import pandas as pd
 from gensim.models import Word2Vec
-# import time
-import random
+import time
 from sklearn import preprocessing
 
 
@@ -37,7 +36,7 @@ def find_previous_IP(dt):
 
 def group_items_byadmmonth(dt, l):
     dt['adm'] = dt['adm_month'].apply(lambda x: int(x / l))
-    dt = dt[['ptid', 'itemid', 'adm']].groupby(['ptid', 'adm'])['itemid'].apply(list)
+    dt = dt[['ptid', 'itemid', 'adm']].drop_duplicates().groupby(['ptid', 'adm'])['itemid'].apply(list)
     dt = dt.reset_index()
     pt_dict = {}
     for i in dt.index:
@@ -51,7 +50,7 @@ def group_items_byadmmonth(dt, l):
 
 
 def get_counts_subwindow(df, l):
-    counts0 = df[['ptid', 'itemcat', 'adm']].groupby(['ptid', 'itemcat', 'adm']).size().unstack('itemcat')
+    counts0 = df[['ptid', 'itemcat', 'adm']].drop_duplicates().groupby(['ptid', 'itemcat', 'adm']).size().unstack('itemcat')
     counts0.reset_index(inplace=True)
     dt = counts0[counts0['adm'] == 0]
     del dt['adm']
@@ -71,7 +70,7 @@ def get_counts_subwindow(df, l):
 def pts_with_more_items(dt1, thres, l):
     dt1['adm'] = dt1['adm_month'].apply(lambda x: int(x/l))
     # del dt1['adm_month']
-    dt = dt1[['ptid', 'itemid', 'adm']].groupby(['ptid', 'adm'])['itemid'].apply(list)
+    dt = dt1[['ptid', 'itemid', 'adm']].drop_duplicates().groupby(['ptid', 'adm'])['itemid'].apply(list)
     dt = dt.reset_index()
     dt['length'] = dt['itemid'].apply(lambda x: len(x))
     # dt['length'].describe()
@@ -82,28 +81,28 @@ def pts_with_more_items(dt1, thres, l):
 
 
 if __name__ == '__main__':
-    # # =============== learn item embedding ================================
-    # with open('./data/visit_items_for_w2v.pickle', 'rb') as f:
-    #     docs = pickle.load(f)
-    # f.close()
-    #
-    # # run the skip-gram w2v model
+    # =============== learn item embedding ================================
+    with open('./data/visit_items_for_w2v.pickle', 'rb') as f:
+        docs = pickle.load(f)
+    f.close()
+
+    # run the skip-gram w2v model
     size = 100
     window = 100
-    # min_count = 100
-    # workers = 28
-    # iter = 5
+    min_count = 100
+    workers = 28
+    iter = 5
     sg = 1 # skip-gram:1; cbow: 0
     model_path = './results/w2v_size' + str(size) + '_window' + str(window) + '_sg' + str(sg)
-    # # if os.path.exists(model_path):
-    # #     model = Word2Vec.load(model_path)
-    # # else:
+    # if os.path.exists(model_path):
+    #     model = Word2Vec.load(model_path)
+    # else:
     # a = time.time()
     # model = Word2Vec(docs, size=size, window=window, min_count=min_count, workers=workers, sg=sg, iter=iter)
     # model.save(model_path)
     # b = time.time()
     # print('training time (mins): %.3f' % ((b - a) / 60))
-    #
+
     # load model
     model = Word2Vec.load(model_path)
     vocab = list(model.wv.vocab.keys())
@@ -131,21 +130,21 @@ if __name__ == '__main__':
     dt1 = dt1[dt1['itemid'].isin(vocab)]
     dt1 = dt1[dt1['itemid'].isin(item_cts_100.index.tolist())]
 
-    ids1 = pts_with_more_items(dt1, 109, 1)
-    ids2 = pts_with_more_items(dt1, 126, 2)
-    ids3 = pts_with_more_items(dt1, 142, 3)
+    ids1 = pts_with_more_items(dt1, 105, 1)
+    ids2 = pts_with_more_items(dt1, 116, 2)
+    ids3 = pts_with_more_items(dt1, 125, 3)
     ids = ids1.union(ids2).union(ids3)
     dt1 = dt1[~dt1['ptid'].isin(ids)]
     ptids = set(dt1['ptid'].values)
 
-    print('original_total_pts %i' % (len(pos_ids) + len(neg_ids))) # 73877
-    print('updated_total_pts after excluding rare events %i' % len(ptids)) # 69755
-    print('original_pos_pts %i' % len(pos_ids)) # 3677
-    print('original_neg_pts %i' % len(neg_ids)) # 70200
+    print('original_total_pts %i' % (len(pos_ids) + len(neg_ids))) # 103363
+    print('updated_total_pts after excluding rare events %i' % len(ptids)) # 98202
+    print('original_pos_pts %i' % len(pos_ids)) # 10416
+    print('original_neg_pts %i' % len(neg_ids)) # 92947
     pos_ids = list(set(pos_ids).intersection(ptids))
     neg_ids = list(set(neg_ids).intersection(ptids))
-    print('updated_pos_pts %i' % len(pos_ids)) # 3025
-    print('updated_neg_pts %i' % len(neg_ids)) # 66730
+    print('updated_pos_pts %i' % len(pos_ids)) # 8918
+    print('updated_neg_pts %i' % len(neg_ids)) # 89284
     ptids = list(pos_ids) + list(neg_ids)
     train_ids, valid_ids, test_ids = split_train_validate_test(pos_ids, neg_ids)
     with open('./data/hospitalization_train_validate_test_ids.pickle', 'wb') as f:
@@ -240,9 +239,6 @@ if __name__ == '__main__':
     f.close()
 
     # ============================ by time interval data =============================================
-    # l = 1
-    # l = 2
-    # l = 3
     for l in [1, 2, 3]:
         # get the itemids by month
         dt2 = group_items_byadmmonth(dt1, l)

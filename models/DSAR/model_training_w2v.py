@@ -326,7 +326,7 @@ class Patient2Vec1(nn.Module):
         wts = torch.stack(wts, dim=1)
         context = torch.bmm(wts, states)
         context = context.view(batch_size, -1)
-        return alpha, context
+        return wts, context
 
     def forward(self, inputs, inputs_demoip, batch_size):
         """
@@ -465,9 +465,9 @@ if __name__ == '__main__':
     train_demoips, validate_demoips, test_demoips = process_demoip()
 
     l = 2
-    # pad_size = 109
-    pad_size = 126
-    # pad_size = 142
+    # pad_size = 105
+    pad_size = 116
+    # pad_size = 125
     with open('./data/hospitalization_train_validate_test_ids.pickle', 'rb') as f:
         train_ids, valid_ids, test_ids = pickle.load(f)
     f.close()
@@ -494,14 +494,14 @@ if __name__ == '__main__':
     # Model hyperparameters
     # model_type = 'rnn-rt'
     input_size = size + 3
-    embedding_size = 100
+    embedding_size = 300
     hidden_size = 256
     n_layers = 1
     seq_len = int(12 / l)
     output_size = 2
     rnn_type = 'GRU'
     drop = 0.0
-    learning_rate = 0.0001
+    learning_rate = 0.0005
     decay = 0.01
     interval = 100
     initrange = 1
@@ -512,7 +512,7 @@ if __name__ == '__main__':
     n_iter_max_dev = 100 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
-    model_type = 'crnn2'
+    model_type = 'rnn'
     # Build and train/load the model
     print('Build Model...')
     # by default build a LR model
