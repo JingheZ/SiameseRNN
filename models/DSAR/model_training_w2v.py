@@ -575,8 +575,8 @@ if __name__ == '__main__':
                 # print("Performance on training set: AUC is %.3f" % auc_batch)
                 # # print(perfm_batch)
                 print('Validation, loss: %.3f' % (loss_dev.data[0]))
-                if loss_dev < best_loss_dev:
-                    best_loss_dev = loss_dev
+                if loss_dev.data[0] < best_loss_dev:
+                    best_loss_dev = loss_dev.data[0]
                     best_dev_iter = n_iter
                     print('best validation at %i with loss %.3f' % (best_dev_iter, best_loss_dev))
                     state_to_save = model.state_dict()
