@@ -509,7 +509,7 @@ if __name__ == '__main__':
     n_filters = 5
     batch_size = 100
     epoch_max = 15 # training for maximum 3 epochs of training data
-    n_iter_max_dev = 500 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
+    n_iter_max_dev = 1000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
     model_type = 'crnn2'
