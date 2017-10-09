@@ -464,10 +464,10 @@ if __name__ == '__main__':
     # get demographic and previous IP info
     train_demoips, validate_demoips, test_demoips = process_demoip()
 
-    l = 2
+    l = 3
     # pad_size = 105
-    pad_size = 116
-    # pad_size = 125
+    # pad_size = 116
+    pad_size = 125
     with open('./data/hospitalization_train_validate_test_ids.pickle', 'rb') as f:
         train_ids, valid_ids, test_ids = pickle.load(f)
     f.close()
@@ -522,9 +522,6 @@ if __name__ == '__main__':
     elif model_type == 'rnn-bi':
         model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
                          ct=False, bi=True, dropout_p=drop)
-    # elif model_type == 'patient2vec':
-    #     model = Patient2Vec(input_size, embedding_size, hidden_size, n_layers, n_hops, att_dim, initrange, output_size,
-    #                         rnn_type, seq_len, pad_size, dropout_p=drop)
     elif model_type == 'crnn':
         model = Patient2Vec0(input_size - 3, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
                             rnn_type, seq_len, pad_size, dropout_p=drop)
@@ -601,7 +598,7 @@ if __name__ == '__main__':
     result_file = './results/test_results_' + model_type + '_layer' + str(n_layers) + '.pickle'
     # output_file = './results/test_outputs_' + model_type + '_layer' + str(n_layers) + '.pickle'
 
-    model_type = 'crnn'
+    model_type = 'rnn'
     # Build and train/load the model
     print('Build Model...')
     # by default build a LR model
@@ -611,9 +608,6 @@ if __name__ == '__main__':
     elif model_type == 'rnn-bi':
         model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
                          ct=False, bi=True, dropout_p=drop)
-    # elif model_type == 'patient2vec':
-    #     model = Patient2Vec(input_size, embedding_size, hidden_size, n_layers, n_hops, att_dim, initrange, output_size,
-    #                         rnn_type, seq_len, pad_size, dropout_p=drop)
     elif model_type == 'crnn':
         model = Patient2Vec0(input_size - 3, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
                             rnn_type, seq_len, pad_size, dropout_p=drop)
