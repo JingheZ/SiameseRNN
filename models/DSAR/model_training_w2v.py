@@ -224,7 +224,7 @@ class Patient2Vec1(nn.Module):
     """
 
     def __init__(self, input_size, embed_size, hidden_size, n_layers, att_dim, initrange,
-                 output_size, rnn_type, seq_len, pad_size, n_filters, dropout_p=0.5):
+                 output_size, rnn_type, seq_len, pad_size, n_filters, bi, dropout_p=0.5):
         """
         Initilize a recurrent model
         """
@@ -232,18 +232,22 @@ class Patient2Vec1(nn.Module):
 
         self.initrange = initrange
         # convolution
+        self.b = 1
+        if bi:
+            self.b = 2
+
         self.conv = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=input_size, stride=2)
-        self.conv2 = nn.Conv1d(in_channels=1, out_channels=n_filters, kernel_size=hidden_size, stride=2)
+        self.conv2 = nn.Conv1d(in_channels=1, out_channels=n_filters, kernel_size=hidden_size * self.b, stride=2)
         # Embedding
         self.embed = nn.Linear(input_size, embed_size, bias=False)
         # Bidirectional RNN
         self.rnn = getattr(nn, rnn_type)(embed_size, hidden_size, n_layers, dropout=dropout_p,
-                                         batch_first=True, bias=True, bidirectional=False)
+                                         batch_first=True, bias=True, bidirectional=bi)
         # initialize 2-layer attention weight matrics
-        self.att_w1 = nn.Linear(hidden_size, att_dim, bias=False)
+        self.att_w1 = nn.Linear(hidden_size * self.b, att_dim, bias=False)
 
         # final linear layer
-        self.linear = nn.Linear(hidden_size * n_filters + 3, output_size, bias=True)
+        self.linear = nn.Linear(hidden_size * self.b * n_filters + 3, output_size, bias=True)
 
         self.func_softmax = nn.Softmax()
         self.func_sigmoid = nn.Sigmoid()
@@ -302,7 +306,7 @@ class Patient2Vec1(nn.Module):
 
     def encode_rnn(self, embedding, batch_size):
         self.weight = next(self.parameters()).data
-        init_state = (Variable(self.weight.new(self.n_layers, batch_size, self.hidden_size).zero_()))
+        init_state = (Variable(self.weight.new(self.n_layers * self.b, batch_size, self.hidden_size).zero_()))
         embedding = self.dropout(embedding)
         outputs_rnn, states_rnn = self.rnn(embedding, init_state)
         return outputs_rnn
@@ -522,7 +526,10 @@ if __name__ == '__main__':
                             rnn_type, seq_len, pad_size, dropout_p=drop)
     elif model_type == 'crnn2':
         model = Patient2Vec1(input_size - 3, embedding_size - 3, hidden_size, n_layers, att_dim, initrange, output_size,
-                            rnn_type, seq_len, pad_size, n_filters, dropout_p=drop)
+                             rnn_type, seq_len, pad_size, n_filters, bi=False, dropout_p=drop)
+    elif model_type == 'crnn2-bi':
+        model = Patient2Vec1(input_size - 3, embedding_size - 3, hidden_size, n_layers, att_dim, initrange, output_size,
+                            rnn_type, seq_len, pad_size, n_filters, bi=True, dropout_p=drop)
 
     criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 10]))
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
