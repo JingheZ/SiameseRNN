@@ -2,18 +2,13 @@
 To train the RNN models
 """
 
-import os
 import pickle
 import time
-
-import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
-# from models.DSAR.Patient2Vec import Patient2Vec, Patient2Vec0
 from torch.autograd import Variable
 from gensim.models import Word2Vec
-# from models.DSAR.Baselines import RNNmodel
 import numpy as np
 from sklearn import metrics
 
@@ -295,15 +290,15 @@ class Patient2Vec1(nn.Module):
         convolution_all = torch.squeeze(convolution_all, dim=2)
         return convolution_all
 
-    def embedding_layer(self, convolutions):
-        embedding_f = []
-        for i in range(self.seq_len):
-            embedded = self.embed(convolutions[:, i])
-            embedding_f.append(embedded)
-        embedding_f = torch.stack(embedding_f)
-        embedding_f = torch.transpose(embedding_f, 0, 1)
-        embedding_f = self.func_tanh(embedding_f)
-        return embedding_f
+    # def embedding_layer(self, convolutions):
+    #     embedding_f = []
+    #     for i in range(self.seq_len):
+    #         embedded = self.embed(convolutions[:, i])
+    #         embedding_f.append(embedded)
+    #     embedding_f = torch.stack(embedding_f)
+    #     embedding_f = torch.transpose(embedding_f, 0, 1)
+    #     embedding_f = self.func_tanh(embedding_f)
+    #     return embedding_f
 
     def encode_rnn(self, embedding, batch_size):
         self.weight = next(self.parameters()).data
@@ -335,9 +330,9 @@ class Patient2Vec1(nn.Module):
         # Convolutional
         convolutions = self.convolutional_layer(inputs)
         # Embedding
-        embedding = self.embedding_layer(convolutions)
+        # embedding = self.embedding_layer(convolutions)
         # RNN
-        states_rnn = self.encode_rnn(embedding, batch_size)
+        states_rnn = self.encode_rnn(convolutions, batch_size)
         # Add attentions and get context vector
         alpha, context = self.add_attention(states_rnn, batch_size)
         # alpha = self.add_attention(states_rnn, batch_size)
@@ -494,14 +489,14 @@ if __name__ == '__main__':
     # Model hyperparameters
     # model_type = 'rnn-rt'
     input_size = size + 3
-    embedding_size = 500
+    embedding_size = input_size
     hidden_size = 256
     n_layers = 1
     seq_len = int(12 / l)
     output_size = 2
     rnn_type = 'GRU'
     drop = 0.0
-    learning_rate = 0.0005
+    learning_rate = 0.001
     decay = 0.01
     interval = 50
     initrange = 1
@@ -526,7 +521,7 @@ if __name__ == '__main__':
         model = Patient2Vec0(input_size - 3, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
                             rnn_type, seq_len, pad_size, dropout_p=drop)
     elif model_type == 'crnn2':
-        model = Patient2Vec1(input_size - 3, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
+        model = Patient2Vec1(input_size - 3, embedding_size - 3, hidden_size, n_layers, att_dim, initrange, output_size,
                             rnn_type, seq_len, pad_size, n_filters, dropout_p=drop)
 
     criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 10]))
@@ -613,7 +608,7 @@ if __name__ == '__main__':
         model = Patient2Vec0(input_size - 3, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
                             rnn_type, seq_len, pad_size, dropout_p=drop)
     elif model_type == 'crnn2':
-        model = Patient2Vec1(input_size - 3, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
+        model = Patient2Vec1(input_size - 3, embedding_size - 3, hidden_size, n_layers, att_dim, initrange, output_size,
                             rnn_type, seq_len, pad_size, n_filters, dropout_p=drop)
     saved_model = torch.load(model_path)
     model.load_state_dict(saved_model)

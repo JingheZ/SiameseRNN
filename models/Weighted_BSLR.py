@@ -628,9 +628,41 @@ if __name__ == '__main__':
                                   'b5_rf', 'b5_lr', 'b5_lasso', 'b5_response']
             test_proba.to_csv('./data/comorbid_risk_test_proba_baselines_r' + str(r) + '_bs' + str(n) + '.csv', index=False)
 
-        # # # data_dm4[data_dm4['ptid'] == '769052'].to_csv('./data/example_dmpt.csv') # rf predicted proba: 0.782
-        # # # data_control4[data_control4['ptid'] =='1819093'].to_csv('./data/example_controlpt.csv') # rf predicted proba: 0.033
+        # calculate F1 score
 
+        def calculate_fscores_bootstraps(test_proba, thres, y):
+            res = [1 if p >= thres else 0 for p in test_proba]
+            f2s = []
+            for p in range(50):
+                random.seed(p)
+                sp = random.choices(list(zip(res, y)), k=int(len(y) * 1))
+                sp_pred = [v[0] for v in sp]
+                sp_true = [v[1] for v in sp]
+                f2 = metrics.fbeta_score(sp_true, sp_pred, average='macro', beta=2)
+                f2s.append(f2)
+            avg = np.mean(f2s)
+            std = np.std(f2s)
+            return tuple((avg, std))
+        # baselines 1-4
+        test_proba = pd.read_csv('./data/comorbid_risk_test_proba_baselines_r' + str(r) + '_bs' + str(n) + '.csv')
+        cols = [['b1_rf', 'b1_lasso', 'b1_response', 0.40, 0.44],
+                ['b3_rf', 'b3_lasso', 'b3_response', 0.66, 0.53],
+                ['b4_rf', 'b4_lasso', 'b4_response', 0.35, 0.43],
+                ['b5_rf', 'b5_lasso', 'b5_response', 0.36, 0.48]]
+
+        fs = []
+        for i in cols:
+            results_rf = calculate_fscores_bootstraps(test_proba[i[0]].values, i[3], test_proba[i[2]].values)
+            results_lr = calculate_fscores_bootstraps(test_proba[i[1]].values, i[4], test_proba[i[2]].values)
+            fs.append([results_lr, results_rf])
+
+        test_proba = pd.read_csv('./data/comorbid_risk_prediction_test_20.csv')
+        f2_wbslr = calculate_fscores_bootstraps(test_proba['pred'].values, 0.42, test_proba['response'].values)
+
+        test_proba = pd.read_csv('./data/comorbid_risk_prediction_test_20_baggedslr_mv.csv')
+        f2_mvslr = calculate_fscores_bootstraps(test_proba['pred'].values, 0.5, test_proba['response'].values)
+
+        # get bootstraps
         for p in range(100):
             random.seed(p)
             sp = random.choices(list(enumerate(train_ids)), k=len(train_ids))
@@ -639,6 +671,7 @@ if __name__ == '__main__':
             sp_dt = pd.DataFrame([sp_ptids, sp_inds]).transpose()
             sp_dt.columns = ['ptid', 'ind']
             sp_dt.to_csv('./data/comorbid_risk_train_ids_bootstrap' + str(p) + '.csv', index=False)
+
 
 
 
