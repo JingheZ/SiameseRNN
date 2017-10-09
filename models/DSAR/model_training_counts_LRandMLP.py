@@ -184,7 +184,7 @@ if __name__ == '__main__':
     output_size = 2
     drop = 0.0
     learning_rate = 0.001
-    decay = 0.005
+    decay = 0.01
     interval = 100
     initrange = 1
     mlp_hidden_size1 = 512
