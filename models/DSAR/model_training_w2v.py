@@ -512,7 +512,7 @@ if __name__ == '__main__':
     n_iter_max_dev = 500 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
-    model_type = 'rnn'
+    model_type = 'crnn2'
     # Build and train/load the model
     print('Build Model...')
     # by default build a LR model
@@ -599,7 +599,7 @@ if __name__ == '__main__':
     result_file = './results/test_results_' + model_type + '_layer' + str(n_layers) + '.pickle'
     # output_file = './results/test_outputs_' + model_type + '_layer' + str(n_layers) + '.pickle'
 
-    model_type = 'rnn'
+    model_type = 'crnn2'
     # Build and train/load the model
     print('Build Model...')
     # by default build a LR model
@@ -615,8 +615,8 @@ if __name__ == '__main__':
     elif model_type == 'crnn2':
         model = Patient2Vec1(input_size - 3, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
                             rnn_type, seq_len, pad_size, n_filters, dropout_p=drop)
-    state_to_save = model.state_dict()
-    torch.save(state_to_save, model_path)
+    saved_model = torch.load(model_path)
+    model.load_state_dict(saved_model)
     # # Evaluate the model
     model.eval()
     test_start_time = time.time()
