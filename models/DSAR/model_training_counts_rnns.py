@@ -372,13 +372,13 @@ if __name__ == '__main__':
     # model_type = 'rnn-rt'
     input_size = int(len(features)/int(12/l))
     embedding_size = 300
-    hidden_size = 256
+    hidden_size = 512
     n_layers = 1
     seq_len = int(12/l)
     output_size = 2
     rnn_type = 'GRU'
     drop = 0.0
-    learning_rate = 0.0001
+    learning_rate = 0.0002
     decay = 0.01
     interval = 100
     initrange = 1
@@ -386,7 +386,7 @@ if __name__ == '__main__':
 
     batch_size = 100
     epoch_max = 30 # training for maximum 3 epochs of training data
-    n_iter_max_dev = 1000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
+    n_iter_max_dev = 500 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
     model_type = 'rnn'
     # Build and train/load the model
@@ -452,19 +452,21 @@ if __name__ == '__main__':
                 # print("Performance on training set: AUC is %.3f" % auc_batch)
                 # # print(perfm_batch)
                 # print('Validation, loss: %.3f' % (loss_dev.data[0]))
-                # if loss_dev < best_loss_dev:
-                #     best_loss_dev = loss_dev
-                #     best_dev_iter = n_iter
-                # if n_iter - best_dev_iter >= n_iter_max_dev:
-                #     break
+                if loss_dev < best_loss_dev:
+                    best_loss_dev = loss_dev
+                    best_dev_iter = n_iter
+                    state_to_save = model.state_dict()
+                    torch.save(state_to_save, model_path)
+                if n_iter - best_dev_iter >= n_iter_max_dev:
+                    break
             step += 1
-            # n_iter += 1
+            n_iter += 1
         # if n_iter - best_dev_iter >= n_iter_max_dev:
         #     break
         epoch += 1
-    # save trained model
-    state_to_save = model.state_dict()
-    torch.save(state_to_save, model_path)
+    # # save trained model
+    # state_to_save = model.state_dict()
+    # torch.save(state_to_save, model_path)
     elapsed = time.time() - start_time
     print('Training Finished! Total Training Time is: % .2f' % elapsed)
 
