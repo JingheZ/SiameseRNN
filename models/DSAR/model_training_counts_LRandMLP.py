@@ -192,7 +192,7 @@ if __name__ == '__main__':
 
     batch_size = 100
     epoch_max = 20 # training for maximum 3 epochs of training data
-    n_iter_max_dev = 1000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
+    n_iter_max_dev = 100 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
     model_type = 'LR'
@@ -207,7 +207,7 @@ if __name__ == '__main__':
     # criterion = nn.CrossEntropyLoss()
     criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 10]))
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
-    model_path = './saved_models/model_' + model_type + '.dat'
+    model_path = './saved_models/model_' + model_type + '1.dat'
     print('Start Training...')
     # if os.path.exists(model_path):
     #     saved_model = torch.load(model_path)
@@ -250,27 +250,36 @@ if __name__ == '__main__':
                 # print("Performance on training set: AUC is %.3f" % auc_batch)
                 # print(perfm_batch)
                 print('Validation, loss: %.3f' % (loss_dev.data[0]))
-                # if loss_dev < best_loss_dev:
-                #     best_loss_dev = loss_dev
-                #     best_dev_iter = n_iter
-                # if n_iter - best_dev_iter >= n_iter_max_dev:
-                #     break
+                if loss_dev < best_loss_dev:
+                    best_loss_dev = loss_dev
+                    best_dev_iter = n_iter
+                    state_to_save = model.state_dict()
+                    torch.save(state_to_save, model_path)
+                if n_iter - best_dev_iter >= n_iter_max_dev:
+                    break
             step += 1
             n_iter += 1
-        # if n_iter - best_dev_iter >= n_iter_max_dev:
-        #     break
+        if n_iter - best_dev_iter >= n_iter_max_dev:
+            break
         epoch += 1
     # save trained model
-    state_to_save = model.state_dict()
-    torch.save(state_to_save, model_path)
+    # state_to_save = model.state_dict()
+    # torch.save(state_to_save, model_path)
     elapsed = time.time() - start_time
     print('Training Finished! Total Training Time is: % .2f' % elapsed)
 
     # ============================ To evaluate model using testing set =============================================
     print('Start Testing...')
-    result_file = './results/test_results_' + model_type + '.pickle'
-    output_file = './results/test_outputs_' + model_type + '.pickle'
+    result_file = './results/test_results_' + model_type + '1.pickle'
+    output_file = './results/test_outputs_' + model_type + '1.pickle'
 
+    model_type = 'LR'
+    if model_type == 'LR': # 5 epochs, lr=0.001, decay=0.01, weight=1:20; auc: 0.698; with current parameters: 0.640
+        model = LRmodel(input_size, output_size, initrange)
+    elif model_type == 'MLP':
+        model = MLPmodel(input_size, mlp_hidden_size1, output_size, initrange)
+    saved_model = torch.load(model_path)
+    model.load_state_dict(saved_model)
     # # Evaluate the model
     model.eval()
     test_start_time = time.time()

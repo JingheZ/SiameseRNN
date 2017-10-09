@@ -377,7 +377,7 @@ if __name__ == '__main__':
     seq_len = int(12/l)
     output_size = 2
     rnn_type = 'GRU'
-    drop = 0.0
+    drop = 0.1
     learning_rate = 0.0002
     decay = 0.01
     interval = 100
@@ -386,7 +386,7 @@ if __name__ == '__main__':
 
     batch_size = 100
     epoch_max = 30 # training for maximum 3 epochs of training data
-    n_iter_max_dev = 500 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
+    n_iter_max_dev = 100 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
     model_type = 'rnn'
     # Build and train/load the model
@@ -461,8 +461,8 @@ if __name__ == '__main__':
                     break
             step += 1
             n_iter += 1
-        # if n_iter - best_dev_iter >= n_iter_max_dev:
-        #     break
+        if n_iter - best_dev_iter >= n_iter_max_dev:
+            break
         epoch += 1
     # # save trained model
     # state_to_save = model.state_dict()
@@ -474,7 +474,21 @@ if __name__ == '__main__':
     print('Start Testing...')
     result_file = './results/test_results_' + model_type + '_layer' + str(n_layers) + '.pickle'
     # output_file = './results/test_outputs_' + model_type + '_layer' + str(n_layers) + '.pickle'
+    model_type = 'rnn'
+    # Build and train/load the model
+    print('Build Model...')
+    # by default build a RNN model
+    model = RNNmodel(input_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
+                     bi=False, dropout_p=drop)
+    if model_type == 'rnn-bi':
+        model = RNNmodel(input_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
+                         bi=True, dropout_p=drop)
+    elif model_type == 'retain':
+        model = RETAIN(input_size, embedding_size, hidden_size, n_layers, initrange, output_size,
+                            rnn_type, seq_len, dropout_p=drop)
 
+    saved_model = torch.load(model_path)
+    model.load_state_dict(saved_model)
     # Evaluate the model
     model.eval()
     test_start_time = time.time()

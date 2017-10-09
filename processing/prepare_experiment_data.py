@@ -64,6 +64,7 @@ def get_counts_subwindow(df, l):
     dt.index = dt['ptid']
     del dt['ptid']
     dt.fillna(0, inplace=True)
+    dt[dt > 0] = 1
     return dt
 
 

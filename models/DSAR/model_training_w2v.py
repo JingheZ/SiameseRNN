@@ -285,6 +285,10 @@ class Patient2Vec1(nn.Module):
             convolution_one_month = torch.squeeze(convolution_one_month, dim=3)
             convolution_one_month = torch.transpose(convolution_one_month, 0, 1)
             convolution_one_month = torch.transpose(convolution_one_month, 1, 2)
+            convolution_one_month = torch.squeeze(convolution_one_month, dim=1)
+            # convolution_one_month = self.func_tanh(convolution_one_month)
+            convolution_one_month = self.func_softmax(convolution_one_month)
+            convolution_one_month = torch.unsqueeze(convolution_one_month, dim=1)
             vec = torch.bmm(convolution_one_month, inputs[:, i])
             convolution_all.append(vec)
         convolution_all = torch.stack(convolution_all, dim=1)
@@ -490,25 +494,25 @@ if __name__ == '__main__':
     # Model hyperparameters
     # model_type = 'rnn-rt'
     input_size = size + 3
-    embedding_size = 400
-    hidden_size = 512
+    embedding_size = 100
+    hidden_size = 256
     n_layers = 1
     seq_len = int(12 / l)
     output_size = 2
     rnn_type = 'GRU'
     drop = 0.0
-    learning_rate = 0.001
+    learning_rate = 0.0001
     decay = 0.01
     interval = 100
     initrange = 1
     att_dim = 1
-    n_hops = 5
+    n_filters = 5
     batch_size = 100
     epoch_max = 10 # training for maximum 3 epochs of training data
-    n_iter_max_dev = 1000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
+    n_iter_max_dev = 100 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
-    model_type = 'crnn'
+    model_type = 'crnn2'
     # Build and train/load the model
     print('Build Model...')
     # by default build a LR model
@@ -524,6 +528,9 @@ if __name__ == '__main__':
     elif model_type == 'crnn':
         model = Patient2Vec0(input_size - 3, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
                             rnn_type, seq_len, pad_size, dropout_p=drop)
+    elif model_type == 'crnn2':
+        model = Patient2Vec1(input_size - 3, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
+                            rnn_type, seq_len, pad_size, n_filters, dropout_p=drop)
 
     criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 10]))
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
@@ -579,9 +586,9 @@ if __name__ == '__main__':
                 if n_iter - best_dev_iter >= n_iter_max_dev:
                     break
             step += 1
-            # n_iter += 1
-        # if n_iter - best_dev_iter >= n_iter_max_dev:
-        #     break
+            n_iter += 1
+        if n_iter - best_dev_iter >= n_iter_max_dev:
+            break
         epoch += 1
     # save trained model
     # state_to_save = model.state_dict()
@@ -594,6 +601,27 @@ if __name__ == '__main__':
     result_file = './results/test_results_' + model_type + '_layer' + str(n_layers) + '.pickle'
     # output_file = './results/test_outputs_' + model_type + '_layer' + str(n_layers) + '.pickle'
 
+    model_type = 'crnn'
+    # Build and train/load the model
+    print('Build Model...')
+    # by default build a LR model
+    if model_type == 'rnn':
+        model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
+                         ct=False, bi=False, dropout_p=drop)
+    elif model_type == 'rnn-bi':
+        model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
+                         ct=False, bi=True, dropout_p=drop)
+    # elif model_type == 'patient2vec':
+    #     model = Patient2Vec(input_size, embedding_size, hidden_size, n_layers, n_hops, att_dim, initrange, output_size,
+    #                         rnn_type, seq_len, pad_size, dropout_p=drop)
+    elif model_type == 'crnn':
+        model = Patient2Vec0(input_size - 3, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
+                            rnn_type, seq_len, pad_size, dropout_p=drop)
+    elif model_type == 'crnn2':
+        model = Patient2Vec1(input_size - 3, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
+                            rnn_type, seq_len, pad_size, n_filters, dropout_p=drop)
+    state_to_save = model.state_dict()
+    torch.save(state_to_save, model_path)
     # # Evaluate the model
     model.eval()
     test_start_time = time.time()
