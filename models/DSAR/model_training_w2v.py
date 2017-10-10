@@ -473,30 +473,30 @@ if __name__ == '__main__':
         train_ids, valid_ids, test_ids = pickle.load(f)
     f.close()
 
-    # with open('./data/hospitalization_train_data_by_' + str(l) + 'month.pickle', 'rb') as f:
-    #     train, train_y = pickle.load(f)
-    # f.close()
-    #
-    # with open('./data/hospitalization_validate_data_by_' + str(l) + 'month.pickle', 'rb') as f:
-    #     validate, validate_y = pickle.load(f)
-    # f.close()
+    with open('./data/hospitalization_train_data_by_' + str(l) + 'month.pickle', 'rb') as f:
+        train, train_y = pickle.load(f)
+    f.close()
+
+    with open('./data/hospitalization_validate_data_by_' + str(l) + 'month.pickle', 'rb') as f:
+        validate, validate_y = pickle.load(f)
+    f.close()
 
     with open('./data/hospitalization_test_data_by_' + str(l) + 'month.pickle', 'rb') as f:
         test, test_y = pickle.load(f)
     f.close()
 
     # Prepare validation data for the model
-    # validate_x, validate_y = create_full_set(validate, validate_y, w2v_model, size, pad_size, l)
-    # with open('./data/hospitalization_validate_data_padded.pickle', 'wb') as f:
-    #     pickle.dump([validate_x, validate_y], f)
-    # f.close()
-    # validate_x, validate_y = list2tensor(validate_x, validate_y)
-    # validate_demoips = Variable(torch.FloatTensor(validate_demoips), requires_grad=False)
+    validate_x, validate_y = create_full_set(validate, validate_y, w2v_model, size, pad_size, l)
+    with open('./data/hospitalization_validate_data_padded.pickle', 'wb') as f:
+        pickle.dump([validate_x, validate_y], f)
+    f.close()
+    validate_x, validate_y = list2tensor(validate_x, validate_y)
+    validate_demoips = Variable(torch.FloatTensor(validate_demoips), requires_grad=False)
     # Model hyperparameters
     # model_type = 'rnn-rt'
     input_size = size + 3
     embedding_size = input_size
-    hidden_size = 512
+    hidden_size = 256
     n_layers = 1
     seq_len = int(12 / l)
     output_size = 2
@@ -507,98 +507,98 @@ if __name__ == '__main__':
     interval = 100
     initrange = 1
     att_dim = 1
-    n_filters = 5
+    n_filters = 3
     batch_size = 100
     epoch_max = 15 # training for maximum 3 epochs of training data
     n_iter_max_dev = 2000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
     model_type = 'crnn2-bi-tanh'
-    # # Build and train/load the model
-    # print('Build Model...')
-    # # by default build a LR model
-    # if model_type == 'rnn':
-    #     model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
-    #                      ct=False, bi=False, dropout_p=drop)
-    # elif model_type == 'rnn-bi':
-    #     model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
-    #                      ct=False, bi=True, dropout_p=drop)
-    # elif model_type == 'crnn':
-    #     model = Patient2Vec0(input_size - 3, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
-    #                         rnn_type, seq_len, pad_size, dropout_p=drop)
-    # elif model_type == 'crnn2':
-    #     model = Patient2Vec1(input_size - 3, embedding_size - 3, hidden_size, n_layers, att_dim, initrange, output_size,
-    #                          rnn_type, seq_len, pad_size, n_filters, bi=False, dropout_p=drop)
-    # elif model_type == 'crnn2-bi-tanh':
-    #     model = Patient2Vec1(input_size - 3, embedding_size - 3, hidden_size, n_layers, att_dim, initrange, output_size,
-    #                         rnn_type, seq_len, pad_size, n_filters, bi=True, dropout_p=drop)
-    #
-    # criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 10]))
-    # optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
+    # Build and train/load the model
+    print('Build Model...')
+    # by default build a LR model
+    if model_type == 'rnn':
+        model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
+                         ct=False, bi=False, dropout_p=drop)
+    elif model_type == 'rnn-bi':
+        model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
+                         ct=False, bi=True, dropout_p=drop)
+    elif model_type == 'crnn':
+        model = Patient2Vec0(input_size - 3, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
+                            rnn_type, seq_len, pad_size, dropout_p=drop)
+    elif model_type == 'crnn2':
+        model = Patient2Vec1(input_size - 3, embedding_size - 3, hidden_size, n_layers, att_dim, initrange, output_size,
+                             rnn_type, seq_len, pad_size, n_filters, bi=False, dropout_p=drop)
+    elif model_type == 'crnn2-bi-tanh':
+        model = Patient2Vec1(input_size - 3, embedding_size - 3, hidden_size, n_layers, att_dim, initrange, output_size,
+                            rnn_type, seq_len, pad_size, n_filters, bi=True, dropout_p=drop)
+
+    criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 10]))
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
     model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '_l' + str(l) + '.dat'
-    # # model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '.dat'
-    # print('Start Training...')
-    # # if os.path.exists(model_path):
-    # #     saved_model = torch.load(model_path)
-    # #     model.load_state_dict(saved_model)
-    # # # else:
-    #     # model.init_weights(initrange)
-    #     # Train the model
-    # start_time = time.time()
-    # best_loss_dev = 100
-    # best_dev_iter = 0
-    # n_iter = 0
-    # epoch = 0
-    # while epoch < epoch_max:
-    #     step = 0
-    #     while (step + 1) * batch_size < train_iters:
-    #         batch_x, batch_demoip, batch_y = create_batch(step, batch_size, train, train_demoips, train_y, w2v_model, size, pad_size, l)
-    #         optimizer.zero_grad()
-    #         y_pred, _ = model(batch_x, batch_demoip, batch_size)
-    #         # states, alpha, beta = model(batch_x, batch_size)
-    #         loss = criterion(y_pred, batch_y)
-    #         # loss = CrossEntropy_Multi(y_pred, batch_y, output_size, criterion)
-    #         # loss = get_loss(y_pred, batch_y, criterion, seq_len)
-    #         loss.backward()
-    #         optimizer.step()
-    #
-    #         if step % interval == 0:
-    #             elapsed = time.time() - start_time
-    #             # acc = calcualte_accuracy(y_pred, batch_y, batch_size)
-    #             print('%i epoch, %i batches, elapsed time: %.2f, loss: %.3f' % (epoch + 1, step + 1, elapsed, loss.data[0]))
-    #             # Evaluate model performance on validation set
-    #             pred_dev, _ = model(validate_x, validate_demoips, len(valid_ids))
-    #             loss_dev = criterion(pred_dev, validate_y)
-    #             pred_ind_dev = model_testing_one_batch(model, validate_x, validate_demoips,
-    #                                                    len(valid_ids))
-    #             perfm_dev, auc_dev = calculate_performance(validate_y.data.tolist(), pred_ind_dev)
-    #             print("Performance on dev set: AUC is %.3f" % auc_dev)
-    #             # print(perfm_dev)
-    #
-    #             # pred_ind_batch = model_testing_one_batch(model, batch_x, batch_demoip, batch_size)
-    #             # perfm_batch, auc_batch = calculate_performance(batch_y.data.tolist(), pred_ind_batch)
-    #             # print("Performance on training set: AUC is %.3f" % auc_batch)
-    #             # # print(perfm_batch)
-    #             print('Validation, loss: %.3f' % (loss_dev.data[0]))
-    #             if loss_dev.data[0] < best_loss_dev:
-    #                 best_loss_dev = loss_dev.data[0]
-    #                 best_dev_iter = n_iter
-    #                 print('best validation at %i with loss %.3f' % (best_dev_iter, best_loss_dev))
-    #                 state_to_save = model.state_dict()
-    #                 torch.save(state_to_save, model_path)
-    #             if n_iter - best_dev_iter >= n_iter_max_dev:
-    #                 break
-    #         step += 1
-    #         n_iter += 1
-    #     if n_iter - best_dev_iter >= n_iter_max_dev:
-    #         break
-    #     epoch += 1
-    # # save trained model
-    # # state_to_save = model.state_dict()
-    # # torch.save(state_to_save, model_path)
-    # elapsed = time.time() - start_time
-    # print('Training Finished! Total Training Time is: % .2f' % elapsed)
-    # # #
+    # model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '.dat'
+    print('Start Training...')
+    # if os.path.exists(model_path):
+    #     saved_model = torch.load(model_path)
+    #     model.load_state_dict(saved_model)
+    # # else:
+        # model.init_weights(initrange)
+        # Train the model
+    start_time = time.time()
+    best_loss_dev = 100
+    best_dev_iter = 0
+    n_iter = 0
+    epoch = 0
+    while epoch < epoch_max:
+        step = 0
+        while (step + 1) * batch_size < train_iters:
+            batch_x, batch_demoip, batch_y = create_batch(step, batch_size, train, train_demoips, train_y, w2v_model, size, pad_size, l)
+            optimizer.zero_grad()
+            y_pred, _ = model(batch_x, batch_demoip, batch_size)
+            # states, alpha, beta = model(batch_x, batch_size)
+            loss = criterion(y_pred, batch_y)
+            # loss = CrossEntropy_Multi(y_pred, batch_y, output_size, criterion)
+            # loss = get_loss(y_pred, batch_y, criterion, seq_len)
+            loss.backward()
+            optimizer.step()
+
+            if step % interval == 0:
+                elapsed = time.time() - start_time
+                # acc = calcualte_accuracy(y_pred, batch_y, batch_size)
+                print('%i epoch, %i batches, elapsed time: %.2f, loss: %.3f' % (epoch + 1, step + 1, elapsed, loss.data[0]))
+                # Evaluate model performance on validation set
+                pred_dev, _ = model(validate_x, validate_demoips, len(valid_ids))
+                loss_dev = criterion(pred_dev, validate_y)
+                pred_ind_dev = model_testing_one_batch(model, validate_x, validate_demoips,
+                                                       len(valid_ids))
+                perfm_dev, auc_dev = calculate_performance(validate_y.data.tolist(), pred_ind_dev)
+                print("Performance on dev set: AUC is %.3f" % auc_dev)
+                # print(perfm_dev)
+
+                # pred_ind_batch = model_testing_one_batch(model, batch_x, batch_demoip, batch_size)
+                # perfm_batch, auc_batch = calculate_performance(batch_y.data.tolist(), pred_ind_batch)
+                # print("Performance on training set: AUC is %.3f" % auc_batch)
+                # # print(perfm_batch)
+                print('Validation, loss: %.3f' % (loss_dev.data[0]))
+                if loss_dev.data[0] < best_loss_dev:
+                    best_loss_dev = loss_dev.data[0]
+                    best_dev_iter = n_iter
+                    print('best validation at %i with loss %.3f' % (best_dev_iter, best_loss_dev))
+                    state_to_save = model.state_dict()
+                    torch.save(state_to_save, model_path)
+                if n_iter - best_dev_iter >= n_iter_max_dev:
+                    break
+            step += 1
+            n_iter += 1
+        if n_iter - best_dev_iter >= n_iter_max_dev:
+            break
+        epoch += 1
+    # save trained model
+    # state_to_save = model.state_dict()
+    # torch.save(state_to_save, model_path)
+    elapsed = time.time() - start_time
+    print('Training Finished! Total Training Time is: % .2f' % elapsed)
+    # #
     # # ============================ To evaluate model using testing set =============================================
     print('Start Testing...')
     result_file = './results/test_results_' + model_type + '_layer' + str(n_layers) + '.pickle'
