@@ -378,13 +378,17 @@ def create_sequence(items, w2v, dim, pad_size, l):
     seq_flag = [0] * int(12/l)
     for l in range(int(12/l)):
         seq_flag[l] = len(items[l])
+        il = 0
         if seq_flag[l] > 0:
             for j in range(seq_flag[l]):
-                vec = w2v[items[l][j]].tolist()
-                seq[l].append(vec)
+                if w2v.wv.vocab.__contains__(items[l][j]):
+                    vec = w2v[items[l][j]].tolist()
+                    seq[l].append(vec)
+                else:
+                    il += 1
         # pad the input events in a visit to pad_size
-        if seq_flag[l] < pad_size:
-            seq[l] += [[0] * dim for k in range(pad_size - seq_flag[l])]
+        if seq_flag[l] - il < pad_size:
+            seq[l] += [[0] * dim for k in range(pad_size - seq_flag[l] + il)]
     return seq
 
 
@@ -456,12 +460,12 @@ if __name__ == '__main__':
 
     #  ============== Prepare Data ===========================
     # ----- load word2vec embedding model
-    size = 100
+    size = 200
     window = 100
     sg = 1 # skip-gram:1; cbow: 0
     model_path = './results/w2v_size' + str(size) + '_window' + str(window) + '_sg' + str(sg)
     w2v_model = Word2Vec.load(model_path)
-
+    vocab = list(w2v_model.wv.vocab.keys())
     # get demographic and previous IP info
     train_demoips, validate_demoips, test_demoips = process_demoip()
 
@@ -487,9 +491,9 @@ if __name__ == '__main__':
 
     # Prepare validation data for the model
     validate_x, validate_y = create_full_set(validate, validate_y, w2v_model, size, pad_size, l)
-    with open('./data/hospitalization_validate_data_padded.pickle', 'wb') as f:
-        pickle.dump([validate_x, validate_y], f)
-    f.close()
+    # with open('./data/hospitalization_validate_data_padded.pickle', 'wb') as f:
+    #     pickle.dump([validate_x, validate_y], f)
+    # f.close()
     validate_x, validate_y = list2tensor(validate_x, validate_y)
     validate_demoips = Variable(torch.FloatTensor(validate_demoips), requires_grad=False)
     # Model hyperparameters
@@ -507,7 +511,7 @@ if __name__ == '__main__':
     interval = 100
     initrange = 1
     att_dim = 1
-    n_filters = 3
+    n_filters = 5
     batch_size = 100
     epoch_max = 15 # training for maximum 3 epochs of training data
     n_iter_max_dev = 2000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
@@ -535,7 +539,7 @@ if __name__ == '__main__':
 
     criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 10]))
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
-    model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '_l' + str(l) + '.dat'
+    model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '_l' + str(l) + 'filter' + str(n_filters) + '.dat'
     # model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '.dat'
     print('Start Training...')
     # if os.path.exists(model_path):

@@ -344,7 +344,7 @@ if __name__ == '__main__':
     #  ============== Prepare Data ===========================
     # get demographic and previous IP info
     train_demoips, validate_demoips, test_demoips = process_demoip()
-    l = 2
+    l = 3
     with open('./data/hospitalization_train_validate_test_ids.pickle', 'rb') as f:
         train_ids, valid_ids, test_ids = pickle.load(f)
     f.close()
@@ -371,7 +371,7 @@ if __name__ == '__main__':
     # Model hyperparameters
     # model_type = 'rnn-rt'
     input_size = int(len(features)/int(12/l))
-    embedding_size = 300
+    embedding_size = 200
     hidden_size = 256
     n_layers = 1
     seq_len = int(12/l)
@@ -385,10 +385,10 @@ if __name__ == '__main__':
     att_dim = 100
 
     batch_size = 100
-    epoch_max = 30 # training for maximum 3 epochs of training data
+    epoch_max = 10 # training for maximum 3 epochs of training data
     n_iter_max_dev = 100 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
-    model_type = 'rnn'
+    model_type = 'rnn-bi'
     # Build and train/load the model
     print('Build Model...')
     # by default build a RNN model
