@@ -536,7 +536,7 @@ if __name__ == '__main__':
     # criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 10]))
     # optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
     # model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '_l' + str(l) +'.dat'
-    model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '.dat'
+    model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '_l3.dat'
     # print('Start Training...')
     # # if os.path.exists(model_path):
     # #     saved_model = torch.load(model_path)
