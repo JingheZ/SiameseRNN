@@ -465,10 +465,10 @@ if __name__ == '__main__':
     # get demographic and previous IP info
     train_demoips, validate_demoips, test_demoips = process_demoip()
 
-    l = 3
-    # pad_size = 105
+    l = 1
+    pad_size = 105
     # pad_size = 116
-    pad_size = 125
+    # pad_size = 125
     with open('./data/hospitalization_train_validate_test_ids.pickle', 'rb') as f:
         train_ids, valid_ids, test_ids = pickle.load(f)
     f.close()
@@ -535,7 +535,7 @@ if __name__ == '__main__':
 
     criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 10]))
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
-    model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '.dat'
+    model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '_l' + str(l) +'.dat'
     print('Start Training...')
     # if os.path.exists(model_path):
     #     saved_model = torch.load(model_path)
