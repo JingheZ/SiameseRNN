@@ -465,10 +465,10 @@ if __name__ == '__main__':
     # get demographic and previous IP info
     train_demoips, validate_demoips, test_demoips = process_demoip()
 
-    l = 3
+    l = 2
     # pad_size = 105
-    # pad_size = 116
-    pad_size = 125
+    pad_size = 116
+    # pad_size = 125
     with open('./data/hospitalization_train_validate_test_ids.pickle', 'rb') as f:
         train_ids, valid_ids, test_ids = pickle.load(f)
     f.close()
