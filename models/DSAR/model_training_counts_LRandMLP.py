@@ -253,8 +253,8 @@ if __name__ == '__main__':
                 if loss_dev < best_loss_dev:
                     best_loss_dev = loss_dev
                     best_dev_iter = n_iter
-                    state_to_save = model.state_dict()
-                    torch.save(state_to_save, model_path)
+                    # state_to_save = model.state_dict()
+                    # torch.save(state_to_save, model_path)
                 if n_iter - best_dev_iter >= n_iter_max_dev:
                     break
             step += 1
@@ -263,8 +263,8 @@ if __name__ == '__main__':
             break
         epoch += 1
     # save trained model
-    # state_to_save = model.state_dict()
-    # torch.save(state_to_save, model_path)
+    state_to_save = model.state_dict()
+    torch.save(state_to_save, model_path)
     elapsed = time.time() - start_time
     print('Training Finished! Total Training Time is: % .2f' % elapsed)
 
