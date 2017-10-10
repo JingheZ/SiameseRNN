@@ -286,7 +286,7 @@ class Patient2Vec1(nn.Module):
             convolution_one_month = torch.transpose(convolution_one_month, 1, 2)
             convolution_one_month = torch.squeeze(convolution_one_month, dim=1)
             convolution_one_month = self.func_tanh(convolution_one_month)
-            convolution_one_month = self.func_softmax(convolution_one_month)
+            # convolution_one_month = self.func_softmax(convolution_one_month)
             convolution_one_month = torch.unsqueeze(convolution_one_month, dim=1)
             vec = torch.bmm(convolution_one_month, inputs[:, i])
             convolution_all.append(vec)
