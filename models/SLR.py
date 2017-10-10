@@ -824,10 +824,10 @@ if __name__ == '__main__':
         f2s = []
         for p in range(50):
             random.seed(p)
-            sp = random.choices(list(zip(res, y)), k=int(len(y)*0.7))
+            sp = random.choices(list(zip(res, y)), k=int(len(y)))
             sp_pred = [v[0] for v in sp]
             sp_true = [v[1] for v in sp]
-            f2 = metrics.fbeta_score(sp_true, sp_pred, average='macro', beta=2)
+            f2 = metrics.fbeta_score(sp_true, sp_pred, average='binary', beta=2)
             f2s.append(f2)
         avg = np.mean(f2s)
         std = np.std(f2s)

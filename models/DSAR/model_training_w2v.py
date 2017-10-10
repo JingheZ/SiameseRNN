@@ -285,7 +285,7 @@ class Patient2Vec1(nn.Module):
             convolution_one_month = torch.transpose(convolution_one_month, 0, 1)
             convolution_one_month = torch.transpose(convolution_one_month, 1, 2)
             convolution_one_month = torch.squeeze(convolution_one_month, dim=1)
-            # convolution_one_month = self.func_tanh(convolution_one_month)
+            convolution_one_month = self.func_tanh(convolution_one_month)
             convolution_one_month = self.func_softmax(convolution_one_month)
             convolution_one_month = torch.unsqueeze(convolution_one_month, dim=1)
             vec = torch.bmm(convolution_one_month, inputs[:, i])
@@ -494,7 +494,7 @@ if __name__ == '__main__':
     # model_type = 'rnn-rt'
     input_size = size + 3
     embedding_size = input_size
-    hidden_size = 128
+    hidden_size = 256
     n_layers = 1
     seq_len = int(12 / l)
     output_size = 2

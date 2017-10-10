@@ -629,7 +629,6 @@ if __name__ == '__main__':
             test_proba.to_csv('./data/comorbid_risk_test_proba_baselines_r' + str(r) + '_bs' + str(n) + '.csv', index=False)
 
         # calculate F1 score
-
         def calculate_fscores_bootstraps(test_proba, thres, y):
             res = [1 if p >= thres else 0 for p in test_proba]
             f2s = []
@@ -638,7 +637,7 @@ if __name__ == '__main__':
                 sp = random.choices(list(zip(res, y)), k=int(len(y) * 1))
                 sp_pred = [v[0] for v in sp]
                 sp_true = [v[1] for v in sp]
-                f2 = metrics.fbeta_score(sp_true, sp_pred, average='macro', beta=2)
+                f2 = metrics.fbeta_score(sp_true, sp_pred, average='macro', beta=1)
                 f2s.append(f2)
             avg = np.mean(f2s)
             std = np.std(f2s)
