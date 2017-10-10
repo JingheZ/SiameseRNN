@@ -320,7 +320,9 @@ class Patient2Vec1(nn.Module):
         alpha = torch.stack(alpha, dim=2)
         wts = []
         for i in range(self.n_filters):
-            a0 = self.func_softmax(alpha[:, i])
+            # a0 = self.func_softmax(alpha[:, i])
+            a0 = self.func_tanh(alpha[:, i])
+            a0 = self.func_softmax(a0)
             wts.append(a0)
         wts = torch.stack(wts, dim=1)
         context = torch.bmm(wts, states)
