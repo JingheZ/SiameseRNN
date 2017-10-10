@@ -201,7 +201,7 @@ if __name__ == '__main__':
     # by default build a LR model
     if model_type == 'LR': # 5 epochs, lr=0.001, decay=0.01, weight=1:20; auc: 0.698; with current parameters: 0.640
         model = LRmodel(input_size, output_size, initrange)
-    elif model_type == 'MLP':
+    elif model_type == 'MLP-256':
         model = MLPmodel(input_size, mlp_hidden_size1, output_size, initrange)
 
     # criterion = nn.CrossEntropyLoss()
@@ -276,7 +276,7 @@ if __name__ == '__main__':
     model_type = 'MLP-256'
     if model_type == 'LR': # 5 epochs, lr=0.001, decay=0.01, weight=1:20; auc: 0.698; with current parameters: 0.640
         model = LRmodel(input_size, output_size, initrange)
-    elif model_type == 'MLP':
+    elif model_type == 'MLP-256':
         model = MLPmodel(input_size, mlp_hidden_size1, output_size, initrange)
     saved_model = torch.load(model_path)
     model.load_state_dict(saved_model)
