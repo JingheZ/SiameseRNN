@@ -465,33 +465,33 @@ if __name__ == '__main__':
     # get demographic and previous IP info
     train_demoips, validate_demoips, test_demoips = process_demoip()
 
-    l = 2
+    l = 3
     # pad_size = 105
-    pad_size = 116
-    # pad_size = 125
+    # pad_size = 116
+    pad_size = 125
     with open('./data/hospitalization_train_validate_test_ids.pickle', 'rb') as f:
         train_ids, valid_ids, test_ids = pickle.load(f)
     f.close()
 
-    with open('./data/hospitalization_train_data_by_' + str(l) + 'month.pickle', 'rb') as f:
-        train, train_y = pickle.load(f)
-    f.close()
-
-    with open('./data/hospitalization_validate_data_by_' + str(l) + 'month.pickle', 'rb') as f:
-        validate, validate_y = pickle.load(f)
-    f.close()
+    # with open('./data/hospitalization_train_data_by_' + str(l) + 'month.pickle', 'rb') as f:
+    #     train, train_y = pickle.load(f)
+    # f.close()
+    #
+    # with open('./data/hospitalization_validate_data_by_' + str(l) + 'month.pickle', 'rb') as f:
+    #     validate, validate_y = pickle.load(f)
+    # f.close()
 
     with open('./data/hospitalization_test_data_by_' + str(l) + 'month.pickle', 'rb') as f:
         test, test_y = pickle.load(f)
     f.close()
 
     # Prepare validation data for the model
-    validate_x, validate_y = create_full_set(validate, validate_y, w2v_model, size, pad_size, l)
+    # validate_x, validate_y = create_full_set(validate, validate_y, w2v_model, size, pad_size, l)
     # with open('./data/hospitalization_validate_data_padded.pickle', 'wb') as f:
     #     pickle.dump([validate_x, validate_y], f)
     # f.close()
-    validate_x, validate_y = list2tensor(validate_x, validate_y)
-    validate_demoips = Variable(torch.FloatTensor(validate_demoips), requires_grad=False)
+    # validate_x, validate_y = list2tensor(validate_x, validate_y)
+    # validate_demoips = Variable(torch.FloatTensor(validate_demoips), requires_grad=False)
     # Model hyperparameters
     # model_type = 'rnn-rt'
     input_size = size + 3
