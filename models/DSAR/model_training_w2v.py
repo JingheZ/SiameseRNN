@@ -513,7 +513,7 @@ if __name__ == '__main__':
     n_iter_max_dev = 1000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
-    model_type = 'crnn2-bi'
+    model_type = 'crnn2-bi-tanh'
     # Build and train/load the model
     print('Build Model...')
     # by default build a LR model
@@ -529,7 +529,7 @@ if __name__ == '__main__':
     elif model_type == 'crnn2':
         model = Patient2Vec1(input_size - 3, embedding_size - 3, hidden_size, n_layers, att_dim, initrange, output_size,
                              rnn_type, seq_len, pad_size, n_filters, bi=False, dropout_p=drop)
-    elif model_type == 'crnn2-bi':
+    elif model_type == 'crnn2-bi-tanh':
         model = Patient2Vec1(input_size - 3, embedding_size - 3, hidden_size, n_layers, att_dim, initrange, output_size,
                             rnn_type, seq_len, pad_size, n_filters, bi=True, dropout_p=drop)
 
@@ -603,7 +603,7 @@ if __name__ == '__main__':
     result_file = './results/test_results_' + model_type + '_layer' + str(n_layers) + '.pickle'
     # output_file = './results/test_outputs_' + model_type + '_layer' + str(n_layers) + '.pickle'
 
-    model_type = 'crnn2-bi'
+    model_type = 'crnn2-bi-tanh'
     # Build and train/load the model
     print('Build Model...')
     # by default build a LR model
