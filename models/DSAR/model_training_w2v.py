@@ -253,7 +253,7 @@ class Patient2Vec1(nn.Module):
 
         self.func_softmax = nn.Softmax()
         self.func_sigmoid = nn.Sigmoid()
-        self.func_tanh = nn.Hardtanh()
+        self.func_tanh = nn.Tanh()
         # Add dropout
         self.dropout_p = dropout_p
         self.dropout = nn.Dropout(p=self.dropout_p)
@@ -350,6 +350,158 @@ class Patient2Vec1(nn.Module):
         # Final linear layer with demographic and previous IP info added as extra variables
         context_v2 = torch.cat((context, inputs_demoip), 1)
         linear_y = self.linear(context_v2)
+        out = self.func_softmax(linear_y)
+        return out, alpha, [states_rnn, context, conv_wts]
+
+
+class Patient2Vec2(nn.Module):
+    """
+    A convolutional embedding layer, then recurrent autoencoder with an encoder, recurrent module, and a decoder.
+    In addition, a linear layer is on top of each decode step and the weights are shared at these step.
+    """
+
+    def __init__(self, input_size, embed_size, hidden_size, n_layers, att_dim, initrange,
+                 output_size, rnn_type, seq_len, pad_size, n_filters, bi, dropout_p=0.5):
+        """
+        Initilize a recurrent model
+        """
+        super(Patient2Vec2, self).__init__()
+
+        self.initrange = initrange
+        # convolution
+        self.b = 1
+        if bi:
+            self.b = 2
+
+        self.conv = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=input_size, stride=2)
+        self.conv2 = nn.Conv1d(in_channels=1, out_channels=n_filters, kernel_size=hidden_size * self.b, stride=2)
+        # Embedding
+        self.embed = nn.Linear(input_size, embed_size, bias=False)
+        # Bidirectional RNN
+        self.rnn = getattr(nn, rnn_type)(embed_size, hidden_size, n_layers, dropout=dropout_p,
+                                         batch_first=True, bias=True, bidirectional=bi)
+        # initialize 2-layer attention weight matrics
+        self.att_w1 = nn.Linear(hidden_size * self.b, att_dim, bias=False)
+
+        # add attention for demoips
+        self.conv_demoip1 = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=1, stride=1)
+        self.conv_demoip2 = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=1, stride=1)
+        self.conv_demoip3 = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=1, stride=1)
+        self.conv_seq = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=hidden_size * self.b * n_filters, stride=1)
+        # final linear layer
+        self.linear = nn.Linear(hidden_size * self.b * n_filters + 3, output_size, bias=True)
+
+        self.func_softmax = nn.Softmax()
+        self.func_sigmoid = nn.Sigmoid()
+        self.func_tanh = nn.Tanh()
+        # Add dropout
+        self.dropout_p = dropout_p
+        self.dropout = nn.Dropout(p=self.dropout_p)
+        self.init_weights()
+
+        self.pad_size = pad_size
+        self.input_size = input_size
+        self.embed_size = embed_size
+        self.hidden_size = hidden_size
+        self.output_size = output_size
+        self.n_layers = n_layers
+        self.seq_len = seq_len
+        self.n_filters = n_filters
+
+    def init_weights(self):
+        """
+        weight initialization
+        """
+        for param in self.parameters():
+            param.data.uniform_(-self.initrange, self.initrange)
+
+    def convolutional_layer(self, inputs):
+        convolution_all = []
+        conv_wts = []
+        for i in range(self.seq_len):
+            convolution_one_month = []
+            for j in range(self.pad_size):
+                convolution = self.conv(torch.unsqueeze(inputs[:, i, j], dim=1))
+                convolution_one_month.append(convolution)
+            convolution_one_month = torch.stack(convolution_one_month)
+            convolution_one_month = torch.squeeze(convolution_one_month, dim=3)
+            convolution_one_month = torch.transpose(convolution_one_month, 0, 1)
+            convolution_one_month = torch.transpose(convolution_one_month, 1, 2)
+            convolution_one_month = torch.squeeze(convolution_one_month, dim=1)
+            convolution_one_month = self.func_tanh(convolution_one_month)
+            # convolution_one_month = self.func_softmax(convolution_one_month)
+            convolution_one_month = torch.unsqueeze(convolution_one_month, dim=1)
+            vec = torch.bmm(convolution_one_month, inputs[:, i])
+            convolution_all.append(vec)
+            conv_wts.append(convolution_one_month)
+        convolution_all = torch.stack(convolution_all, dim=1)
+        convolution_all = torch.squeeze(convolution_all, dim=2)
+        conv_wts = torch.stack(conv_wts)
+        return convolution_all, conv_wts
+
+    def attention_demoip(self, inputs_demoip):
+        convs1 = self.conv_dempip1(torch.unsqueeze(inputs_demoip[:, 0], dim=1))
+        convs2 = self.conv_dempip2(torch.unsqueeze(inputs_demoip[:, 1], dim=1))
+        convs3 = self.conv_dempip3(torch.unsqueeze(inputs_demoip[:, 2], dim=1))
+        convs = torch.stack([convs1, convs2, convs3], dim=1)
+        # convs = torch.transpose(convs, 1, 2)
+        return convs
+
+    def encode_rnn(self, embedding, batch_size):
+        self.weight = next(self.parameters()).data
+        init_state = (Variable(self.weight.new(self.n_layers * self.b, batch_size, self.hidden_size).zero_()))
+        embedding = self.dropout(embedding)
+        outputs_rnn, states_rnn = self.rnn(embedding, init_state)
+        return outputs_rnn
+
+    def add_attention_seq(self, states, batch_size):
+        # attention
+        alpha = []
+        for i in range(self.seq_len):
+            m1 = self.conv2(torch.unsqueeze(states[:, i], dim=1))
+            alpha.append(torch.squeeze(m1, dim=2))
+        alpha = torch.stack(alpha, dim=2)
+        wts = []
+        for i in range(self.n_filters):
+            # a0 = self.func_softmax(alpha[:, i])
+            a0 = self.func_tanh(alpha[:, i])
+            a0 = self.func_softmax(a0)
+            wts.append(a0)
+        wts = torch.stack(wts, dim=1)
+        context = torch.bmm(wts, states)
+        context = context.view(batch_size, -1)
+        wts_seq = self.conv_seq(context)
+        return wts_seq, wts, context
+
+    def add_attention_all(self, states, inputs_demoip, batch_size):
+        # attention
+        alpha_seq, alpha_seq0, context_seq = self.add_attention_seq(states, batch_size)
+        alpha_demoip = self.attention_demoip(inputs_demoip)
+        alpha = torch.cat((alpha_seq, alpha_demoip), 1)
+        alpha = self.func_softmax(alpha)
+        context_seq = torch.mul(context_seq, alpha.data.tolist()[0])
+        context_demoip1 = torch.mul(inputs_demoip[:, 0], alpha.data.tolist()[1])
+        context_demoip2 = torch.mul(inputs_demoip[:, 1], alpha.data.tolist()[2])
+        context_demoip3 = torch.mul(inputs_demoip[:, 2], alpha.data.tolist()[3])
+        context = torch.cat((context_seq, context_demoip1, context_demoip2, context_demoip3), 1)
+        alpha = torch.cat((alpha_seq, alpha_demoip), 2)
+        return alpha, context
+
+    def forward(self, inputs, inputs_demoip, batch_size):
+        """
+        the recurrent module
+        """
+        # Convolutional
+        convolutions, conv_wts = self.convolutional_layer(inputs)
+        # Embedding
+        # embedding = self.embedding_layer(convolutions)
+        # RNN
+        states_rnn = self.encode_rnn(convolutions, batch_size)
+        # Add attentions and get context vector
+        alpha, context = self.add_attention_all(states_rnn, inputs_demoip, batch_size)
+        # alpha = self.add_attention(states_rnn, batch_size)
+        # Final linear layer with demographic and previous IP info added as extra variables
+        linear_y = self.linear(context)
         out = self.func_softmax(linear_y)
         return out, alpha, [states_rnn, context, conv_wts]
 
@@ -537,16 +689,16 @@ if __name__ == '__main__':
     interval = 100
     initrange = 1
     att_dim = 1
-    n_filters = 3
+    n_filters = 10
     a = 0.1
     batch_size = 100
-    epoch_max = 15 # training for maximum 3 epochs of training data
+    epoch_max = 20 # training for maximum 3 epochs of training data
     n_iter_max_dev = 2000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
     model_type = 'crnn2-bi-tanh-fn'
     # model_type = 'rnn-bi'
-    model_path = './saved_models/model_w2v_' + model_type + '_layer' + str(n_layers) + '_nf3_a01.dat'
+    model_path = './saved_models/model_w2v_' + model_type + '_layer' + str(n_layers) + '_nf10_a01.dat'
     # Build and train/load the model
     print('Build Model...')
     # by default build a LR model
@@ -635,7 +787,7 @@ if __name__ == '__main__':
     # #
     # # ============================ To evaluate model using testing set =============================================
     print('Start Testing...')
-    result_file = './results/test_results_w2v_' + model_type + '_layer' + str(n_layers) + '_nf3_a01.pickle'
+    result_file = './results/test_results_w2v_' + model_type + '_layer' + str(n_layers) + '_nf10_a01.pickle'
     # output_file = './results/test_outputs_' + model_type + '_layer' + str(n_layers) + '.pickle'
 
     # model_type = 'crnn2-bi-tanh-fn'

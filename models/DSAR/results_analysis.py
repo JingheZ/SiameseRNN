@@ -10,8 +10,9 @@ def calculate_scores_bootstraps(pred, y, val):
     recalls = []
     specificity = []
     aucs = []
+    f1s = []
     for p in range(50):
-        random.seed(p)
+        # random.seed(p)
         sp = random.choices(list(zip(pred, y, val)), k=int(len(y)))
         sp_pred = [v[0] for v in sp]
         sp_true = [v[1] for v in sp]
@@ -24,6 +25,8 @@ def calculate_scores_bootstraps(pred, y, val):
         specificity.append(spec)
         auc = metrics.roc_auc_score(sp_true, sp_val)
         aucs.append(auc)
+        f1 = metrics.fbeta_score(sp_true, sp_pred, average='binary', beta=1)
+        f1s.append(f1)
     avg1 = np.mean(f2s)
     std1 = np.std(f2s)
     avg2 = np.mean(recalls)
@@ -32,7 +35,9 @@ def calculate_scores_bootstraps(pred, y, val):
     std3 = np.std(specificity)
     avg4 = np.mean(aucs)
     std4 = np.std(aucs)
-    return [(avg2, std2), (avg3, std3), (avg4, std4), (avg1, std1)]
+    avg5 = np.mean(f1s)
+    std5 = np.std(f1s)
+    return [(avg2, std2), (avg3, std3), (avg4, std4), (avg1, std1), (avg5, std5)]
 
 
 def calculate_results(result_file):
@@ -51,11 +56,6 @@ lr = calculate_results(result_file)
 model_type = 'MLP-256'
 result_file = './results/test_results_' + model_type + '.pickle'
 mlp = calculate_results(result_file)
-
-# =============================== p2v ===============================
-model_type = 'crnn2-bi-tanh-fn'
-result_file = './results/test_results_' + model_type + '_layer1.pickle'
-p2v = calculate_results(result_file)
 
 # =============================== rnn mge ===========================
 model_type = 'rnn'
@@ -81,3 +81,10 @@ rnn_mve = calculate_results(result_file)
 model_type = 'rnn-bi'
 result_file = './results/test_results_w2v_' + model_type + '_layer1.pickle'
 birnn_mve = calculate_results(result_file)
+
+# =============================== p2v ===============================
+model_type = 'crnn2-bi-tanh-fn'
+result_file = './results/test_results_' + model_type + '_layer1.pickle'
+p2v = calculate_results(result_file)
+result_file = './results/test_results_w2v_' + model_type + '_layer1_nf10_a01.pickle'
+p2v = calculate_results(result_file)
