@@ -298,10 +298,11 @@ def model_testing_one_batch(model, model_type, batch_x, batch_demoip, batch_size
     y_pred, _ = model(batch_x, batch_demoip, batch_size)
     if model_type == 'retain':
         _, predicted = torch.max(y_pred.data[:, -1, :], 1)
+        val = y_pred[:, -1, 1].data.tolist()
     else:
         _, predicted = torch.max(y_pred.data, 1)
+        val = y_pred[:, 1].data.tolist()
     pred = predicted.view(-1).tolist()
-    val = y_pred[:, -1, 1].data.tolist()
     return pred, val
 
 
@@ -316,10 +317,11 @@ def get_loss(pred, y, criterion, seq_len):
 def model_testing_dev(model_type, y_pred):
     if model_type == 'retain':
         _, predicted = torch.max(y_pred.data[:, -1, :], 1)
+        val = y_pred[:, -1, 1].data.tolist()
     else:
         _, predicted = torch.max(y_pred.data, 1)
+        val = y_pred[:, 1].data.tolist()
     pred = predicted.view(-1).tolist()
-    val = y_pred[:, -1, 1].data.tolist()
     return pred, val
 
 
