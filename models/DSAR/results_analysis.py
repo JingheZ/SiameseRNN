@@ -70,4 +70,4 @@ birnn_mgv = calculate_results(result_file)
 # =============================== retain ===========================
 model_type = 'retain'
 result_file = './results/test_results_' + model_type + '_layer1.pickle'
-birnn_mgv = calculate_results(result_file)
+retain = calculate_results(result_file)
