@@ -301,7 +301,7 @@ def model_testing_one_batch(model, model_type, batch_x, batch_demoip, batch_size
     else:
         _, predicted = torch.max(y_pred.data, 1)
     pred = predicted.view(-1).tolist()
-    val = y_pred[:, 1].data.tolist()
+    val = y_pred[:, -1, 1].data.tolist()
     return pred, val
 
 
@@ -359,26 +359,26 @@ if __name__ == '__main__':
     # get demographic and previous IP info
     train_demoips, validate_demoips, test_demoips = process_demoip()
     l = 3
-    with open('./data/hospitalization_train_validate_test_ids.pickle', 'rb') as f:
-        train_ids, valid_ids, test_ids = pickle.load(f)
-    f.close()
-
-    with open('./data/hospitalization_train_data_sub_cts_by_' + str(l) + 'month.pickle', 'rb') as f:
-        train, train_y = pickle.load(f)
-    f.close()
+    # with open('./data/hospitalization_train_validate_test_ids.pickle', 'rb') as f:
+    #     train_ids, valid_ids, test_ids = pickle.load(f)
+    # f.close()
     #
-    with open('./data/hospitalization_validate_data_sub_cts_by_' + str(l) + 'month.pickle', 'rb') as f:
-        validate, validate_y = pickle.load(f)
-    f.close()
-    #
+    # with open('./data/hospitalization_train_data_sub_cts_by_' + str(l) + 'month.pickle', 'rb') as f:
+    #     train, train_y = pickle.load(f)
+    # f.close()
+    # #
+    # with open('./data/hospitalization_validate_data_sub_cts_by_' + str(l) + 'month.pickle', 'rb') as f:
+    #     validate, validate_y = pickle.load(f)
+    # f.close()
+    # #
     with open('./data/hospitalization_test_data_sub_cts_by_' + str(l) + 'month.pickle', 'rb') as f:
         test, test_y = pickle.load(f)
     f.close()
 
-    # # Prepare validation data for the model
-    validate_x, validate_y = list2tensor(validate, validate_y, l)
-    validate_demoips = Variable(torch.FloatTensor(validate_demoips), requires_grad=False)
-
+    # # # Prepare validation data for the model
+    # validate_x, validate_y = list2tensor(validate, validate_y, l)
+    # validate_demoips = Variable(torch.FloatTensor(validate_demoips), requires_grad=False)
+    #
     # with open('./data/hospitalization_cts_sub_columns.pickle', 'rb') as f:
     #     features = pickle.load(f)
     # f.close()
@@ -401,87 +401,87 @@ if __name__ == '__main__':
     batch_size = 100
     epoch_max = 10 # training for maximum 3 epochs of training data
     n_iter_max_dev = 100 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
-    train_iters = len(train_ids)
+    # train_iters = len(train_ids)
     model_type = 'retain'
     # Build and train/load the model
-    print('Build Model...')
-    # by default build a RNN model
-    model = RNNmodel(input_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
-                     bi=False, dropout_p=drop)
-    if model_type == 'rnn-bi':
-        model = RNNmodel(input_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
-                         bi=True, dropout_p=drop)
-    elif model_type == 'retain':
-        model = RETAIN(input_size, embedding_size, hidden_size, n_layers, initrange, output_size,
-                            rnn_type, seq_len, dropout_p=drop)
-    # criterion = nn.MultiLabelMarginLoss()
-    criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 10]))
-    # criterion = nn.MultiLabelSoftMarginLoss()
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
+    # print('Build Model...')
+    # # by default build a RNN model
+    # model = RNNmodel(input_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
+    #                  bi=False, dropout_p=drop)
+    # if model_type == 'rnn-bi':
+    #     model = RNNmodel(input_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
+    #                      bi=True, dropout_p=drop)
+    # elif model_type == 'retain':
+    #     model = RETAIN(input_size, embedding_size, hidden_size, n_layers, initrange, output_size,
+    #                         rnn_type, seq_len, dropout_p=drop)
+    # # criterion = nn.MultiLabelMarginLoss()
+    # criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 10]))
+    # # criterion = nn.MultiLabelSoftMarginLoss()
+    # optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
     model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '.dat'
-    print('Start Training...')
-    # if os.path.exists(model_path):
-    #     saved_model = torch.load(model_path)
-    #     model.load_state_dict(saved_model)
-    # else:
-        # model.init_weights(initrange)
-        # Train the model
-    start_time = time.time()
-    best_loss_dev = 100
-    best_dev_iter = 0
-    n_iter = 0
-    epoch = 0
-    while epoch < epoch_max:
-        step = 0
-        while (step + 1) * batch_size < train_iters:
-            batch_x, batch_demoip, batch_y = create_batch(step, batch_size, train, train_demoips, train_y, l)
-            optimizer.zero_grad()
-            y_pred, _ = model(batch_x, batch_demoip, batch_size)
-            # states, alpha, beta = model(batch_x, batch_size)
-            if model_type == 'retain':
-                loss = get_loss(y_pred, batch_y, criterion, seq_len)
-            else:
-                loss = criterion(y_pred, batch_y)
-            loss.backward()
-            optimizer.step()
-
-            if step % interval == 0:
-                elapsed = time.time() - start_time
-                # acc = calcualte_accuracy(y_pred, batch_y, batch_size)
-                print('%i epoch, %i batches, elapsed time: %.2f, loss: %.3f' % (epoch + 1, step + 1, elapsed, loss.data[0]))
-                # Evaluate model performance on validation set
-                pred_dev, _ = model(validate_x, validate_demoips, len(valid_ids))
-                if model_type == 'retain':
-                    loss_dev = get_loss(pred_dev, validate_y, criterion, seq_len)
-                else:
-                    loss_dev = criterion(pred_dev, validate_y)
-                pred_ind_dev, val_dev = model_testing_dev(model_type, pred_dev)
-                perfm_dev, auc_dev = calculate_performance(validate_y.data.tolist(), pred_ind_dev, val_dev)
-                print("Performance on dev set: AUC is %.3f" % auc_dev)
-                # print(perfm_dev)
-
-                # pred_ind_batch = model_testing_one_batch(model, model_type, batch_x, batch_demoip, batch_size)
-                # perfm_batch, auc_batch = calculate_performance(batch_y.data.tolist(), pred_ind_batch)
-                # print("Performance on training set: AUC is %.3f" % auc_batch)
-                # # print(perfm_batch)
-                print('Validation, loss: %.3f' % (loss_dev.data[0]))
-                if loss_dev < best_loss_dev:
-                    best_loss_dev = loss_dev
-                    best_dev_iter = n_iter
-                    state_to_save = model.state_dict()
-                    torch.save(state_to_save, model_path)
-                if n_iter - best_dev_iter >= n_iter_max_dev:
-                    break
-            step += 1
-            n_iter += 1
-        if n_iter - best_dev_iter >= n_iter_max_dev:
-            break
-        epoch += 1
-    # # save trained model
-    # state_to_save = model.state_dict()
-    # torch.save(state_to_save, model_path)
-    elapsed = time.time() - start_time
-    print('Training Finished! Total Training Time is: % .2f' % elapsed)
+    # print('Start Training...')
+    # # if os.path.exists(model_path):
+    # #     saved_model = torch.load(model_path)
+    # #     model.load_state_dict(saved_model)
+    # # else:
+    #     # model.init_weights(initrange)
+    #     # Train the model
+    # start_time = time.time()
+    # best_loss_dev = 100
+    # best_dev_iter = 0
+    # n_iter = 0
+    # epoch = 0
+    # while epoch < epoch_max:
+    #     step = 0
+    #     while (step + 1) * batch_size < train_iters:
+    #         batch_x, batch_demoip, batch_y = create_batch(step, batch_size, train, train_demoips, train_y, l)
+    #         optimizer.zero_grad()
+    #         y_pred, _ = model(batch_x, batch_demoip, batch_size)
+    #         # states, alpha, beta = model(batch_x, batch_size)
+    #         if model_type == 'retain':
+    #             loss = get_loss(y_pred, batch_y, criterion, seq_len)
+    #         else:
+    #             loss = criterion(y_pred, batch_y)
+    #         loss.backward()
+    #         optimizer.step()
+    #
+    #         if step % interval == 0:
+    #             elapsed = time.time() - start_time
+    #             # acc = calcualte_accuracy(y_pred, batch_y, batch_size)
+    #             print('%i epoch, %i batches, elapsed time: %.2f, loss: %.3f' % (epoch + 1, step + 1, elapsed, loss.data[0]))
+    #             # Evaluate model performance on validation set
+    #             pred_dev, _ = model(validate_x, validate_demoips, len(valid_ids))
+    #             if model_type == 'retain':
+    #                 loss_dev = get_loss(pred_dev, validate_y, criterion, seq_len)
+    #             else:
+    #                 loss_dev = criterion(pred_dev, validate_y)
+    #             pred_ind_dev, val_dev = model_testing_dev(model_type, pred_dev)
+    #             perfm_dev, auc_dev = calculate_performance(validate_y.data.tolist(), pred_ind_dev, val_dev)
+    #             print("Performance on dev set: AUC is %.3f" % auc_dev)
+    #             # print(perfm_dev)
+    #
+    #             # pred_ind_batch = model_testing_one_batch(model, model_type, batch_x, batch_demoip, batch_size)
+    #             # perfm_batch, auc_batch = calculate_performance(batch_y.data.tolist(), pred_ind_batch)
+    #             # print("Performance on training set: AUC is %.3f" % auc_batch)
+    #             # # print(perfm_batch)
+    #             print('Validation, loss: %.3f' % (loss_dev.data[0]))
+    #             if loss_dev < best_loss_dev:
+    #                 best_loss_dev = loss_dev
+    #                 best_dev_iter = n_iter
+    #                 state_to_save = model.state_dict()
+    #                 torch.save(state_to_save, model_path)
+    #             if n_iter - best_dev_iter >= n_iter_max_dev:
+    #                 break
+    #         step += 1
+    #         n_iter += 1
+    #     if n_iter - best_dev_iter >= n_iter_max_dev:
+    #         break
+    #     epoch += 1
+    # # # save trained model
+    # # state_to_save = model.state_dict()
+    # # torch.save(state_to_save, model_path)
+    # elapsed = time.time() - start_time
+    # print('Training Finished! Total Training Time is: % .2f' % elapsed)
 
     # ============================ To evaluate model using testing set =============================================
     print('Start Testing...')
@@ -499,7 +499,7 @@ if __name__ == '__main__':
     elif model_type == 'retain':
         model = RETAIN(input_size, embedding_size, hidden_size, n_layers, initrange, output_size,
                             rnn_type, seq_len, dropout_p=drop)
-
+    print(result_file)
     saved_model = torch.load(model_path)
     model.load_state_dict(saved_model)
     # Evaluate the model
