@@ -546,7 +546,7 @@ if __name__ == '__main__':
 
     model_type = 'crnn2-bi-tanh-fn'
     # model_type = 'rnn-bi'
-    model_path = './saved_models/model_w2v_' + model_type + '_layer' + str(n_layers) + 'a01.dat'
+    model_path = './saved_models/model_w2v_' + model_type + '_layer' + str(n_layers) + '_nf3_a01.dat'
     # Build and train/load the model
     print('Build Model...')
     # by default build a LR model
@@ -635,7 +635,7 @@ if __name__ == '__main__':
     # #
     # # ============================ To evaluate model using testing set =============================================
     print('Start Testing...')
-    result_file = './results/test_results_w2v_' + model_type + '_layer' + str(n_layers) + 'a01.pickle'
+    result_file = './results/test_results_w2v_' + model_type + '_layer' + str(n_layers) + '_nf3_a01.pickle'
     # output_file = './results/test_outputs_' + model_type + '_layer' + str(n_layers) + '.pickle'
 
     # model_type = 'crnn2-bi-tanh-fn'
