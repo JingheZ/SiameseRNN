@@ -31,7 +31,7 @@ class RNNmodel(nn.Module):
         self.b = 1
         if bi:
             self.b = 2
-        self.linear = nn.Linear(hidden_size * self.b, output_size, bias=True)
+        self.linear = nn.Linear(hidden_size * self.b + 3, output_size, bias=True)
         self.tanh = nn.Hardtanh()
         self.init_weights(initrange)
         self.input_size = input_size
@@ -523,7 +523,7 @@ if __name__ == '__main__':
     validate_demoips = Variable(torch.FloatTensor(validate_demoips), requires_grad=False)
     # Model hyperparameters
     # model_type = 'rnn-rt'
-    input_size = size + 3
+    input_size = size
     embedding_size = input_size
     hidden_size = 256
     n_layers = 1
@@ -555,13 +555,13 @@ if __name__ == '__main__':
         model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
                          ct=False, bi=True, dropout_p=drop)
     elif model_type == 'crnn':
-        model = Patient2Vec0(input_size - 3, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
+        model = Patient2Vec0(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
                             rnn_type, seq_len, pad_size, dropout_p=drop)
     elif model_type == 'crnn2':
-        model = Patient2Vec1(input_size - 3, embedding_size - 3, hidden_size, n_layers, att_dim, initrange, output_size,
+        model = Patient2Vec1(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
                              rnn_type, seq_len, pad_size, n_filters, bi=False, dropout_p=drop)
     elif model_type == 'crnn2-bi-tanh' or model_type == 'crnn2-bi-tanh-fn':
-        model = Patient2Vec1(input_size - 3, embedding_size - 3, hidden_size, n_layers, att_dim, initrange, output_size,
+        model = Patient2Vec1(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
                             rnn_type, seq_len, pad_size, n_filters, bi=True, dropout_p=drop)
 
     criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 10]))
@@ -648,13 +648,13 @@ if __name__ == '__main__':
         model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
                          ct=False, bi=True, dropout_p=drop)
     elif model_type == 'crnn':
-        model = Patient2Vec0(input_size - 3, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
+        model = Patient2Vec0(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
                             rnn_type, seq_len, pad_size, dropout_p=drop)
     elif model_type == 'crnn2':
-        model = Patient2Vec1(input_size - 3, embedding_size - 3, hidden_size, n_layers, att_dim, initrange, output_size,
+        model = Patient2Vec1(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
                              rnn_type, seq_len, pad_size, n_filters, bi=False, dropout_p=drop)
     elif model_type == 'crnn2-bi-tanh' or model_type == 'crnn2-bi-tanh-fn':
-        model = Patient2Vec1(input_size - 3, embedding_size - 3, hidden_size, n_layers, att_dim, initrange, output_size,
+        model = Patient2Vec1(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
                              rnn_type, seq_len, pad_size, n_filters, bi=True, dropout_p=drop)
     model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '_l' + str(l) + 'filter' + str(
         n_filters) + '.dat'
