@@ -69,9 +69,8 @@ birnn_mge = calculate_results(result_file)
 
 # =============================== retain ===========================
 model_type = 'retain'
-result_file = './results/test_results_' + model_type + '_layer1.dat'
+result_file = './results/test_results_' + model_type + '_layer1.pickle'
 retain = calculate_results(result_file)
-
 
 # =============================== rnn mve ===========================
 model_type = 'rnn'

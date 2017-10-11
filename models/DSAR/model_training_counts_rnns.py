@@ -402,7 +402,7 @@ if __name__ == '__main__':
     epoch_max = 10 # training for maximum 3 epochs of training data
     n_iter_max_dev = 100 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
-    model_type = 'retain'
+    model_type = 'rnn'
     # Build and train/load the model
     print('Build Model...')
     # by default build a RNN model
@@ -418,7 +418,7 @@ if __name__ == '__main__':
     criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 10]))
     # criterion = nn.MultiLabelSoftMarginLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
-    model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '_300.dat'
+    model_path = './saved_models/model_cts_' + model_type + '_layer' + str(n_layers) + '.dat'
     print('Start Training...')
     # if os.path.exists(model_path):
     #     saved_model = torch.load(model_path)
@@ -485,7 +485,7 @@ if __name__ == '__main__':
 
     # ============================ To evaluate model using testing set =============================================
     print('Start Testing...')
-    result_file = './results/test_results_' + model_type + '_layer' + str(n_layers) + '_300.pickle'
+    result_file = './results/test_results_cts_' + model_type + '_layer' + str(n_layers) + '.pickle'
     # output_file = './results/test_outputs_' + model_type + '_layer' + str(n_layers) + '.pickle'
     model_type = 'retain'
     # Build and train/load the model
