@@ -59,12 +59,12 @@ p2v = calculate_results(result_file)
 
 # =============================== rnn mge ===========================
 model_type = 'rnn'
-result_file = './results/test_results_' + model_type + '_layer1.pickle'
+result_file = './results/test_results_cts_' + model_type + '_layer1.pickle'
 rnn_mge = calculate_results(result_file)
 
 # =============================== bi-rnn mge ===========================
 model_type = 'rnn-bi'
-result_file = './results/test_results_' + model_type + '_layer1.pickle'
+result_file = './results/test_results_cts_' + model_type + '_layer1.pickle'
 birnn_mge = calculate_results(result_file)
 
 # =============================== retain ===========================
