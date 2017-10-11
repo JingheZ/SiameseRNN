@@ -55,20 +55,20 @@ class RNNmodel(nn.Module):
             param.data.uniform_(-initrange, initrange)
             # param.data.normal_(0, 1)
 
-    def embedding_layer(self, inputs, inputs_demoips):
-        if self.ct:
-            inputs_agg = inputs
-        else:
-            inputs_agg = torch.sum(inputs, dim=2)
-            inputs_agg = torch.squeeze(inputs_agg, dim=2)
-        embedding = []
-        for i in range(self.seq_len):
-            embedded = self.embed(torch.cat((inputs_agg[:, i], inputs_demoips), 1))
-            embedding.append(embedded)
-        embedding = torch.stack(embedding)
-        embedding = torch.transpose(embedding, 0, 1)
-            # embedding = self.tanh(embedding)
-        return embedding
+    # def embedding_layer(self, inputs, inputs_demoips):
+    #     if self.ct:
+    #         inputs_agg = inputs
+    #     else:
+    #         inputs_agg = torch.sum(inputs, dim=2)
+    #         inputs_agg = torch.squeeze(inputs_agg, dim=2)
+    #     embedding = []
+    #     for i in range(self.seq_len):
+    #         embedded = self.embed(torch.cat((inputs_agg[:, i], inputs_demoips), 1))
+    #         embedding.append(embedded)
+    #     embedding = torch.stack(embedding)
+    #     embedding = torch.transpose(embedding, 0, 1)
+    #         # embedding = self.tanh(embedding)
+    #     return embedding
 
     def encode_rnn(self, embedding, batch_size):
         self.weight = next(self.parameters()).data
@@ -82,7 +82,8 @@ class RNNmodel(nn.Module):
         the recurrent module
         """
         # Embedding
-        embedding = self.embedding_layer(inputs, inputs_demoips)
+        # embedding = self.embedding_layer(inputs, inputs_demoips)
+        embedding = inputs
         # embedding = torch.transpose(inputs, 1, 2)
         # RNN
         states_rnn = self.encode_rnn(embedding, batch_size)
@@ -425,7 +426,7 @@ def process_demoip():
 
 
 def model_testing_one_batch(model, batch_x, batch_demoip, batch_size):
-    y_pred, _ = model(batch_x, batch_demoip, batch_size)
+    y_pred, _, _ = model(batch_x, batch_demoip, batch_size)
     _, predicted = torch.max(y_pred.data, 1)
     pred = predicted.view(-1).tolist()
     return pred
@@ -463,9 +464,9 @@ def get_loss(pred, y, criterion, mtr, a=0.5):
     mtr_t = torch.transpose(mtr, 1, 2)
     aa = torch.bmm(mtr, mtr_t)
     for i in range(aa.size()[0]):
-        aai = torch.add(aa[i, ], torch.neg(torch.eye(mtr.size()[1])))
-        loss_fn = torch.trace(torch.mul(aai, aai))
-    loss = torch.add(criterion(pred, y), torch.FloatTensor([loss_fn * a]))
+        aai = torch.add(aa[i, ], Variable(torch.neg(torch.eye(mtr.size()[1]))))
+        loss_fn = torch.trace(torch.mul(aai, aai).data)
+    loss = torch.add(criterion(pred, y), Variable(torch.FloatTensor([loss_fn * a])))
     return loss
 
 
@@ -574,7 +575,7 @@ if __name__ == '__main__':
             optimizer.zero_grad()
             y_pred, wts, _ = model(batch_x, batch_demoip, batch_size)
             # states, alpha, beta = model(batch_x, batch_size)
-            if model_type == 'crnn2-bi-tanh-fn':
+            if not model_type == 'crnn2-bi-tanh-fn':
                 loss = criterion(y_pred, batch_y)
             else:
                 loss = get_loss(y_pred, batch_y, criterion, wts, a=0.1)

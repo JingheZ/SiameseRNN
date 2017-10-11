@@ -378,17 +378,17 @@ if __name__ == '__main__':
     output_size = 2
     rnn_type = 'GRU'
     drop = 0.1
-    learning_rate = 0.0005
+    learning_rate = 0.001
     decay = 0.01
     interval = 100
     initrange = 1
     att_dim = 100
 
     batch_size = 100
-    epoch_max = 5 # training for maximum 3 epochs of training data
+    epoch_max = 2 # training for maximum 3 epochs of training data
     n_iter_max_dev = 100 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
-    model_type = 'rnn-bi'
+    model_type = 'rnn'
     # Build and train/load the model
     print('Build Model...')
     # by default build a RNN model
@@ -451,7 +451,7 @@ if __name__ == '__main__':
                 # perfm_batch, auc_batch = calculate_performance(batch_y.data.tolist(), pred_ind_batch)
                 # print("Performance on training set: AUC is %.3f" % auc_batch)
                 # # print(perfm_batch)
-                # print('Validation, loss: %.3f' % (loss_dev.data[0]))
+                print('Validation, loss: %.3f' % (loss_dev.data[0]))
                 if loss_dev < best_loss_dev:
                     best_loss_dev = loss_dev
                     best_dev_iter = n_iter
@@ -474,7 +474,7 @@ if __name__ == '__main__':
     print('Start Testing...')
     result_file = './results/test_results_' + model_type + '_layer' + str(n_layers) + '.pickle'
     # output_file = './results/test_outputs_' + model_type + '_layer' + str(n_layers) + '.pickle'
-    model_type = 'rnn-bi'
+    model_type = 'rnn'
     # Build and train/load the model
     print('Build Model...')
     # by default build a RNN model
