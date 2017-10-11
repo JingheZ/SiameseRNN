@@ -714,7 +714,7 @@ if __name__ == '__main__':
     elif model_type == 'crnn2':
         model = Patient2Vec1(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
                              rnn_type, seq_len, pad_size, n_filters, bi=False, dropout_p=drop)
-    elif model_type == 'crnn2-bi-tanh' or model_type == 'crnn2-bi-tanh-fn':
+    elif model_type == 'crnn2-bi-tanh' or model_type == 'crnn2-bi-tanh-fn-lr001':
         model = Patient2Vec1(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
                             rnn_type, seq_len, pad_size, n_filters, bi=True, dropout_p=drop)
 
@@ -787,7 +787,7 @@ if __name__ == '__main__':
     # #
     # # ============================ To evaluate model using testing set =============================================
     print('Start Testing...')
-    result_file = './results/test_results_w2v_' + model_type + '_layer' + str(n_layers) + '_nf10_a01_v2.pickle'
+    result_file = './results/test_results_w2v_' + model_type + '_layer' + str(n_layers) + '_nf10_a01.pickle'
     # output_file = './results/test_outputs_' + model_type + '_layer' + str(n_layers) + '.pickle'
 
     # model_type = 'crnn2-bi-tanh-fn'

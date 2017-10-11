@@ -14,7 +14,8 @@ def calculate_scores_bootstraps(pred, y, val):
     f1s = []
     for p in range(50):
         # random.seed(p)
-        sp = random.choices(list(zip(pred, y, val)), k=int(len(y)))
+        # sp = random.choices(list(zip(pred, y, val)), k=int(len(y)))
+        sp = list(zip(pred, y, val))
         sp_pred = [v[0] for v in sp]
         sp_true = [v[1] for v in sp]
         sp_val = [v[2] for v in sp]
@@ -48,10 +49,24 @@ def calculate_results(result_file):
     return res
 
 
-def analyze_example_pts(pred, y, val):
-    result = list(zip(pred, y, val))
+def analyze_example_pts(result_file):
+    with open(result_file, 'rb') as f:
+        pred, val, y = pickle.load(f)
+    with open('./data/hospitalization_train_validate_test_ids.pickle', 'rb') as f:
+        train_ids, valid_ids, test_ids = pickle.load(f)
+    result = list(zip(test_ids, pred, y, val))
     result = pd.DataFrame(result)
-    
+    result.columns = ['ptid', 'pred_label', 'true_label', 'pred_val']
+    result = result.sort_values(['true_label', 'pred_val'], ascending=[0, 0])
+
+    l = 3
+    with open('./data/clinical_events_hospitalization.pickle', 'rb') as f:
+        data = pickle.load(f)
+    with open('./data/hospitalization_test_data_by_' + str(l) + 'month.pickle', 'rb') as f:
+        test, test_y = pickle.load(f)
+    f.close()
+    batch_x, batch_demoip, _ = create_batch(i, batch_size, test, test_demoips, test_y, w2v, vsize, pad_size, l)
+    y_pred, _, _ = model(batch_x, batch_demoip, batch_size)
 
 
 
@@ -94,5 +109,5 @@ birnn_mve = calculate_results(result_file)
 model_type = 'crnn2-bi-tanh-fn'
 result_file = './results/test_results_' + model_type + '_layer1.pickle'
 p2v = calculate_results(result_file)
-result_file = './results/test_results_w2v_' + model_type + '_layer1_nf10_a01.pickle'
+result_file = './results/test_results_w2v_' + model_type + '_layer1_nf10_a01_v2.pickle'
 p2v = calculate_results(result_file)
