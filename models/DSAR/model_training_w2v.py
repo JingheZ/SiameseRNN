@@ -275,6 +275,7 @@ class Patient2Vec1(nn.Module):
 
     def convolutional_layer(self, inputs):
         convolution_all = []
+        conv_wts = []
         for i in range(self.seq_len):
             convolution_one_month = []
             for j in range(self.pad_size):
@@ -290,9 +291,11 @@ class Patient2Vec1(nn.Module):
             convolution_one_month = torch.unsqueeze(convolution_one_month, dim=1)
             vec = torch.bmm(convolution_one_month, inputs[:, i])
             convolution_all.append(vec)
+            conv_wts.append(convolution_one_month)
         convolution_all = torch.stack(convolution_all, dim=1)
         convolution_all = torch.squeeze(convolution_all, dim=2)
-        return convolution_all
+        conv_wts = torch.stack(conv_wts)
+        return convolution_all, conv_wts
 
     # def embedding_layer(self, convolutions):
     #     embedding_f = []
@@ -334,7 +337,7 @@ class Patient2Vec1(nn.Module):
         the recurrent module
         """
         # Convolutional
-        convolutions = self.convolutional_layer(inputs)
+        convolutions, conv_wts = self.convolutional_layer(inputs)
         # Embedding
         # embedding = self.embedding_layer(convolutions)
         # RNN
@@ -346,7 +349,7 @@ class Patient2Vec1(nn.Module):
         context_v2 = torch.cat((context, inputs_demoip), 1)
         linear_y = self.linear(context_v2)
         out = self.func_softmax(linear_y)
-        return out, [states_rnn, context, alpha]
+        return out, alpha, [states_rnn, context, conv_wts]
 
 
 def create_batch(step, batch_size, data_x, data_demoip, data_y, w2v, vsize, pad_size, l):
@@ -456,11 +459,21 @@ def calculate_performance(test_y, pred):
     return perfm, auc
 
 
+def get_loss(pred, y, criterion, mtr, a=0.5):
+    mtr_t = torch.transpose(mtr, 1, 2)
+    aa = torch.bmm(mtr, mtr_t)
+    for i in range(aa.size()[0]):
+        aai = torch.add(aa[i, ], torch.neg(torch.eye(mtr.size()[1])))
+        loss_fn = torch.trace(torch.mul(aai, aai))
+    loss = torch.add(criterion(pred, y), torch.FloatTensor([loss_fn * a]))
+    return loss
+
+
 if __name__ == '__main__':
 
     #  ============== Prepare Data ===========================
     # ----- load word2vec embedding model
-    size = 200
+    size = 100
     window = 100
     sg = 1 # skip-gram:1; cbow: 0
     model_path = './results/w2v_size' + str(size) + '_window' + str(window) + '_sg' + str(sg)
@@ -512,12 +525,13 @@ if __name__ == '__main__':
     initrange = 1
     att_dim = 1
     n_filters = 5
+    a = 0.1
     batch_size = 100
     epoch_max = 15 # training for maximum 3 epochs of training data
     n_iter_max_dev = 2000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
-    model_type = 'crnn2-bi-tanh'
+    model_type = 'crnn2-bi-tanh-fn'
     # Build and train/load the model
     print('Build Model...')
     # by default build a LR model
@@ -533,7 +547,7 @@ if __name__ == '__main__':
     elif model_type == 'crnn2':
         model = Patient2Vec1(input_size - 3, embedding_size - 3, hidden_size, n_layers, att_dim, initrange, output_size,
                              rnn_type, seq_len, pad_size, n_filters, bi=False, dropout_p=drop)
-    elif model_type == 'crnn2-bi-tanh':
+    elif model_type == 'crnn2-bi-tanh' or model_type == 'crnn2-bi-tanh-fn':
         model = Patient2Vec1(input_size - 3, embedding_size - 3, hidden_size, n_layers, att_dim, initrange, output_size,
                             rnn_type, seq_len, pad_size, n_filters, bi=True, dropout_p=drop)
 
@@ -558,9 +572,12 @@ if __name__ == '__main__':
         while (step + 1) * batch_size < train_iters:
             batch_x, batch_demoip, batch_y = create_batch(step, batch_size, train, train_demoips, train_y, w2v_model, size, pad_size, l)
             optimizer.zero_grad()
-            y_pred, _ = model(batch_x, batch_demoip, batch_size)
+            y_pred, wts, _ = model(batch_x, batch_demoip, batch_size)
             # states, alpha, beta = model(batch_x, batch_size)
-            loss = criterion(y_pred, batch_y)
+            if model_type == 'crnn2-bi-tanh-fn':
+                loss = criterion(y_pred, batch_y)
+            else:
+                loss = get_loss(y_pred, batch_y, criterion, wts, a=0.1)
             # loss = CrossEntropy_Multi(y_pred, batch_y, output_size, criterion)
             # loss = get_loss(y_pred, batch_y, criterion, seq_len)
             loss.backward()
@@ -571,7 +588,7 @@ if __name__ == '__main__':
                 # acc = calcualte_accuracy(y_pred, batch_y, batch_size)
                 print('%i epoch, %i batches, elapsed time: %.2f, loss: %.3f' % (epoch + 1, step + 1, elapsed, loss.data[0]))
                 # Evaluate model performance on validation set
-                pred_dev, _ = model(validate_x, validate_demoips, len(valid_ids))
+                pred_dev, _, _ = model(validate_x, validate_demoips, len(valid_ids))
                 loss_dev = criterion(pred_dev, validate_y)
                 pred_ind_dev = model_testing_one_batch(model, validate_x, validate_demoips,
                                                        len(valid_ids))
@@ -608,7 +625,7 @@ if __name__ == '__main__':
     result_file = './results/test_results_' + model_type + '_layer' + str(n_layers) + '.pickle'
     # output_file = './results/test_outputs_' + model_type + '_layer' + str(n_layers) + '.pickle'
 
-    model_type = 'crnn2-bi-tanh'
+    model_type = 'crnn2-bi-tanh-fn'
     # Build and train/load the model
     print('Build Model...')
     # by default build a LR model

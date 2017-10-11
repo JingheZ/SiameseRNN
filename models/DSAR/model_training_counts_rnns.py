@@ -365,13 +365,13 @@ if __name__ == '__main__':
     validate_x, validate_y = list2tensor(validate, validate_y, l)
     validate_demoips = Variable(torch.FloatTensor(validate_demoips), requires_grad=False)
 
-    with open('./data/hospitalization_cts_sub_columns.pickle', 'rb') as f:
-        features = pickle.load(f)
-    f.close()
+    # with open('./data/hospitalization_cts_sub_columns.pickle', 'rb') as f:
+    #     features = pickle.load(f)
+    # f.close()
     # Model hyperparameters
     # model_type = 'rnn-rt'
-    input_size = int(len(features)/int(12/l))
-    embedding_size = 200
+    input_size = 433
+    embedding_size = 100
     hidden_size = 256
     n_layers = 1
     seq_len = int(12/l)
@@ -385,7 +385,7 @@ if __name__ == '__main__':
     att_dim = 100
 
     batch_size = 100
-    epoch_max = 10 # training for maximum 3 epochs of training data
+    epoch_max = 5 # training for maximum 3 epochs of training data
     n_iter_max_dev = 100 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
     model_type = 'rnn-bi'
@@ -474,7 +474,7 @@ if __name__ == '__main__':
     print('Start Testing...')
     result_file = './results/test_results_' + model_type + '_layer' + str(n_layers) + '.pickle'
     # output_file = './results/test_outputs_' + model_type + '_layer' + str(n_layers) + '.pickle'
-    model_type = 'rnn'
+    model_type = 'rnn-bi'
     # Build and train/load the model
     print('Build Model...')
     # by default build a RNN model
