@@ -543,7 +543,8 @@ if __name__ == '__main__':
     n_iter_max_dev = 2000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
-    model_type = 'crnn2-bi-tanh-fn'
+    # model_type = 'crnn2-bi-tanh-fn'
+    model_type = 'rnn'
     # Build and train/load the model
     print('Build Model...')
     # by default build a LR model
@@ -636,7 +637,7 @@ if __name__ == '__main__':
     result_file = './results/test_results_' + model_type + '_layer' + str(n_layers) + '.pickle'
     # output_file = './results/test_outputs_' + model_type + '_layer' + str(n_layers) + '.pickle'
 
-    model_type = 'crnn2-bi-tanh-fn'
+    # model_type = 'crnn2-bi-tanh-fn'
     # Build and train/load the model
     print('Build Model...')
     # by default build a LR model
