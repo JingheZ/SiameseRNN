@@ -123,31 +123,42 @@ def model_testing_one_batch(model, batch_x, batch_demoip):
     y_pred, _ = model(batch_x, batch_demoip)
     _, predicted = torch.max(y_pred.data, 1)
     pred = predicted.view(-1).tolist()
-    return pred
+    val = y_pred[:, 1].data.tolist()
+    return pred, val
+
+
+def model_testing_dev(y_pred):
+    _, predicted = torch.max(y_pred.data, 1)
+    pred = predicted.view(-1).tolist()
+    val = y_pred[:, 1].data.tolist()
+    return pred, val
 
 
 def model_testing(model, test, test_y, test_demoips, batch_size=1000):
     i = 0
     pred_all = []
+    val_all = []
     while (i + 1) * batch_size <= len(test_y):
         batch_x, batch_demoip, _ = create_batch(i, batch_size, test, test_demoips, test_y)
-        pred = model_testing_one_batch(model, batch_x, batch_demoip)
+        pred, val = model_testing_one_batch(model, batch_x, batch_demoip)
         pred_all += pred
+        val_all += val
         i += 1
     # the remaining data less than one batch
     batch_x = test[i * batch_size:]
     batch_demoip = test_demoips[i * batch_size:]
     batch_x = Variable(torch.FloatTensor(batch_x), requires_grad=False)
     batch_demoip = Variable(torch.FloatTensor(batch_demoip), requires_grad=False)
-    pred = model_testing_one_batch(model, batch_x, batch_demoip)
+    pred, val = model_testing_one_batch(model, batch_x, batch_demoip)
     pred_all += pred
-    return pred_all
+    val_all += val
+    return pred_all, val_all
 
 
-def calculate_performance(test_y, pred):
+def calculate_performance(test_y, pred, vals):
     # calculate performance
     perfm = metrics.classification_report(test_y, pred)
-    auc = metrics.roc_auc_score(test_y, pred)
+    auc = metrics.roc_auc_score(test_y, vals)
     return perfm, auc
 
 
@@ -183,19 +194,19 @@ if __name__ == '__main__':
     input_size = len(features) + 3
     output_size = 2
     drop = 0.0
-    learning_rate = 0.002
-    decay = 0.01
+    learning_rate = 0.1
+    decay = 0.001
     interval = 100
     initrange = 1
     mlp_hidden_size1 = 256
     # mlp_hidden_size2 = 1024
 
     batch_size = 100
-    epoch_max = 10 # training for maximum 3 epochs of training data
+    epoch_max = 5 # training for maximum 3 epochs of training data
     n_iter_max_dev = 100 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
-    model_type = 'MLP-256'
+    model_type = 'LR'
     # Build and train/load the model
     print('Build Model...')
     # by default build a LR model
@@ -240,8 +251,8 @@ if __name__ == '__main__':
                 # Evaluate model performance on validation set
                 pred_dev, _ = model(validate_x, validate_demoips)
                 loss_dev = criterion(pred_dev, validate_y)
-                pred_ind_dev = model_testing_one_batch(model, validate_x, validate_demoips)
-                perfm_dev, auc_dev = calculate_performance(validate_y.data.tolist(), pred_ind_dev)
+                pred_ind_dev, val_dev = model_testing_dev(pred_dev)
+                perfm_dev, auc_dev = calculate_performance(validate_y.data.tolist(), pred_ind_dev, val_dev)
                 print("Performance on dev set: AUC is %.3f" % auc_dev)
                 # print(perfm_dev)
                 #
@@ -270,10 +281,10 @@ if __name__ == '__main__':
 
     # ============================ To evaluate model using testing set =============================================
     print('Start Testing...')
-    result_file = './results/test_results_' + model_type + '1.pickle'
-    output_file = './results/test_outputs_' + model_type + '1.pickle'
+    result_file = './results/test_results_' + model_type + '.pickle'
+    output_file = './results/test_outputs_' + model_type + '.pickle'
 
-    model_type = 'MLP-256'
+    model_type = 'LR'
     if model_type == 'LR': # 5 epochs, lr=0.001, decay=0.01, weight=1:20; auc: 0.698; with current parameters: 0.640
         model = LRmodel(input_size, output_size, initrange)
     elif model_type == 'MLP-256':
@@ -283,13 +294,13 @@ if __name__ == '__main__':
     # # Evaluate the model
     model.eval()
     test_start_time = time.time()
-    pred_test = model_testing(model, test, test_y, test_demoips, batch_size=1000)
-    perfm, auc = calculate_performance(test_y, pred_test)
+    pred_test, val_test = model_testing(model, test, test_y, test_demoips, batch_size=1000)
+    perfm, auc = calculate_performance(test_y, pred_test, val_test)
     elapsed_test = time.time() - test_start_time
     print(auc)
     print(perfm)
     with open(result_file, 'wb') as f:
-        pickle.dump([pred_test, test_y], f)
+        pickle.dump([pred_test, val_test, test_y], f)
     f.close()
     print('Testing Finished!')
     # with open(output_file, 'wb') as f:

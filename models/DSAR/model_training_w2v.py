@@ -429,16 +429,26 @@ def model_testing_one_batch(model, batch_x, batch_demoip, batch_size):
     y_pred, _, _ = model(batch_x, batch_demoip, batch_size)
     _, predicted = torch.max(y_pred.data, 1)
     pred = predicted.view(-1).tolist()
-    return pred
+    val = y_pred[:, 1].data.tolist()
+    return pred, val
+
+
+def model_testing_dev(y_pred):
+    _, predicted = torch.max(y_pred.data, 1)
+    pred = predicted.view(-1).tolist()
+    val = y_pred[:, 1].data.tolist()
+    return pred, val
 
 
 def model_testing(model, test, test_y, test_demoips, w2v, vsize, pad_size, l, batch_size=1000):
     i = 0
     pred_all = []
+    val_all = []
     while (i + 1) * batch_size <= len(test_y):
         batch_x, batch_demoip, _ = create_batch(i, batch_size, test, test_demoips, test_y, w2v, vsize, pad_size, l)
-        pred = model_testing_one_batch(model, batch_x, batch_demoip, batch_size)
+        pred, val = model_testing_one_batch(model, batch_x, batch_demoip, batch_size)
         pred_all += pred
+        val_all += val
         i += 1
     # the remaining data less than one batch
     batch_demoip = test_demoips[i * batch_size:]
@@ -448,15 +458,16 @@ def model_testing(model, test, test_y, test_demoips, w2v, vsize, pad_size, l, ba
         batch_x.append(x)
     batch_x = Variable(torch.FloatTensor(batch_x), requires_grad=False)
     batch_demoip = Variable(torch.FloatTensor(batch_demoip), requires_grad=False)
-    pred = model_testing_one_batch(model, batch_x, batch_demoip, len(test_y) - i * batch_size)
+    pred, val = model_testing_one_batch(model, batch_x, batch_demoip, len(test_y) - i * batch_size)
     pred_all += pred
-    return pred_all
+    val_all += val
+    return pred_all, val_all
 
 
-def calculate_performance(test_y, pred):
+def calculate_performance(test_y, pred, vals):
     # calculate performance
     perfm = metrics.classification_report(test_y, pred)
-    auc = metrics.roc_auc_score(test_y, pred)
+    auc = metrics.roc_auc_score(test_y, vals)
     return perfm, auc
 
 
@@ -591,9 +602,8 @@ if __name__ == '__main__':
                 # Evaluate model performance on validation set
                 pred_dev, _, _ = model(validate_x, validate_demoips, len(valid_ids))
                 loss_dev = criterion(pred_dev, validate_y)
-                pred_ind_dev = model_testing_one_batch(model, validate_x, validate_demoips,
-                                                       len(valid_ids))
-                perfm_dev, auc_dev = calculate_performance(validate_y.data.tolist(), pred_ind_dev)
+                pred_ind_dev, val_dev = model_testing_dev(pred_dev)
+                perfm_dev, auc_dev = calculate_performance(validate_y.data.tolist(), pred_ind_dev, val_dev)
                 print("Performance on dev set: AUC is %.3f" % auc_dev)
                 # print(perfm_dev)
 
@@ -642,9 +652,11 @@ if __name__ == '__main__':
     elif model_type == 'crnn2':
         model = Patient2Vec1(input_size - 3, embedding_size - 3, hidden_size, n_layers, att_dim, initrange, output_size,
                              rnn_type, seq_len, pad_size, n_filters, bi=False, dropout_p=drop)
-    elif model_type == 'crnn2-bi-tanh':
+    elif model_type == 'crnn2-bi-tanh' or model_type == 'crnn2-bi-tanh-fn':
         model = Patient2Vec1(input_size - 3, embedding_size - 3, hidden_size, n_layers, att_dim, initrange, output_size,
                              rnn_type, seq_len, pad_size, n_filters, bi=True, dropout_p=drop)
+    model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '_l' + str(l) + 'filter' + str(
+        n_filters) + '.dat'
     saved_model = torch.load(model_path)
     model.load_state_dict(saved_model)
     print('Model loaded...')
@@ -652,13 +664,13 @@ if __name__ == '__main__':
     # # Evaluate the model
     model.eval()
     test_start_time = time.time()
-    pred_test = model_testing(model, test, test_y, test_demoips, w2v_model, size, pad_size, l, batch_size=1000)
-    perfm, auc = calculate_performance(test_y, pred_test)
+    pred_test, val_test = model_testing(model, test, test_y, test_demoips, w2v_model, size, pad_size, l, batch_size=1000)
+    perfm, auc = calculate_performance(test_y, pred_test, val_test)
     elapsed_test = time.time() - test_start_time
     print(auc)
     print(perfm)
     with open(result_file, 'wb') as f:
-        pickle.dump([pred_test, test_y], f)
+        pickle.dump([pred_test, val_test, test_y], f)
     f.close()
     print('Testing Finished!')
     # with open(output_file, 'wb') as f:
