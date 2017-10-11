@@ -54,20 +54,41 @@ def analyze_example_pts(result_file):
         pred, val, y = pickle.load(f)
     with open('./data/hospitalization_train_validate_test_ids.pickle', 'rb') as f:
         train_ids, valid_ids, test_ids = pickle.load(f)
+    with open('./data/hospitalization_test_data_demoip.pickle', 'rb') as f:
+        test_genders, test_ages, test_ip = pickle.load(f)
+    f.close()
+
     result = list(zip(test_ids, pred, y, val))
     result = pd.DataFrame(result)
     result.columns = ['ptid', 'pred_label', 'true_label', 'pred_val']
+    result['gender'] = test_genders
+    result['age'] = test_ages
+    result['ip'] = test_ip
+
+
     result = result.sort_values(['true_label', 'pred_val'], ascending=[0, 0])
+    ptids1 = ['1676027', '826205', '956147']
+    ptids0 = ['656618', '1839296', '1334050']
+    ptids = ptids1 + ptids0
+    inds = [101, 141, 584, 677, 558, 182]
 
-    l = 3
-    with open('./data/clinical_events_hospitalization.pickle', 'rb') as f:
-        data = pickle.load(f)
-    with open('./data/hospitalization_test_data_by_' + str(l) + 'month.pickle', 'rb') as f:
-        test, test_y = pickle.load(f)
-    f.close()
-    batch_x, batch_demoip, _ = create_batch(i, batch_size, test, test_demoips, test_y, w2v, vsize, pad_size, l)
-    y_pred, _, _ = model(batch_x, batch_demoip, batch_size)
+    # xs = []
+    # for i in inds:
+    #     x = test[i]
 
+
+    # l = 3
+    # with open('./data/clinical_events_hospitalization.pickle', 'rb') as f:
+    #     data = pickle.load(f)
+    # data = data.sort(['ptid', 'adm_month'], ascending=[1, 1])
+    # with open('./data/hospitalization_test_data_by_' + str(l) + 'month.pickle', 'rb') as f:
+    #     test, test_y = pickle.load(f)
+    # f.close()
+    #
+    #
+    # batch_x, batch_demoip, _ = create_batch(i, batch_size, test, test_demoips, test_y, w2v, vsize, pad_size, l)
+    # y_pred, _, _ = model(batch_x, batch_demoip, batch_size)
+    #
 
 
 # =============================== LR ================================
