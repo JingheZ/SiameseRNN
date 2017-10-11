@@ -537,105 +537,105 @@ if __name__ == '__main__':
     interval = 100
     initrange = 1
     att_dim = 1
-    n_filters = 5
+    n_filters = 3
     a = 0.1
     batch_size = 100
     epoch_max = 15 # training for maximum 3 epochs of training data
     n_iter_max_dev = 2000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
-    # model_type = 'crnn2-bi-tanh-fn'
-    model_type = 'rnn-bi'
-    model_path = './saved_models/model_w2v_' + model_type + '_layer' + str(n_layers) + '.dat'
-    # # Build and train/load the model
-    # print('Build Model...')
-    # # by default build a LR model
-    # if model_type == 'rnn':
-    #     model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
-    #                      ct=False, bi=False, dropout_p=drop)
-    # elif model_type == 'rnn-bi':
-    #     model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
-    #                      ct=False, bi=True, dropout_p=drop)
-    # elif model_type == 'crnn':
-    #     model = Patient2Vec0(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
-    #                         rnn_type, seq_len, pad_size, dropout_p=drop)
-    # elif model_type == 'crnn2':
-    #     model = Patient2Vec1(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
-    #                          rnn_type, seq_len, pad_size, n_filters, bi=False, dropout_p=drop)
-    # elif model_type == 'crnn2-bi-tanh' or model_type == 'crnn2-bi-tanh-fn':
-    #     model = Patient2Vec1(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
-    #                         rnn_type, seq_len, pad_size, n_filters, bi=True, dropout_p=drop)
-    #
-    # criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 10]))
-    # optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
-    # # model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '_l' + str(l) + 'filter' + str(n_filters) + '.dat'
-    # print('Start Training...')
-    # # if os.path.exists(model_path):
-    # #     saved_model = torch.load(model_path)
-    # #     model.load_state_dict(saved_model)
-    # # # else:
-    #     # model.init_weights(initrange)
-    #     # Train the model
-    # start_time = time.time()
-    # best_loss_dev = 100
-    # best_dev_iter = 0
-    # n_iter = 0
-    # epoch = 0
-    # while epoch < epoch_max:
-    #     step = 0
-    #     while (step + 1) * batch_size < train_iters:
-    #         batch_x, batch_demoip, batch_y = create_batch(step, batch_size, train, train_demoips, train_y, w2v_model, size, pad_size, l)
-    #         optimizer.zero_grad()
-    #         y_pred, wts, _ = model(batch_x, batch_demoip, batch_size)
-    #         # states, alpha, beta = model(batch_x, batch_size)
-    #         if not model_type == 'crnn2-bi-tanh-fn':
-    #             loss = criterion(y_pred, batch_y)
-    #         else:
-    #             loss = get_loss(y_pred, batch_y, criterion, wts, a=0.1)
-    #         # loss = CrossEntropy_Multi(y_pred, batch_y, output_size, criterion)
-    #         # loss = get_loss(y_pred, batch_y, criterion, seq_len)
-    #         loss.backward()
-    #         optimizer.step()
-    #
-    #         if step % interval == 0:
-    #             elapsed = time.time() - start_time
-    #             # acc = calcualte_accuracy(y_pred, batch_y, batch_size)
-    #             print('%i epoch, %i batches, elapsed time: %.2f, loss: %.3f' % (epoch + 1, step + 1, elapsed, loss.data[0]))
-    #             # Evaluate model performance on validation set
-    #             pred_dev, _, _ = model(validate_x, validate_demoips, len(valid_ids))
-    #             loss_dev = criterion(pred_dev, validate_y)
-    #             pred_ind_dev, val_dev = model_testing_dev(pred_dev)
-    #             perfm_dev, auc_dev = calculate_performance(validate_y.data.tolist(), pred_ind_dev, val_dev)
-    #             print("Performance on dev set: AUC is %.3f" % auc_dev)
-    #             # print(perfm_dev)
-    #
-    #             # pred_ind_batch = model_testing_one_batch(model, batch_x, batch_demoip, batch_size)
-    #             # perfm_batch, auc_batch = calculate_performance(batch_y.data.tolist(), pred_ind_batch)
-    #             # print("Performance on training set: AUC is %.3f" % auc_batch)
-    #             # # print(perfm_batch)
-    #             print('Validation, loss: %.3f' % (loss_dev.data[0]))
-    #             if loss_dev.data[0] < best_loss_dev:
-    #                 best_loss_dev = loss_dev.data[0]
-    #                 best_dev_iter = n_iter
-    #                 print('best validation at %i with loss %.3f' % (best_dev_iter, best_loss_dev))
-    #                 state_to_save = model.state_dict()
-    #                 torch.save(state_to_save, model_path)
-    #             if n_iter - best_dev_iter >= n_iter_max_dev:
-    #                 break
-    #         step += 1
-    #         n_iter += 1
-    #     if n_iter - best_dev_iter >= n_iter_max_dev:
-    #         break
-    #     epoch += 1
-    # # save trained model
-    # # state_to_save = model.state_dict()
-    # # torch.save(state_to_save, model_path)
-    # elapsed = time.time() - start_time
-    # print('Training Finished! Total Training Time is: % .2f' % elapsed)
-    # # #
+    model_type = 'crnn2-bi-tanh-fn'
+    # model_type = 'rnn-bi'
+    model_path = './saved_models/model_w2v_' + model_type + '_layer' + str(n_layers) + 'a01.dat'
+    # Build and train/load the model
+    print('Build Model...')
+    # by default build a LR model
+    if model_type == 'rnn':
+        model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
+                         ct=False, bi=False, dropout_p=drop)
+    elif model_type == 'rnn-bi':
+        model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
+                         ct=False, bi=True, dropout_p=drop)
+    elif model_type == 'crnn':
+        model = Patient2Vec0(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
+                            rnn_type, seq_len, pad_size, dropout_p=drop)
+    elif model_type == 'crnn2':
+        model = Patient2Vec1(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
+                             rnn_type, seq_len, pad_size, n_filters, bi=False, dropout_p=drop)
+    elif model_type == 'crnn2-bi-tanh' or model_type == 'crnn2-bi-tanh-fn':
+        model = Patient2Vec1(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
+                            rnn_type, seq_len, pad_size, n_filters, bi=True, dropout_p=drop)
+
+    criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 10]))
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
+    # model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '_l' + str(l) + 'filter' + str(n_filters) + '.dat'
+    print('Start Training...')
+    # if os.path.exists(model_path):
+    #     saved_model = torch.load(model_path)
+    #     model.load_state_dict(saved_model)
+    # # else:
+        # model.init_weights(initrange)
+        # Train the model
+    start_time = time.time()
+    best_loss_dev = 100
+    best_dev_iter = 0
+    n_iter = 0
+    epoch = 0
+    while epoch < epoch_max:
+        step = 0
+        while (step + 1) * batch_size < train_iters:
+            batch_x, batch_demoip, batch_y = create_batch(step, batch_size, train, train_demoips, train_y, w2v_model, size, pad_size, l)
+            optimizer.zero_grad()
+            y_pred, wts, _ = model(batch_x, batch_demoip, batch_size)
+            # states, alpha, beta = model(batch_x, batch_size)
+            if not model_type == 'crnn2-bi-tanh-fn':
+                loss = criterion(y_pred, batch_y)
+            else:
+                loss = get_loss(y_pred, batch_y, criterion, wts, a=0.1)
+            # loss = CrossEntropy_Multi(y_pred, batch_y, output_size, criterion)
+            # loss = get_loss(y_pred, batch_y, criterion, seq_len)
+            loss.backward()
+            optimizer.step()
+
+            if step % interval == 0:
+                elapsed = time.time() - start_time
+                # acc = calcualte_accuracy(y_pred, batch_y, batch_size)
+                print('%i epoch, %i batches, elapsed time: %.2f, loss: %.3f' % (epoch + 1, step + 1, elapsed, loss.data[0]))
+                # Evaluate model performance on validation set
+                pred_dev, _, _ = model(validate_x, validate_demoips, len(valid_ids))
+                loss_dev = criterion(pred_dev, validate_y)
+                pred_ind_dev, val_dev = model_testing_dev(pred_dev)
+                perfm_dev, auc_dev = calculate_performance(validate_y.data.tolist(), pred_ind_dev, val_dev)
+                print("Performance on dev set: AUC is %.3f" % auc_dev)
+                # print(perfm_dev)
+
+                # pred_ind_batch = model_testing_one_batch(model, batch_x, batch_demoip, batch_size)
+                # perfm_batch, auc_batch = calculate_performance(batch_y.data.tolist(), pred_ind_batch)
+                # print("Performance on training set: AUC is %.3f" % auc_batch)
+                # # print(perfm_batch)
+                print('Validation, loss: %.3f' % (loss_dev.data[0]))
+                if loss_dev.data[0] < best_loss_dev:
+                    best_loss_dev = loss_dev.data[0]
+                    best_dev_iter = n_iter
+                    print('best validation at %i with loss %.3f' % (best_dev_iter, best_loss_dev))
+                    state_to_save = model.state_dict()
+                    torch.save(state_to_save, model_path)
+                if n_iter - best_dev_iter >= n_iter_max_dev:
+                    break
+            step += 1
+            n_iter += 1
+        if n_iter - best_dev_iter >= n_iter_max_dev:
+            break
+        epoch += 1
+    # save trained model
+    # state_to_save = model.state_dict()
+    # torch.save(state_to_save, model_path)
+    elapsed = time.time() - start_time
+    print('Training Finished! Total Training Time is: % .2f' % elapsed)
+    # #
     # # ============================ To evaluate model using testing set =============================================
     print('Start Testing...')
-    result_file = './results/test_results_w2v_' + model_type + '_layer' + str(n_layers) + '.pickle'
+    result_file = './results/test_results_w2v_' + model_type + '_layer' + str(n_layers) + 'a01.pickle'
     # output_file = './results/test_outputs_' + model_type + '_layer' + str(n_layers) + '.pickle'
 
     # model_type = 'crnn2-bi-tanh-fn'
