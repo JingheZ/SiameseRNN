@@ -92,7 +92,7 @@ class RNNmodel(nn.Module):
         out = self.func_softmax(linear_y)
         # out = self.func_sigmoid(linear_y)
         # out = self.func_tanh(linear_y)
-        return out, [states_rnn, embedding, linear_y]
+        return out, 0,[states_rnn, embedding, linear_y]
 
 
 class Patient2Vec0(nn.Module):
