@@ -547,7 +547,7 @@ if __name__ == '__main__':
     # model_type = 'crnn2-bi-tanh-fn'
     model_type = 'rnn-bi'
     model_path = './saved_models/model_w2v_' + model_type + '_layer' + str(n_layers) + '.dat'
-    # Build and train/load the model
+    # # Build and train/load the model
     # print('Build Model...')
     # # by default build a LR model
     # if model_type == 'rnn':
@@ -640,7 +640,7 @@ if __name__ == '__main__':
 
     # model_type = 'crnn2-bi-tanh-fn'
     # by default build a LR model
-    if model_type == 'rnn-bi':
+    if model_type == 'rnn':
         model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
                          ct=False, bi=False, dropout_p=drop)
     elif model_type == 'rnn-bi':
