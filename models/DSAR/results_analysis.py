@@ -3,6 +3,7 @@ import random
 from sklearn import metrics
 import numpy as np
 import pickle
+import pandas as pd
 
 
 def calculate_scores_bootstraps(pred, y, val):
@@ -45,6 +46,13 @@ def calculate_results(result_file):
         pred, val, y = pickle.load(f)
     res = calculate_scores_bootstraps(pred, y, val)
     return res
+
+
+def analyze_example_pts(pred, y, val):
+    result = list(zip(pred, y, val))
+    result = pd.DataFrame(result)
+    
+
 
 
 # =============================== LR ================================

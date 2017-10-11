@@ -684,7 +684,7 @@ if __name__ == '__main__':
     output_size = 2
     rnn_type = 'GRU'
     drop = 0.0
-    learning_rate = 0.0005
+    learning_rate = 0.001
     decay = 0.01
     interval = 100
     initrange = 1
@@ -696,7 +696,7 @@ if __name__ == '__main__':
     n_iter_max_dev = 2000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
-    model_type = 'crnn2-bi-tanh-fn'
+    model_type = 'crnn2-bi-tanh-fn-lr001'
     # model_type = 'rnn-bi'
     model_path = './saved_models/model_w2v_' + model_type + '_layer' + str(n_layers) + '_nf10_a01.dat'
     # Build and train/load the model
