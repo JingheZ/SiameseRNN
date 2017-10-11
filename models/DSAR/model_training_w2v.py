@@ -697,7 +697,7 @@ if __name__ == '__main__':
     n_iter_max_dev = 2000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
-    model_type = 'crnn2-bi-tanh-fn-lr001'
+    model_type = 'crnn2-bi-tanh-fn'
     # model_type = 'rnn-bi'
     model_path = './saved_models/model_w2v_' + model_type + '_layer' + str(n_layers) + '_nf3_a1.dat'
     # Build and train/load the model
@@ -826,9 +826,9 @@ if __name__ == '__main__':
         pickle.dump([pred_test, val_test, test_y], f)
     f.close()
     print('Testing Finished!')
-    with open('./data/test_demoips.pickle', 'wb') as f:
-        pickle.dump(test_demoips, f)
-    f.close()
+    # with open('./data/test_demoips.pickle', 'wb') as f:
+    #     pickle.dump(test_demoips, f)
+    # f.close()
 
     # with open(output_file, 'wb') as f:
     #     pickle.dump(output_test, f)
