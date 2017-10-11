@@ -83,7 +83,8 @@ class RNNmodel(nn.Module):
         """
         # Embedding
         # embedding = self.embedding_layer(inputs, inputs_demoips)
-        embedding = inputs
+        embedding = torch.sum(inputs, dim=2)
+        embedding = torch.squeeze(embedding, dim=2)
         # embedding = torch.transpose(inputs, 1, 2)
         # RNN
         states_rnn = self.encode_rnn(embedding, batch_size)
