@@ -88,7 +88,7 @@ class RNNmodel(nn.Module):
         # RNN
         states_rnn = self.encode_rnn(embedding, batch_size)
         # linear for context vector to get final output
-        linear_y = self.linear(states_rnn[:, -1])
+        linear_y = self.linear(torch.cat((states_rnn[:, -1], inputs_demoips), 1))
         out = self.func_softmax(linear_y)
         # out = self.func_sigmoid(linear_y)
         # out = self.func_tanh(linear_y)
