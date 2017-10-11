@@ -545,7 +545,7 @@ if __name__ == '__main__':
     train_iters = len(train_ids)
 
     # model_type = 'crnn2-bi-tanh-fn'
-    model_type = 'rnn'
+    model_type = 'rnn-bi'
     # Build and train/load the model
     print('Build Model...')
     # by default build a LR model
@@ -567,8 +567,8 @@ if __name__ == '__main__':
 
     criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 10]))
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
-    model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '_l' + str(l) + 'filter' + str(n_filters) + '.dat'
-    # model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '.dat'
+    # model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '_l' + str(l) + 'filter' + str(n_filters) + '.dat'
+    model_path = './saved_models/model_w2v_' + model_type + '_layer' + str(n_layers) + '.dat'
     print('Start Training...')
     # if os.path.exists(model_path):
     #     saved_model = torch.load(model_path)
@@ -635,14 +635,12 @@ if __name__ == '__main__':
     # #
     # # ============================ To evaluate model using testing set =============================================
     print('Start Testing...')
-    result_file = './results/test_results_' + model_type + '_layer' + str(n_layers) + '.pickle'
+    result_file = './results/test_results_w2v_' + model_type + '_layer' + str(n_layers) + '.pickle'
     # output_file = './results/test_outputs_' + model_type + '_layer' + str(n_layers) + '.pickle'
 
     # model_type = 'crnn2-bi-tanh-fn'
-    # Build and train/load the model
-    print('Build Model...')
     # by default build a LR model
-    if model_type == 'rnn':
+    if model_type == 'rnn-bi':
         model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
                          ct=False, bi=False, dropout_p=drop)
     elif model_type == 'rnn-bi':
@@ -657,8 +655,8 @@ if __name__ == '__main__':
     elif model_type == 'crnn2-bi-tanh' or model_type == 'crnn2-bi-tanh-fn':
         model = Patient2Vec1(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
                              rnn_type, seq_len, pad_size, n_filters, bi=True, dropout_p=drop)
-    model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '_l' + str(l) + 'filter' + str(
-        n_filters) + '.dat'
+    # model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '_l' + str(l) + 'filter' + str(
+    #     n_filters) + '.dat'
     saved_model = torch.load(model_path)
     model.load_state_dict(saved_model)
     print('Model loaded...')

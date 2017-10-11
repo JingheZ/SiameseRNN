@@ -57,17 +57,28 @@ model_type = 'crnn2-bi-tanh-fn'
 result_file = './results/test_results_' + model_type + '_layer1.pickle'
 p2v = calculate_results(result_file)
 
-# =============================== rnn mgv ===========================
+# =============================== rnn mge ===========================
 model_type = 'rnn'
 result_file = './results/test_results_' + model_type + '_layer1.pickle'
-rnn_mgv = calculate_results(result_file)
+rnn_mge = calculate_results(result_file)
 
-# =============================== bi-rnn mgv ===========================
+# =============================== bi-rnn mge ===========================
 model_type = 'rnn-bi'
 result_file = './results/test_results_' + model_type + '_layer1.pickle'
-birnn_mgv = calculate_results(result_file)
+birnn_mge = calculate_results(result_file)
 
 # =============================== retain ===========================
 model_type = 'retain'
-result_file = './results/test_results_' + model_type + '_layer1.pickle'
+result_file = './results/test_results_' + model_type + '_layer1.dat'
 retain = calculate_results(result_file)
+
+
+# =============================== rnn mve ===========================
+model_type = 'rnn'
+result_file = './results/test_results_w2v_' + model_type + '_layer1.pickle'
+rnn_mve = calculate_results(result_file)
+
+# =============================== bi-rnn mve ===========================
+model_type = 'rnn-bi'
+result_file = './results/test_results_w2v_' + model_type + '_layer1.pickle'
+birnn_mve = calculate_results(result_file)
