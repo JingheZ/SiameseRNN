@@ -392,7 +392,7 @@ if __name__ == '__main__':
     output_size = 2
     rnn_type = 'GRU'
     drop = 0.1
-    learning_rate = 0.001
+    learning_rate = 0.0005
     decay = 0.01
     interval = 100
     initrange = 1
