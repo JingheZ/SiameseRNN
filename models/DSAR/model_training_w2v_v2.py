@@ -667,7 +667,7 @@ if __name__ == '__main__':
     initrange = 1
     att_dim = 1
     n_filters = 3
-    a = 0.3
+    a = 0.1
     batch_size = 100
     epoch_max = 20 # training for maximum 3 epochs of training data
     n_iter_max_dev = 2000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
