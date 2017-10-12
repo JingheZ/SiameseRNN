@@ -14,8 +14,8 @@ def calculate_scores_bootstraps(pred, y, val):
     f1s = []
     for p in range(50):
         # random.seed(p)
-        # sp = random.choices(list(zip(pred, y, val)), k=int(len(y)))
-        sp = list(zip(pred, y, val))
+        sp = random.choices(list(zip(pred, y, val)), k=int(len(y)))
+        # sp = list(zip(pred, y, val))
         sp_pred = [v[0] for v in sp]
         sp_true = [v[1] for v in sp]
         sp_val = [v[2] for v in sp]
@@ -71,6 +71,33 @@ def analyze_example_pts(result_file):
     ptids0 = ['656618', '1839296', '1334050']
     ptids = ptids1 + ptids0
     inds = [101, 141, 584, 677, 558, 182]
+
+    with open('./data/hospitalization_test_data_by_' + str(l) + 'month.pickle', 'rb') as f:
+        test, test_y = pickle.load(f)
+
+    def aggregate_codes(test, ind):
+        data = test[ind]
+        meds_seq = []
+        for i in range(4):
+            meds = []
+            for j in data[i]:
+                if j[:2] == 'dx':
+                    if j[2:] in dx_dict:
+                        dxgrp = get_dx_code(j[2:])
+                    else:
+                        dxgrp = j
+                    meds.append(dxgrp)
+                elif j[0] == 'p':
+                    if j[1:] in proc_dict:
+                        procgrp = get_proc_code(j[1:])
+                    else:
+                        procgrp = j
+                    meds.append(procgrp)
+                else:
+                    meds.append(j)
+            meds_seq.append(meds)
+        return meds_seq
+
 
     # xs = []
     # for i in inds:

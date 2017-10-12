@@ -296,7 +296,7 @@ class Patient2Vec1(nn.Module):
             conv_wts.append(convolution_one_month)
         convolution_all = torch.stack(convolution_all, dim=1)
         convolution_all = torch.squeeze(convolution_all, dim=2)
-        conv_wts = torch.stack(conv_wts)
+        conv_wts = torch.squeeze(torch.stack(conv_wts, dim=1), dim=2)
         return convolution_all, conv_wts
 
     # def embedding_layer(self, convolutions):
@@ -325,9 +325,9 @@ class Patient2Vec1(nn.Module):
         alpha = torch.stack(alpha, dim=2)
         wts = []
         for i in range(self.n_filters):
-            # a0 = self.func_softmax(alpha[:, i])
-            a0 = self.func_tanh(alpha[:, i])
-            a0 = self.func_softmax(a0)
+            a0 = self.func_softmax(alpha[:, i])
+            # a0 = self.func_tanh(alpha[:, i])
+            # a0 = self.func_softmax(a0)
             wts.append(a0)
         wts = torch.stack(wts, dim=1)
         context = torch.bmm(wts, states)
@@ -353,157 +353,158 @@ class Patient2Vec1(nn.Module):
         out = self.func_softmax(linear_y)
         return out, alpha, [states_rnn, context, conv_wts]
 
-
-class Patient2Vec2(nn.Module):
-    """
-    A convolutional embedding layer, then recurrent autoencoder with an encoder, recurrent module, and a decoder.
-    In addition, a linear layer is on top of each decode step and the weights are shared at these step.
-    """
-
-    def __init__(self, input_size, embed_size, hidden_size, n_layers, att_dim, initrange,
-                 output_size, rnn_type, seq_len, pad_size, n_filters, bi, dropout_p=0.5):
-        """
-        Initilize a recurrent model
-        """
-        super(Patient2Vec2, self).__init__()
-
-        self.initrange = initrange
-        # convolution
-        self.b = 1
-        if bi:
-            self.b = 2
-
-        self.conv = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=input_size, stride=2)
-        self.conv2 = nn.Conv1d(in_channels=1, out_channels=n_filters, kernel_size=hidden_size * self.b, stride=2)
-        # Embedding
-        self.embed = nn.Linear(input_size, embed_size, bias=False)
-        # Bidirectional RNN
-        self.rnn = getattr(nn, rnn_type)(embed_size, hidden_size, n_layers, dropout=dropout_p,
-                                         batch_first=True, bias=True, bidirectional=bi)
-        # initialize 2-layer attention weight matrics
-        self.att_w1 = nn.Linear(hidden_size * self.b, att_dim, bias=False)
-
-        # add attention for demoips
-        self.conv_demoip1 = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=1, stride=1)
-        self.conv_demoip2 = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=1, stride=1)
-        self.conv_demoip3 = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=1, stride=1)
-        self.conv_seq = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=hidden_size * self.b * n_filters, stride=1)
-        # final linear layer
-        self.linear = nn.Linear(hidden_size * self.b * n_filters + 3, output_size, bias=True)
-
-        self.func_softmax = nn.Softmax()
-        self.func_sigmoid = nn.Sigmoid()
-        self.func_tanh = nn.Tanh()
-        # Add dropout
-        self.dropout_p = dropout_p
-        self.dropout = nn.Dropout(p=self.dropout_p)
-        self.init_weights()
-
-        self.pad_size = pad_size
-        self.input_size = input_size
-        self.embed_size = embed_size
-        self.hidden_size = hidden_size
-        self.output_size = output_size
-        self.n_layers = n_layers
-        self.seq_len = seq_len
-        self.n_filters = n_filters
-
-    def init_weights(self):
-        """
-        weight initialization
-        """
-        for param in self.parameters():
-            param.data.uniform_(-self.initrange, self.initrange)
-
-    def convolutional_layer(self, inputs):
-        convolution_all = []
-        conv_wts = []
-        for i in range(self.seq_len):
-            convolution_one_month = []
-            for j in range(self.pad_size):
-                convolution = self.conv(torch.unsqueeze(inputs[:, i, j], dim=1))
-                convolution_one_month.append(convolution)
-            convolution_one_month = torch.stack(convolution_one_month)
-            convolution_one_month = torch.squeeze(convolution_one_month, dim=3)
-            convolution_one_month = torch.transpose(convolution_one_month, 0, 1)
-            convolution_one_month = torch.transpose(convolution_one_month, 1, 2)
-            convolution_one_month = torch.squeeze(convolution_one_month, dim=1)
-            convolution_one_month = self.func_tanh(convolution_one_month)
-            # convolution_one_month = self.func_softmax(convolution_one_month)
-            convolution_one_month = torch.unsqueeze(convolution_one_month, dim=1)
-            vec = torch.bmm(convolution_one_month, inputs[:, i])
-            convolution_all.append(vec)
-            conv_wts.append(convolution_one_month)
-        convolution_all = torch.stack(convolution_all, dim=1)
-        convolution_all = torch.squeeze(convolution_all, dim=2)
-        conv_wts = torch.stack(conv_wts)
-        return convolution_all, conv_wts
-
-    def attention_demoip(self, inputs_demoip):
-        convs1 = self.conv_dempip1(torch.unsqueeze(inputs_demoip[:, 0], dim=1))
-        convs2 = self.conv_dempip2(torch.unsqueeze(inputs_demoip[:, 1], dim=1))
-        convs3 = self.conv_dempip3(torch.unsqueeze(inputs_demoip[:, 2], dim=1))
-        convs = torch.stack([convs1, convs2, convs3], dim=1)
-        # convs = torch.transpose(convs, 1, 2)
-        return convs
-
-    def encode_rnn(self, embedding, batch_size):
-        self.weight = next(self.parameters()).data
-        init_state = (Variable(self.weight.new(self.n_layers * self.b, batch_size, self.hidden_size).zero_()))
-        embedding = self.dropout(embedding)
-        outputs_rnn, states_rnn = self.rnn(embedding, init_state)
-        return outputs_rnn
-
-    def add_attention_seq(self, states, batch_size):
-        # attention
-        alpha = []
-        for i in range(self.seq_len):
-            m1 = self.conv2(torch.unsqueeze(states[:, i], dim=1))
-            alpha.append(torch.squeeze(m1, dim=2))
-        alpha = torch.stack(alpha, dim=2)
-        wts = []
-        for i in range(self.n_filters):
-            # a0 = self.func_softmax(alpha[:, i])
-            a0 = self.func_tanh(alpha[:, i])
-            a0 = self.func_softmax(a0)
-            wts.append(a0)
-        wts = torch.stack(wts, dim=1)
-        context = torch.bmm(wts, states)
-        context = context.view(batch_size, -1)
-        wts_seq = self.conv_seq(context)
-        return wts_seq, wts, context
-
-    def add_attention_all(self, states, inputs_demoip, batch_size):
-        # attention
-        alpha_seq, alpha_seq0, context_seq = self.add_attention_seq(states, batch_size)
-        alpha_demoip = self.attention_demoip(inputs_demoip)
-        alpha = torch.cat((alpha_seq, alpha_demoip), 1)
-        alpha = self.func_softmax(alpha)
-        context_seq = torch.mul(context_seq, alpha.data.tolist()[0])
-        context_demoip1 = torch.mul(inputs_demoip[:, 0], alpha.data.tolist()[1])
-        context_demoip2 = torch.mul(inputs_demoip[:, 1], alpha.data.tolist()[2])
-        context_demoip3 = torch.mul(inputs_demoip[:, 2], alpha.data.tolist()[3])
-        context = torch.cat((context_seq, context_demoip1, context_demoip2, context_demoip3), 1)
-        alpha = torch.cat((alpha_seq, alpha_demoip), 2)
-        return alpha, context
-
-    def forward(self, inputs, inputs_demoip, batch_size):
-        """
-        the recurrent module
-        """
-        # Convolutional
-        convolutions, conv_wts = self.convolutional_layer(inputs)
-        # Embedding
-        # embedding = self.embedding_layer(convolutions)
-        # RNN
-        states_rnn = self.encode_rnn(convolutions, batch_size)
-        # Add attentions and get context vector
-        alpha, context = self.add_attention_all(states_rnn, inputs_demoip, batch_size)
-        # alpha = self.add_attention(states_rnn, batch_size)
-        # Final linear layer with demographic and previous IP info added as extra variables
-        linear_y = self.linear(context)
-        out = self.func_softmax(linear_y)
-        return out, alpha, [states_rnn, context, conv_wts]
+#
+# class Patient2Vec2(nn.Module):
+#     """
+#     A convolutional embedding layer, then recurrent autoencoder with an encoder, recurrent module, and a decoder.
+#     In addition, a linear layer is on top of each decode step and the weights are shared at these step.
+#     """
+#
+#     def __init__(self, input_size, embed_size, hidden_size, n_layers, att_dim, initrange,
+#                  output_size, rnn_type, seq_len, pad_size, n_filters, bi, dropout_p=0.5):
+#         """
+#         Initilize a recurrent model
+#         """
+#         super(Patient2Vec2, self).__init__()
+#
+#         self.initrange = initrange
+#         # convolution
+#         self.b = 1
+#         if bi:
+#             self.b = 2
+#
+#         self.conv = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=input_size, stride=2)
+#         self.conv2 = nn.Conv1d(in_channels=1, out_channels=n_filters, kernel_size=hidden_size * self.b, stride=2)
+#         # Embedding
+#         self.embed = nn.Linear(input_size, embed_size, bias=False)
+#         # Bidirectional RNN
+#         self.rnn = getattr(nn, rnn_type)(embed_size, hidden_size, n_layers, dropout=dropout_p,
+#                                          batch_first=True, bias=True, bidirectional=bi)
+#         # initialize 2-layer attention weight matrics
+#         self.att_w1 = nn.Linear(hidden_size * self.b, att_dim, bias=False)
+#
+#         # add attention for demoips
+#         self.conv_demoip1 = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=1, stride=1)
+#         self.conv_demoip2 = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=1, stride=1)
+#         self.conv_demoip3 = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=1, stride=1)
+#         self.conv_seq = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=hidden_size * self.b * n_filters, stride=1)
+#         # final linear layer
+#         self.linear = nn.Linear(hidden_size * self.b * n_filters + 3, output_size, bias=True)
+#
+#         self.func_softmax = nn.Softmax()
+#         self.func_sigmoid = nn.Sigmoid()
+#         self.func_tanh = nn.Tanh()
+#         # Add dropout
+#         self.dropout_p = dropout_p
+#         self.dropout = nn.Dropout(p=self.dropout_p)
+#         self.init_weights()
+#
+#         self.pad_size = pad_size
+#         self.input_size = input_size
+#         self.embed_size = embed_size
+#         self.hidden_size = hidden_size
+#         self.output_size = output_size
+#         self.n_layers = n_layers
+#         self.seq_len = seq_len
+#         self.n_filters = n_filters
+#
+#     def init_weights(self):
+#         """
+#         weight initialization
+#         """
+#         for param in self.parameters():
+#             param.data.uniform_(-self.initrange, self.initrange)
+#
+#     def convolutional_layer(self, inputs):
+#         convolution_all = []
+#         conv_wts = []
+#         for i in range(self.seq_len):
+#             convolution_one_month = []
+#             for j in range(self.pad_size):
+#                 convolution = self.conv(torch.unsqueeze(inputs[:, i, j], dim=1))
+#                 convolution_one_month.append(convolution)
+#             convolution_one_month = torch.stack(convolution_one_month)
+#             convolution_one_month = torch.squeeze(convolution_one_month, dim=3)
+#             convolution_one_month = torch.transpose(convolution_one_month, 0, 1)
+#             convolution_one_month = torch.transpose(convolution_one_month, 1, 2)
+#             convolution_one_month = torch.squeeze(convolution_one_month, dim=1)
+#             convolution_one_month = self.func_tanh(convolution_one_month)
+#             # convolution_one_month = self.func_softmax(convolution_one_month)
+#             convolution_one_month = torch.unsqueeze(convolution_one_month, dim=1)
+#             vec = torch.bmm(convolution_one_month, inputs[:, i])
+#             convolution_all.append(vec)
+#             conv_wts.append(convolution_one_month)
+#         convolution_all = torch.stack(convolution_all, dim=1)
+#         convolution_all = torch.squeeze(convolution_all, dim=2)
+#         conv_wts = torch.stack(conv_wts)
+#         return convolution_all, conv_wts
+#
+#     def encode_rnn(self, embedding, batch_size):
+#         self.weight = next(self.parameters()).data
+#         init_state = (Variable(self.weight.new(self.n_layers * self.b, batch_size, self.hidden_size).zero_()))
+#         embedding = self.dropout(embedding)
+#         outputs_rnn, states_rnn = self.rnn(embedding, init_state)
+#         return outputs_rnn
+#
+#     def add_attention_seq(self, states, batch_size):
+#         # attention
+#         alpha = []
+#         for i in range(self.seq_len):
+#             m1 = self.conv2(torch.unsqueeze(states[:, i], dim=1))
+#             alpha.append(torch.squeeze(m1, dim=2))
+#         alpha = torch.stack(alpha, dim=2)
+#         wts = []
+#         for i in range(self.n_filters):
+#             # a0 = self.func_softmax(alpha[:, i])
+#             a0 = self.func_tanh(alpha[:, i])
+#             a0 = self.func_softmax(a0)
+#             wts.append(a0)
+#         wts = torch.stack(wts, dim=1)
+#         context = torch.bmm(wts, states)
+#         context = context.view(batch_size, -1)
+#         wts_seq = self.conv_seq(context)
+#         return wts_seq, wts, context
+#
+#     def attention_demoip(self, inputs_demoip):
+#         x = torch.unsqueeze(inputs_demoip, dim=1)
+#         convs1 = torch.squeeze(self.conv_demoip1(x[:, :, 0:1]), dim=2)
+#         convs2 = torch.squeeze(self.conv_demoip2(x[:, :, 1:2]), dim=2)
+#         convs3 = torch.squeeze(self.conv_demoip3(x[:, :, 2:3]), dim=2)
+#         convs = torch.stack([convs1, convs2, convs3], dim=1)
+#         convs = torch.squeeze(convs, dim=2)
+#         convs = self.func_tanh(convs)
+#         convs = self.func_softmax(convs)
+#         context = torch.sum(torch.mul(convs, inputs_demoip), dim=1)
+#         return convs, context
+#
+#     def add_attention_all(self, states, inputs_demoip, batch_size):
+#         # attention
+#         alpha_seqall, alpha_seqs, context_seq = self.add_attention_seq(states, batch_size)
+#         alpha_demoip = self.attention_demoip(inputs_demoip)
+#         alpha = torch.cat((alpha_seq, alpha_demoip), 1)
+#         alpha = self.func_softmax(alpha)
+#
+#         context_seq = torch.mul(context_seq, alpha.data.tolist()[0])
+#
+#         return alpha, context
+#
+#     def forward(self, inputs, inputs_demoip, batch_size):
+#         """
+#         the recurrent module
+#         """
+#         # Convolutional
+#         convolutions, conv_wts = self.convolutional_layer(inputs)
+#         # Embedding
+#         # embedding = self.embedding_layer(convolutions)
+#         # RNN
+#         states_rnn = self.encode_rnn(convolutions, batch_size)
+#         # Add attentions and get context vector
+#         alpha, context = self.add_attention_all(states_rnn, inputs_demoip, batch_size)
+#         # alpha = self.add_attention(states_rnn, batch_size)
+#         # Final linear layer with demographic and previous IP info added as extra variables
+#         linear_y = self.linear(context)
+#         out = self.func_softmax(linear_y)
+#         return out, alpha, [states_rnn, context, conv_wts]
 
 
 def create_batch(step, batch_size, data_x, data_demoip, data_y, w2v, vsize, pad_size, l):
@@ -651,30 +652,30 @@ if __name__ == '__main__':
     # pad_size = 105
     # pad_size = 116
     pad_size = 125
-    with open('./data/hospitalization_train_validate_test_ids.pickle', 'rb') as f:
-        train_ids, valid_ids, test_ids = pickle.load(f)
-    f.close()
-
-    with open('./data/hospitalization_train_data_by_' + str(l) + 'month.pickle', 'rb') as f:
-        train, train_y = pickle.load(f)
-    f.close()
-
-    with open('./data/hospitalization_validate_data_by_' + str(l) + 'month.pickle', 'rb') as f:
-        validate, validate_y = pickle.load(f)
-    f.close()
+    # with open('./data/hospitalization_train_validate_test_ids.pickle', 'rb') as f:
+    #     train_ids, valid_ids, test_ids = pickle.load(f)
+    # f.close()
+    #
+    # with open('./data/hospitalization_train_data_by_' + str(l) + 'month.pickle', 'rb') as f:
+    #     train, train_y = pickle.load(f)
+    # f.close()
+    #
+    # with open('./data/hospitalization_validate_data_by_' + str(l) + 'month.pickle', 'rb') as f:
+    #     validate, validate_y = pickle.load(f)
+    # f.close()
 
     with open('./data/hospitalization_test_data_by_' + str(l) + 'month.pickle', 'rb') as f:
         test, test_y = pickle.load(f)
     f.close()
 
     # Prepare validation data for the model
-    validate_x, validate_y = create_full_set(validate, validate_y, w2v_model, size, pad_size, l)
-    # with open('./data/hospitalization_validate_data_padded.pickle', 'wb') as f:
-    #     pickle.dump([validate_x, validate_y], f)
-    # f.close()
-    validate_x, validate_y = list2tensor(validate_x, validate_y)
-    validate_demoips = Variable(torch.FloatTensor(validate_demoips), requires_grad=False)
-    # Model hyperparameters
+    # validate_x, validate_y = create_full_set(validate, validate_y, w2v_model, size, pad_size, l)
+    # # with open('./data/hospitalization_validate_data_padded.pickle', 'wb') as f:
+    # #     pickle.dump([validate_x, validate_y], f)
+    # # f.close()
+    # validate_x, validate_y = list2tensor(validate_x, validate_y)
+    # validate_demoips = Variable(torch.FloatTensor(validate_demoips), requires_grad=False)
+    # # Model hyperparameters
     # model_type = 'rnn-rt'
     input_size = size
     embedding_size = input_size
@@ -684,110 +685,110 @@ if __name__ == '__main__':
     output_size = 2
     rnn_type = 'GRU'
     drop = 0.0
-    learning_rate = 0.001
-    decay = 0.01
+    learning_rate = 0.0005
+    decay = 0.005
     interval = 100
     initrange = 1
     att_dim = 1
-    n_filters = 10
-    a = 0.1
+    n_filters = 3
+    a = 0.3
     batch_size = 100
     epoch_max = 20 # training for maximum 3 epochs of training data
     n_iter_max_dev = 2000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
-    train_iters = len(train_ids)
+    # train_iters = len(train_ids)
 
-    model_type = 'crnn2-bi-tanh-fn-lr001'
+    model_type = 'crnn2-bi-tanh-fn'
     # model_type = 'rnn-bi'
-    model_path = './saved_models/model_w2v_' + model_type + '_layer' + str(n_layers) + '_nf10_a01.dat'
+    model_path = './saved_models/model_w2v_' + model_type + '_layer' + str(n_layers) + '_nf3_a03_lr0005_v2.dat'
     # Build and train/load the model
-    print('Build Model...')
-    # by default build a LR model
-    if model_type == 'rnn':
-        model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
-                         ct=False, bi=False, dropout_p=drop)
-    elif model_type == 'rnn-bi':
-        model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
-                         ct=False, bi=True, dropout_p=drop)
-    elif model_type == 'crnn':
-        model = Patient2Vec0(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
-                            rnn_type, seq_len, pad_size, dropout_p=drop)
-    elif model_type == 'crnn2':
-        model = Patient2Vec1(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
-                             rnn_type, seq_len, pad_size, n_filters, bi=False, dropout_p=drop)
-    elif model_type == 'crnn2-bi-tanh' or model_type == 'crnn2-bi-tanh-fn-lr001':
-        model = Patient2Vec1(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
-                            rnn_type, seq_len, pad_size, n_filters, bi=True, dropout_p=drop)
-
-    criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 10]))
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
-    # model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '_l' + str(l) + 'filter' + str(n_filters) + '.dat'
-    print('Start Training...')
-    # if os.path.exists(model_path):
-    #     saved_model = torch.load(model_path)
-    #     model.load_state_dict(saved_model)
-    # # else:
-        # model.init_weights(initrange)
-        # Train the model
-    start_time = time.time()
-    best_loss_dev = 100
-    best_dev_iter = 0
-    n_iter = 0
-    epoch = 0
-    while epoch < epoch_max:
-        step = 0
-        while (step + 1) * batch_size < train_iters:
-            batch_x, batch_demoip, batch_y = create_batch(step, batch_size, train, train_demoips, train_y, w2v_model, size, pad_size, l)
-            optimizer.zero_grad()
-            y_pred, wts, _ = model(batch_x, batch_demoip, batch_size)
-            # states, alpha, beta = model(batch_x, batch_size)
-            if not model_type == 'crnn2-bi-tanh-fn':
-                loss = criterion(y_pred, batch_y)
-            else:
-                loss = get_loss(y_pred, batch_y, criterion, wts, a=0.1)
-            # loss = CrossEntropy_Multi(y_pred, batch_y, output_size, criterion)
-            # loss = get_loss(y_pred, batch_y, criterion, seq_len)
-            loss.backward()
-            optimizer.step()
-
-            if step % interval == 0:
-                elapsed = time.time() - start_time
-                # acc = calcualte_accuracy(y_pred, batch_y, batch_size)
-                print('%i epoch, %i batches, elapsed time: %.2f, loss: %.3f' % (epoch + 1, step + 1, elapsed, loss.data[0]))
-                # Evaluate model performance on validation set
-                pred_dev, _, _ = model(validate_x, validate_demoips, len(valid_ids))
-                loss_dev = criterion(pred_dev, validate_y)
-                pred_ind_dev, val_dev = model_testing_dev(pred_dev)
-                perfm_dev, auc_dev = calculate_performance(validate_y.data.tolist(), pred_ind_dev, val_dev)
-                print("Performance on dev set: AUC is %.3f" % auc_dev)
-                # print(perfm_dev)
-
-                # pred_ind_batch = model_testing_one_batch(model, batch_x, batch_demoip, batch_size)
-                # perfm_batch, auc_batch = calculate_performance(batch_y.data.tolist(), pred_ind_batch)
-                # print("Performance on training set: AUC is %.3f" % auc_batch)
-                # # print(perfm_batch)
-                print('Validation, loss: %.3f' % (loss_dev.data[0]))
-                if loss_dev.data[0] < best_loss_dev:
-                    best_loss_dev = loss_dev.data[0]
-                    best_dev_iter = n_iter
-                    print('best validation at %i with loss %.3f' % (best_dev_iter, best_loss_dev))
-                    state_to_save = model.state_dict()
-                    torch.save(state_to_save, model_path)
-                if n_iter - best_dev_iter >= n_iter_max_dev:
-                    break
-            step += 1
-            n_iter += 1
-        if n_iter - best_dev_iter >= n_iter_max_dev:
-            break
-        epoch += 1
-    # save trained model
-    # state_to_save = model.state_dict()
-    # torch.save(state_to_save, model_path)
-    elapsed = time.time() - start_time
-    print('Training Finished! Total Training Time is: % .2f' % elapsed)
+    # print('Build Model...')
+    # # by default build a LR model
+    # if model_type == 'rnn':
+    #     model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
+    #                      ct=False, bi=False, dropout_p=drop)
+    # elif model_type == 'rnn-bi':
+    #     model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
+    #                      ct=False, bi=True, dropout_p=drop)
+    # elif model_type == 'crnn':
+    #     model = Patient2Vec0(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
+    #                         rnn_type, seq_len, pad_size, dropout_p=drop)
+    # elif model_type == 'crnn2':
+    #     model = Patient2Vec1(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
+    #                          rnn_type, seq_len, pad_size, n_filters, bi=False, dropout_p=drop)
+    # elif model_type == 'crnn2-bi-tanh' or model_type == 'crnn2-bi-tanh-fn':
+    #     model = Patient2Vec1(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
+    #                         rnn_type, seq_len, pad_size, n_filters, bi=True, dropout_p=drop)
+    #
+    # criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 10]))
+    # optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
+    # # model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '_l' + str(l) + 'filter' + str(n_filters) + '.dat'
+    # print('Start Training...')
+    # # if os.path.exists(model_path):
+    # #     saved_model = torch.load(model_path)
+    # #     model.load_state_dict(saved_model)
+    # # # else:
+    #     # model.init_weights(initrange)
+    #     # Train the model
+    # start_time = time.time()
+    # best_loss_dev = 100
+    # best_dev_iter = 0
+    # n_iter = 0
+    # epoch = 0
+    # while epoch < epoch_max:
+    #     step = 0
+    #     while (step + 1) * batch_size < train_iters:
+    #         batch_x, batch_demoip, batch_y = create_batch(step, batch_size, train, train_demoips, train_y, w2v_model, size, pad_size, l)
+    #         optimizer.zero_grad()
+    #         y_pred, wts, _ = model(batch_x, batch_demoip, batch_size)
+    #         # states, alpha, beta = model(batch_x, batch_size)
+    #         # if not model_type == 'crnn2-bi-tanh-fn':
+    #         loss = criterion(y_pred, batch_y)
+    #         # else:
+    #         #     loss = get_loss(y_pred, batch_y, criterion, wts, a=0.1)
+    #         # loss = CrossEntropy_Multi(y_pred, batch_y, output_size, criterion)
+    #         # loss = get_loss(y_pred, batch_y, criterion, seq_len)
+    #         loss.backward()
+    #         optimizer.step()
+    #
+    #         if step % interval == 0:
+    #             elapsed = time.time() - start_time
+    #             # acc = calcualte_accuracy(y_pred, batch_y, batch_size)
+    #             print('%i epoch, %i batches, elapsed time: %.2f, loss: %.3f' % (epoch + 1, step + 1, elapsed, loss.data[0]))
+    #             # Evaluate model performance on validation set
+    #             pred_dev, _, _ = model(validate_x, validate_demoips, len(valid_ids))
+    #             loss_dev = criterion(pred_dev, validate_y)
+    #             pred_ind_dev, val_dev = model_testing_dev(pred_dev)
+    #             perfm_dev, auc_dev = calculate_performance(validate_y.data.tolist(), pred_ind_dev, val_dev)
+    #             print("Performance on dev set: AUC is %.3f" % auc_dev)
+    #             # print(perfm_dev)
+    #
+    #             # pred_ind_batch = model_testing_one_batch(model, batch_x, batch_demoip, batch_size)
+    #             # perfm_batch, auc_batch = calculate_performance(batch_y.data.tolist(), pred_ind_batch)
+    #             # print("Performance on training set: AUC is %.3f" % auc_batch)
+    #             # # print(perfm_batch)
+    #             print('Validation, loss: %.3f' % (loss_dev.data[0]))
+    #             if loss_dev.data[0] < best_loss_dev:
+    #                 best_loss_dev = loss_dev.data[0]
+    #                 best_dev_iter = n_iter
+    #                 print('best validation at %i with loss %.3f' % (best_dev_iter, best_loss_dev))
+    #                 state_to_save = model.state_dict()
+    #                 torch.save(state_to_save, model_path)
+    #             if n_iter - best_dev_iter >= n_iter_max_dev:
+    #                 break
+    #         step += 1
+    #         n_iter += 1
+    #     if n_iter - best_dev_iter >= n_iter_max_dev:
+    #         break
+    #     epoch += 1
+    # # save trained model
+    # # state_to_save = model.state_dict()
+    # # torch.save(state_to_save, model_path)
+    # elapsed = time.time() - start_time
+    # print('Training Finished! Total Training Time is: % .2f' % elapsed)
     # #
     # # ============================ To evaluate model using testing set =============================================
     print('Start Testing...')
-    result_file = './results/test_results_w2v_' + model_type + '_layer' + str(n_layers) + '_nf10_a01.pickle'
+    result_file = './results/test_results_w2v_' + model_type + '_layer' + str(n_layers) + '_nf3_a03_lr005.pickle'
     # output_file = './results/test_outputs_' + model_type + '_layer' + str(n_layers) + '.pickle'
 
     # model_type = 'crnn2-bi-tanh-fn'
@@ -811,20 +812,24 @@ if __name__ == '__main__':
     #     n_filters) + '.dat'
     saved_model = torch.load(model_path)
     model.load_state_dict(saved_model)
-    print('Model loaded...')
-    print(model_path)
-    # # Evaluate the model
-    model.eval()
-    test_start_time = time.time()
-    pred_test, val_test = model_testing(model, test, test_y, test_demoips, w2v_model, size, pad_size, l, batch_size=1000)
-    perfm, auc = calculate_performance(test_y, pred_test, val_test)
-    elapsed_test = time.time() - test_start_time
-    print(auc)
-    print(perfm)
-    with open(result_file, 'wb') as f:
-        pickle.dump([pred_test, val_test, test_y], f)
-    f.close()
-    print('Testing Finished!')
+    # print('Model loaded...')
+    # print(model_path)
+    # # # Evaluate the model
+    # model.eval()
+    # test_start_time = time.time()
+    # pred_test, val_test = model_testing(model, test, test_y, test_demoips, w2v_model, size, pad_size, l, batch_size=1000)
+    # perfm, auc = calculate_performance(test_y, pred_test, val_test)
+    # elapsed_test = time.time() - test_start_time
+    # print(auc)
+    # print(perfm)
+    # with open(result_file, 'wb') as f:
+    #     pickle.dump([pred_test, val_test, test_y], f)
+    # f.close()
+    # print('Testing Finished!')
+    # with open('./data/test_demoips.pickle', 'wb') as f:
+    #     pickle.dump(test_demoips, f)
+    # f.close()
+
     # with open(output_file, 'wb') as f:
     #     pickle.dump(output_test, f)
     # f.close()
@@ -841,4 +846,17 @@ if __name__ == '__main__':
     # test_x, test_y = list2tensor(test_x, test_y)
 
 
-    # to do: add multiple filters
+    # result analysis
+    inds = [101, 141, 584, 677, 558, 182]
+    testx_exm = [test[i] for i in inds]
+    testy_exm = [test_y[i] for i in inds]
+    testdemoip_exm = [test_demoips[i] for i in inds]
+    #
+    x, y = create_full_set(testx_exm, testy_exm, w2v_model, size, pad_size, l)
+    x = Variable(torch.FloatTensor(x), requires_grad=False)
+    y = Variable(torch.LongTensor(y), requires_grad=False)
+    demoip = Variable(torch.FloatTensor(testdemoip_exm), requires_grad=False)
+    #
+    y_pred_exm, wts_seq_exm, others = model(x, demoip, 6)
+    print(wts_seq_exm)
+    print(others)

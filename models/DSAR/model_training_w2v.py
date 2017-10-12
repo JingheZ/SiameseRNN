@@ -288,7 +288,7 @@ class Patient2Vec1(nn.Module):
             convolution_one_month = torch.transpose(convolution_one_month, 0, 1)
             convolution_one_month = torch.transpose(convolution_one_month, 1, 2)
             convolution_one_month = torch.squeeze(convolution_one_month, dim=1)
-            convolution_one_month = self.func_tanh(convolution_one_month)
+            # convolution_one_month = self.func_tanh(convolution_one_month)
             convolution_one_month = self.func_softmax(convolution_one_month)
             convolution_one_month = torch.unsqueeze(convolution_one_month, dim=1)
             vec = torch.bmm(convolution_one_month, inputs[:, i])
@@ -325,9 +325,9 @@ class Patient2Vec1(nn.Module):
         alpha = torch.stack(alpha, dim=2)
         wts = []
         for i in range(self.n_filters):
-            # a0 = self.func_softmax(alpha[:, i])
-            a0 = self.func_tanh(alpha[:, i])
-            a0 = self.func_softmax(a0)
+            a0 = self.func_softmax(alpha[:, i])
+            # a0 = self.func_tanh(alpha[:, i])
+            # a0 = self.func_softmax(a0)
             wts.append(a0)
         wts = torch.stack(wts, dim=1)
         context = torch.bmm(wts, states)
@@ -686,12 +686,12 @@ if __name__ == '__main__':
     rnn_type = 'GRU'
     drop = 0.0
     learning_rate = 0.0005
-    decay = 0.01
+    decay = 0.005
     interval = 100
     initrange = 1
     att_dim = 1
-    n_filters = 10
-    a = 1
+    n_filters = 3
+    a = 0.3
     batch_size = 100
     epoch_max = 20 # training for maximum 3 epochs of training data
     n_iter_max_dev = 2000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
@@ -699,7 +699,7 @@ if __name__ == '__main__':
 
     model_type = 'crnn2-bi-tanh-fn'
     # model_type = 'rnn-bi'
-    model_path = './saved_models/model_w2v_' + model_type + '_layer' + str(n_layers) + '_nf10_a1.dat'
+    model_path = './saved_models/model_w2v_' + model_type + '_layer' + str(n_layers) + '_nf3_a03.dat'
     # Build and train/load the model
     print('Build Model...')
     # by default build a LR model
@@ -741,10 +741,10 @@ if __name__ == '__main__':
             optimizer.zero_grad()
             y_pred, wts, _ = model(batch_x, batch_demoip, batch_size)
             # states, alpha, beta = model(batch_x, batch_size)
-            if not model_type == 'crnn2-bi-tanh-fn':
-                loss = criterion(y_pred, batch_y)
-            else:
-                loss = get_loss(y_pred, batch_y, criterion, wts, a=0.1)
+            # if not model_type == 'crnn2-bi-tanh-fn':
+            loss = criterion(y_pred, batch_y)
+            # else:
+            #     loss = get_loss(y_pred, batch_y, criterion, wts, a=0.1)
             # loss = CrossEntropy_Multi(y_pred, batch_y, output_size, criterion)
             # loss = get_loss(y_pred, batch_y, criterion, seq_len)
             loss.backward()
@@ -788,7 +788,7 @@ if __name__ == '__main__':
     # #
     # # ============================ To evaluate model using testing set =============================================
     print('Start Testing...')
-    result_file = './results/test_results_w2v_' + model_type + '_layer' + str(n_layers) + '_nf10_a1.pickle'
+    result_file = './results/test_results_w2v_' + model_type + '_layer' + str(n_layers) + '_nf3_a03.pickle'
     # output_file = './results/test_outputs_' + model_type + '_layer' + str(n_layers) + '.pickle'
 
     # model_type = 'crnn2-bi-tanh-fn'
@@ -847,14 +847,16 @@ if __name__ == '__main__':
 
 
     # result analysis
-    # inds = [101, 141, 584, 677, 558, 182]
-    # testx_exm = [test[i] for i in inds]
-    # testy_exm = [test_y[i] for i in inds]
-    # testdemoip_exm = [test_demoips[i] for i in inds]
+    inds = [101, 141, 584, 677, 558, 182]
+    testx_exm = [test[i] for i in inds]
+    testy_exm = [test_y[i] for i in inds]
+    testdemoip_exm = [test_demoips[i] for i in inds]
     #
-    # x, y = create_full_set(testx_exm, testy_exm, w2v_model, size, pad_size, l)
-    # x = Variable(torch.FloatTensor(x), requires_grad=False)
-    # y = Variable(torch.LongTensor(y), requires_grad=False)
-    # demoip = Variable(torch.FloatTensor(testdemoip_exm), requires_grad=False)
+    x, y = create_full_set(testx_exm, testy_exm, w2v_model, size, pad_size, l)
+    x = Variable(torch.FloatTensor(x), requires_grad=False)
+    y = Variable(torch.LongTensor(y), requires_grad=False)
+    demoip = Variable(torch.FloatTensor(testdemoip_exm), requires_grad=False)
     #
-    # y_pred_exm, wts_seq_exm, others = model(x, demoip, 6)
+    y_pred_exm, wts_seq_exm, others = model(x, demoip, 6)
+    print(wts_seq_exm)
+    print(others[2])
