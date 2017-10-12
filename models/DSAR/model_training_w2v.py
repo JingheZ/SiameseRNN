@@ -360,7 +360,7 @@ class Patient2Vec2(nn.Module):
     In addition, a linear layer is on top of each decode step and the weights are shared at these step.
     """
 
-    def __init__(self, input_size, hidden_size, n_layers, att_dim, initrange,
+    def __init__(self, input_size, hidden_size, n_layers, initrange,
                  output_size, rnn_type, seq_len, pad_size, n_filters, bi, dropout_p=0.5):
         """
         Initilize a recurrent model
@@ -379,11 +379,9 @@ class Patient2Vec2(nn.Module):
         # Bidirectional RNN
         self.rnn = getattr(nn, rnn_type)(input_size * n_filters, hidden_size, n_layers, dropout=dropout_p,
                                          batch_first=True, bias=True, bidirectional=bi)
-        # initialize 2-layer attention weight matrics
-        self.att_w1 = nn.Linear(hidden_size * self.b, att_dim, bias=False)
 
         # final linear layer
-        self.linear = nn.Linear(hidden_size * self.b * n_filters + 3, output_size, bias=True)
+        self.linear = nn.Linear(hidden_size * self.b + 3, output_size, bias=True)
 
         self.func_softmax = nn.Softmax()
         self.func_sigmoid = nn.Sigmoid()
@@ -408,7 +406,7 @@ class Patient2Vec2(nn.Module):
         for param in self.parameters():
             param.data.uniform_(-self.initrange, self.initrange)
 
-    def convolutional_layer(self, inputs):
+    def convolutional_layer(self, inputs, batch_size):
         convolution_all = []
         conv_wts = []
         for i in range(self.seq_len):
@@ -457,7 +455,7 @@ class Patient2Vec2(nn.Module):
         the recurrent module
         """
         # Convolutional
-        convolutions, conv_wts = self.convolutional_layer(inputs)
+        convolutions, conv_wts = self.convolutional_layer(inputs, batch_size)
         # RNN
         states_rnn = self.encode_rnn(convolutions, batch_size)
         # Add attentions and get context vector
@@ -675,9 +673,9 @@ if __name__ == '__main__':
     n_iter_max_dev = 2000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
-    model_type = 'crnn2-bi-tanh-fn'
+    model_type = 'crnn-bi-med-fn'
     # model_type = 'rnn-bi'
-    model_path = './saved_models/model_w2v_' + model_type + '_layer' + str(n_layers) + '_nf3_a03.dat'
+    model_path = './saved_models/model_w2v_' + model_type + '_layer' + str(n_layers) + '.dat'
     # Build and train/load the model
     print('Build Model...')
     # by default build a LR model
@@ -695,6 +693,9 @@ if __name__ == '__main__':
                              rnn_type, seq_len, pad_size, n_filters, bi=False, dropout_p=drop)
     elif model_type == 'crnn2-bi-tanh' or model_type == 'crnn2-bi-tanh-fn':
         model = Patient2Vec1(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
+                            rnn_type, seq_len, pad_size, n_filters, bi=True, dropout_p=drop)
+    elif model_type == 'crnn-bi-med-fn':
+        model = Patient2Vec2(input_size, hidden_size, n_layers, initrange, output_size,
                             rnn_type, seq_len, pad_size, n_filters, bi=True, dropout_p=drop)
 
     criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 10]))
@@ -719,12 +720,13 @@ if __name__ == '__main__':
             optimizer.zero_grad()
             y_pred, wts, _ = model(batch_x, batch_demoip, batch_size)
             # states, alpha, beta = model(batch_x, batch_size)
-            # if not model_type == 'crnn2-bi-tanh-fn':
-            loss = criterion(y_pred, batch_y)
-            # else:
-            #     loss = get_loss(y_pred, batch_y, criterion, wts, a=0.1)
-            # loss = CrossEntropy_Multi(y_pred, batch_y, output_size, criterion)
-            # loss = get_loss(y_pred, batch_y, criterion, seq_len)
+            if model_type == 'crnn2-bi-tanh-fn':
+                loss = get_loss(y_pred, batch_y, criterion, wts, a)
+            elif model_type == 'crnn-bi-med-fn':
+                loss = get_loss_v2(y_pred, batch_y, criterion, wts, seq_len, batch_size, a)
+            else:
+                loss = criterion(y_pred, batch_y)
+
             loss.backward()
             optimizer.step()
 
@@ -766,7 +768,7 @@ if __name__ == '__main__':
     # #
     # # ============================ To evaluate model using testing set =============================================
     print('Start Testing...')
-    result_file = './results/test_results_w2v_' + model_type + '_layer' + str(n_layers) + '_nf3_a03.pickle'
+    result_file = './results/test_results_w2v_' + model_type + '_layer' + str(n_layers) + '.pickle'
     # output_file = './results/test_outputs_' + model_type + '_layer' + str(n_layers) + '.pickle'
 
     # model_type = 'crnn2-bi-tanh-fn'
@@ -786,6 +788,9 @@ if __name__ == '__main__':
     elif model_type == 'crnn2-bi-tanh' or model_type == 'crnn2-bi-tanh-fn':
         model = Patient2Vec1(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
                              rnn_type, seq_len, pad_size, n_filters, bi=True, dropout_p=drop)
+    elif model_type == 'crnn-bi-med-fn':
+        model = Patient2Vec2(input_size, hidden_size, n_layers, initrange, output_size,
+                            rnn_type, seq_len, pad_size, n_filters, bi=True, dropout_p=drop)
     # model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '_l' + str(l) + 'filter' + str(
     #     n_filters) + '.dat'
     saved_model = torch.load(model_path)
