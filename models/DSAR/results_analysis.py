@@ -132,3 +132,6 @@ result_file = './results/test_results_' + model_type + '_layer1.pickle'
 p2v = calculate_results(result_file)
 result_file = './results/test_results_w2v_' + model_type + '_layer1_nf10_a01_v2.pickle'
 p2v = calculate_results(result_file)
+
+result_file = './results/test_results_w2v_' + model_type + '_layer1_nf3_a1.pickle'
+p2v = calculate_results(result_file)
