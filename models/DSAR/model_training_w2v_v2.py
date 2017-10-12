@@ -418,8 +418,8 @@ class Patient2Vec2(nn.Module):
             convolution_one_month = torch.squeeze(convolution_one_month, dim=3)
             conv_fn = []
             for nf in range(self.n_filters):
-                # convolution_one_month = self.func_tanh(convolution_one_month)
-                att = self.func_softmax(convolution_one_month[:, nf])
+                att = self.func_tanh(convolution_one_month[:, nf])
+                att = self.func_softmax(att)
                 conv_fn.append(att)
             conv_fn = torch.stack(conv_fn, dim=1)
             vec = torch.bmm(conv_fn, inputs[:, i])
@@ -445,7 +445,7 @@ class Patient2Vec2(nn.Module):
             m1 = self.conv2(torch.unsqueeze(states[:, i], dim=1))
             alpha.append(torch.squeeze(torch.squeeze(m1, dim=2), dim=1))
         alpha = torch.stack(alpha, dim=1)
-        wts = self.func_softmax(alpha)
+        wts = self.func_softmax(self.func_tanh(alpha))
         context = torch.bmm(torch.unsqueeze(wts, dim=1), states)
         context = context.view(batch_size, -1)
         return wts, context
@@ -655,14 +655,14 @@ if __name__ == '__main__':
     # model_type = 'rnn-rt'
     input_size = size
     embedding_size = input_size
-    hidden_size = 512
+    hidden_size = 256
     n_layers = 1
     seq_len = int(12 / l)
     output_size = 2
     rnn_type = 'GRU'
     drop = 0.0
     learning_rate = 0.0005
-    decay = 0.005
+    decay = 0.01
     interval = 100
     initrange = 1
     att_dim = 1
@@ -675,7 +675,7 @@ if __name__ == '__main__':
 
     model_type = 'crnn-bi-med-fn'
     # model_type = 'rnn-bi'
-    model_path = './saved_models/model_w2v_' + model_type + '_layer' + str(n_layers) + 'a01.dat'
+    model_path = './saved_models/model_w2v_' + model_type + '_layer' + str(n_layers) + 'tanh.dat'
     # Build and train/load the model
     print('Build Model...')
     # by default build a LR model
@@ -768,7 +768,7 @@ if __name__ == '__main__':
     # #
     # # ============================ To evaluate model using testing set =============================================
     print('Start Testing...')
-    result_file = './results/test_results_w2v_' + model_type + '_layer' + str(n_layers) + 'a01.pickle'
+    result_file = './results/test_results_w2v_' + model_type + '_layer' + str(n_layers) + 'tanh.pickle'
     # output_file = './results/test_outputs_' + model_type + '_layer' + str(n_layers) + '.pickle'
 
     # model_type = 'crnn2-bi-tanh-fn'
