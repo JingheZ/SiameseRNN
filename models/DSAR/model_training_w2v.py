@@ -608,7 +608,7 @@ def get_loss_v2(pred, y, criterion, wts, seq_len, batch_size, a=0.5):
             loss_fn = torch.trace(torch.mul(aai, aai).data)
             penalty += loss_fn
     penalty /= batch_size
-    loss = torch.add(criterion(pred, y), Variable(torch.FloatTensor([penalty * a])))
+    loss = torch.add(criterion(pred, y), Variable(torch.FloatTensor([penalty / seq_len * a])))
     return loss
 
 if __name__ == '__main__':
