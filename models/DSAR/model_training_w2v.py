@@ -353,158 +353,121 @@ class Patient2Vec1(nn.Module):
         out = self.func_softmax(linear_y)
         return out, alpha, [states_rnn, context, conv_wts]
 
-#
-# class Patient2Vec2(nn.Module):
-#     """
-#     A convolutional embedding layer, then recurrent autoencoder with an encoder, recurrent module, and a decoder.
-#     In addition, a linear layer is on top of each decode step and the weights are shared at these step.
-#     """
-#
-#     def __init__(self, input_size, embed_size, hidden_size, n_layers, att_dim, initrange,
-#                  output_size, rnn_type, seq_len, pad_size, n_filters, bi, dropout_p=0.5):
-#         """
-#         Initilize a recurrent model
-#         """
-#         super(Patient2Vec2, self).__init__()
-#
-#         self.initrange = initrange
-#         # convolution
-#         self.b = 1
-#         if bi:
-#             self.b = 2
-#
-#         self.conv = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=input_size, stride=2)
-#         self.conv2 = nn.Conv1d(in_channels=1, out_channels=n_filters, kernel_size=hidden_size * self.b, stride=2)
-#         # Embedding
-#         self.embed = nn.Linear(input_size, embed_size, bias=False)
-#         # Bidirectional RNN
-#         self.rnn = getattr(nn, rnn_type)(embed_size, hidden_size, n_layers, dropout=dropout_p,
-#                                          batch_first=True, bias=True, bidirectional=bi)
-#         # initialize 2-layer attention weight matrics
-#         self.att_w1 = nn.Linear(hidden_size * self.b, att_dim, bias=False)
-#
-#         # add attention for demoips
-#         self.conv_demoip1 = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=1, stride=1)
-#         self.conv_demoip2 = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=1, stride=1)
-#         self.conv_demoip3 = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=1, stride=1)
-#         self.conv_seq = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=hidden_size * self.b * n_filters, stride=1)
-#         # final linear layer
-#         self.linear = nn.Linear(hidden_size * self.b * n_filters + 3, output_size, bias=True)
-#
-#         self.func_softmax = nn.Softmax()
-#         self.func_sigmoid = nn.Sigmoid()
-#         self.func_tanh = nn.Tanh()
-#         # Add dropout
-#         self.dropout_p = dropout_p
-#         self.dropout = nn.Dropout(p=self.dropout_p)
-#         self.init_weights()
-#
-#         self.pad_size = pad_size
-#         self.input_size = input_size
-#         self.embed_size = embed_size
-#         self.hidden_size = hidden_size
-#         self.output_size = output_size
-#         self.n_layers = n_layers
-#         self.seq_len = seq_len
-#         self.n_filters = n_filters
-#
-#     def init_weights(self):
-#         """
-#         weight initialization
-#         """
-#         for param in self.parameters():
-#             param.data.uniform_(-self.initrange, self.initrange)
-#
-#     def convolutional_layer(self, inputs):
-#         convolution_all = []
-#         conv_wts = []
-#         for i in range(self.seq_len):
-#             convolution_one_month = []
-#             for j in range(self.pad_size):
-#                 convolution = self.conv(torch.unsqueeze(inputs[:, i, j], dim=1))
-#                 convolution_one_month.append(convolution)
-#             convolution_one_month = torch.stack(convolution_one_month)
-#             convolution_one_month = torch.squeeze(convolution_one_month, dim=3)
-#             convolution_one_month = torch.transpose(convolution_one_month, 0, 1)
-#             convolution_one_month = torch.transpose(convolution_one_month, 1, 2)
-#             convolution_one_month = torch.squeeze(convolution_one_month, dim=1)
-#             convolution_one_month = self.func_tanh(convolution_one_month)
-#             # convolution_one_month = self.func_softmax(convolution_one_month)
-#             convolution_one_month = torch.unsqueeze(convolution_one_month, dim=1)
-#             vec = torch.bmm(convolution_one_month, inputs[:, i])
-#             convolution_all.append(vec)
-#             conv_wts.append(convolution_one_month)
-#         convolution_all = torch.stack(convolution_all, dim=1)
-#         convolution_all = torch.squeeze(convolution_all, dim=2)
-#         conv_wts = torch.stack(conv_wts)
-#         return convolution_all, conv_wts
-#
-#     def encode_rnn(self, embedding, batch_size):
-#         self.weight = next(self.parameters()).data
-#         init_state = (Variable(self.weight.new(self.n_layers * self.b, batch_size, self.hidden_size).zero_()))
-#         embedding = self.dropout(embedding)
-#         outputs_rnn, states_rnn = self.rnn(embedding, init_state)
-#         return outputs_rnn
-#
-#     def add_attention_seq(self, states, batch_size):
-#         # attention
-#         alpha = []
-#         for i in range(self.seq_len):
-#             m1 = self.conv2(torch.unsqueeze(states[:, i], dim=1))
-#             alpha.append(torch.squeeze(m1, dim=2))
-#         alpha = torch.stack(alpha, dim=2)
-#         wts = []
-#         for i in range(self.n_filters):
-#             # a0 = self.func_softmax(alpha[:, i])
-#             a0 = self.func_tanh(alpha[:, i])
-#             a0 = self.func_softmax(a0)
-#             wts.append(a0)
-#         wts = torch.stack(wts, dim=1)
-#         context = torch.bmm(wts, states)
-#         context = context.view(batch_size, -1)
-#         wts_seq = self.conv_seq(context)
-#         return wts_seq, wts, context
-#
-#     def attention_demoip(self, inputs_demoip):
-#         x = torch.unsqueeze(inputs_demoip, dim=1)
-#         convs1 = torch.squeeze(self.conv_demoip1(x[:, :, 0:1]), dim=2)
-#         convs2 = torch.squeeze(self.conv_demoip2(x[:, :, 1:2]), dim=2)
-#         convs3 = torch.squeeze(self.conv_demoip3(x[:, :, 2:3]), dim=2)
-#         convs = torch.stack([convs1, convs2, convs3], dim=1)
-#         convs = torch.squeeze(convs, dim=2)
-#         convs = self.func_tanh(convs)
-#         convs = self.func_softmax(convs)
-#         context = torch.sum(torch.mul(convs, inputs_demoip), dim=1)
-#         return convs, context
-#
-#     def add_attention_all(self, states, inputs_demoip, batch_size):
-#         # attention
-#         alpha_seqall, alpha_seqs, context_seq = self.add_attention_seq(states, batch_size)
-#         alpha_demoip = self.attention_demoip(inputs_demoip)
-#         alpha = torch.cat((alpha_seq, alpha_demoip), 1)
-#         alpha = self.func_softmax(alpha)
-#
-#         context_seq = torch.mul(context_seq, alpha.data.tolist()[0])
-#
-#         return alpha, context
-#
-#     def forward(self, inputs, inputs_demoip, batch_size):
-#         """
-#         the recurrent module
-#         """
-#         # Convolutional
-#         convolutions, conv_wts = self.convolutional_layer(inputs)
-#         # Embedding
-#         # embedding = self.embedding_layer(convolutions)
-#         # RNN
-#         states_rnn = self.encode_rnn(convolutions, batch_size)
-#         # Add attentions and get context vector
-#         alpha, context = self.add_attention_all(states_rnn, inputs_demoip, batch_size)
-#         # alpha = self.add_attention(states_rnn, batch_size)
-#         # Final linear layer with demographic and previous IP info added as extra variables
-#         linear_y = self.linear(context)
-#         out = self.func_softmax(linear_y)
-#         return out, alpha, [states_rnn, context, conv_wts]
+
+class Patient2Vec2(nn.Module):
+    """
+    A convolutional embedding layer, then recurrent autoencoder with an encoder, recurrent module, and a decoder.
+    In addition, a linear layer is on top of each decode step and the weights are shared at these step.
+    """
+
+    def __init__(self, input_size, hidden_size, n_layers, att_dim, initrange,
+                 output_size, rnn_type, seq_len, pad_size, n_filters, bi, dropout_p=0.5):
+        """
+        Initilize a recurrent model
+        """
+        super(Patient2Vec2, self).__init__()
+
+        self.initrange = initrange
+        # convolution
+        self.b = 1
+        if bi:
+            self.b = 2
+
+        self.conv = nn.Conv1d(in_channels=1, out_channels=n_filters, kernel_size=input_size, stride=2)
+        self.conv2 = nn.Conv1d(in_channels=1, out_channels=1, kernel_size=hidden_size * self.b, stride=2)
+
+        # Bidirectional RNN
+        self.rnn = getattr(nn, rnn_type)(input_size * n_filters, hidden_size, n_layers, dropout=dropout_p,
+                                         batch_first=True, bias=True, bidirectional=bi)
+        # initialize 2-layer attention weight matrics
+        self.att_w1 = nn.Linear(hidden_size * self.b, att_dim, bias=False)
+
+        # final linear layer
+        self.linear = nn.Linear(hidden_size * self.b * n_filters + 3, output_size, bias=True)
+
+        self.func_softmax = nn.Softmax()
+        self.func_sigmoid = nn.Sigmoid()
+        self.func_tanh = nn.Tanh()
+        # Add dropout
+        self.dropout_p = dropout_p
+        self.dropout = nn.Dropout(p=self.dropout_p)
+        self.init_weights()
+
+        self.pad_size = pad_size
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.output_size = output_size
+        self.n_layers = n_layers
+        self.seq_len = seq_len
+        self.n_filters = n_filters
+
+    def init_weights(self):
+        """
+        weight initialization
+        """
+        for param in self.parameters():
+            param.data.uniform_(-self.initrange, self.initrange)
+
+    def convolutional_layer(self, inputs):
+        convolution_all = []
+        conv_wts = []
+        for i in range(self.seq_len):
+            convolution_one_month = []
+            for j in range(self.pad_size):
+                convolution = self.conv(torch.unsqueeze(inputs[:, i, j], dim=1))
+                convolution_one_month.append(convolution)
+            convolution_one_month = torch.stack(convolution_one_month, dim=2)
+            convolution_one_month = torch.squeeze(convolution_one_month, dim=3)
+            conv_fn = []
+            for nf in range(self.n_filters):
+                # convolution_one_month = self.func_tanh(convolution_one_month)
+                att = self.func_softmax(convolution_one_month[:, nf])
+                conv_fn.append(att)
+            conv_fn = torch.stack(conv_fn, dim=1)
+            vec = torch.bmm(conv_fn, inputs[:, i])
+            vec = vec.view(batch_size, -1)
+            convolution_all.append(vec)
+            conv_wts.append(conv_fn)
+        convolution_all = torch.stack(convolution_all, dim=1)
+        # convolution_all = torch.squeeze(convolution_all, dim=2)
+        conv_wts = torch.stack(conv_wts, dim=1)
+        return convolution_all, conv_wts
+
+    def encode_rnn(self, embedding, batch_size):
+        self.weight = next(self.parameters()).data
+        init_state = (Variable(self.weight.new(self.n_layers * self.b, batch_size, self.hidden_size).zero_()))
+        embedding = self.dropout(embedding)
+        outputs_rnn, states_rnn = self.rnn(embedding, init_state)
+        return outputs_rnn
+
+    def add_attention(self, states, batch_size):
+        # attention
+        alpha = []
+        for i in range(self.seq_len):
+            m1 = self.conv2(torch.unsqueeze(states[:, i], dim=1))
+            alpha.append(torch.squeeze(torch.squeeze(m1, dim=2), dim=1))
+        alpha = torch.stack(alpha, dim=1)
+        wts = self.func_softmax(alpha)
+        context = torch.bmm(torch.unsqueeze(wts, dim=1), states)
+        context = context.view(batch_size, -1)
+        return wts, context
+
+    def forward(self, inputs, inputs_demoip, batch_size):
+        """
+        the recurrent module
+        """
+        # Convolutional
+        convolutions, conv_wts = self.convolutional_layer(inputs)
+        # RNN
+        states_rnn = self.encode_rnn(convolutions, batch_size)
+        # Add attentions and get context vector
+        alpha, context = self.add_attention(states_rnn, batch_size)
+        # alpha = self.add_attention(states_rnn, batch_size)
+        # Final linear layer with demographic and previous IP info added as extra variables
+        context_v2 = torch.cat((context, inputs_demoip), 1)
+        linear_y = self.linear(context_v2)
+        out = self.func_softmax(linear_y)
+        return out, conv_wts, [states_rnn, context, conv_wts, alpha]
 
 
 def create_batch(step, batch_size, data_x, data_demoip, data_y, w2v, vsize, pad_size, l):
@@ -519,7 +482,6 @@ def create_batch(step, batch_size, data_x, data_demoip, data_y, w2v, vsize, pad_
     return Variable(torch.FloatTensor(batch_x), requires_grad=False), \
            Variable(torch.FloatTensor(batch_demoip), requires_grad=False),\
            Variable(torch.LongTensor(batch_y), requires_grad=False) # for cross-entropy loss
-    # return Variable(torch.FloatTensor(batch_x), requires_grad=False), Variable(torch.FloatTensor(batch_y), requires_grad=False) # for cross-entropy loss
 
 
 def create_full_set(dt, y, w2v, vsize, pad_size, l):
@@ -628,12 +590,28 @@ def calculate_performance(test_y, pred, vals):
 def get_loss(pred, y, criterion, mtr, a=0.5):
     mtr_t = torch.transpose(mtr, 1, 2)
     aa = torch.bmm(mtr, mtr_t)
+    loss_fn = 0
     for i in range(aa.size()[0]):
         aai = torch.add(aa[i, ], Variable(torch.neg(torch.eye(mtr.size()[1]))))
-        loss_fn = torch.trace(torch.mul(aai, aai).data)
+        loss_fn += torch.trace(torch.mul(aai, aai).data)
+    loss_fn /= aa.size()[0]
     loss = torch.add(criterion(pred, y), Variable(torch.FloatTensor([loss_fn * a])))
     return loss
 
+
+def get_loss_v2(pred, y, criterion, wts, seq_len, batch_size, a=0.5):
+    penalty = 0.
+    for i in range(seq_len):
+        mtr = wts[:, i]
+        mtr_t = torch.transpose(mtr, 1, 2)
+        aa = torch.bmm(mtr, mtr_t)
+        for i in range(aa.size()[0]):
+            aai = torch.add(aa[i, ], Variable(torch.neg(torch.eye(mtr.size()[1]))))
+            loss_fn = torch.trace(torch.mul(aai, aai).data)
+            penalty += loss_fn
+    penalty /= batch_size
+    loss = torch.add(criterion(pred, y), Variable(torch.FloatTensor([penalty * a])))
+    return loss
 
 if __name__ == '__main__':
 
