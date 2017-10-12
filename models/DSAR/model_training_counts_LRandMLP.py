@@ -194,7 +194,7 @@ if __name__ == '__main__':
     input_size = len(features) + 3
     output_size = 2
     drop = 0.0
-    learning_rate = 0.1
+    learning_rate = 0.001
     decay = 0.001
     interval = 100
     initrange = 1
@@ -206,7 +206,7 @@ if __name__ == '__main__':
     n_iter_max_dev = 100 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
 
-    model_type = 'LR'
+    model_type = 'MLP-256'
     # Build and train/load the model
     print('Build Model...')
     # by default build a LR model
@@ -284,7 +284,7 @@ if __name__ == '__main__':
     result_file = './results/test_results_' + model_type + '.pickle'
     output_file = './results/test_outputs_' + model_type + '.pickle'
 
-    model_type = 'LR'
+    model_type = 'MLP-256'
     if model_type == 'LR': # 5 epochs, lr=0.001, decay=0.01, weight=1:20; auc: 0.698; with current parameters: 0.640
         model = LRmodel(input_size, output_size, initrange)
     elif model_type == 'MLP-256':

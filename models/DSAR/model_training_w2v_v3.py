@@ -253,7 +253,7 @@ class Patient2Vec1(nn.Module):
 
         self.func_softmax = nn.Softmax()
         self.func_sigmoid = nn.Sigmoid()
-        self.func_tanh = nn.Hardtanh(0, 1)
+        self.func_tanh = nn.Tanh()
         # Add dropout
         self.dropout_p = dropout_p
         self.dropout = nn.Dropout(p=self.dropout_p)
@@ -288,8 +288,8 @@ class Patient2Vec1(nn.Module):
             convolution_one_month = torch.transpose(convolution_one_month, 0, 1)
             convolution_one_month = torch.transpose(convolution_one_month, 1, 2)
             convolution_one_month = torch.squeeze(convolution_one_month, dim=1)
-            convolution_one_month = self.func_tanh(convolution_one_month)
-            # convolution_one_month = self.func_softmax(convolution_one_month)
+            # convolution_one_month = self.func_tanh(convolution_one_month)
+            convolution_one_month = self.func_softmax(convolution_one_month)
             convolution_one_month = torch.unsqueeze(convolution_one_month, dim=1)
             vec = torch.bmm(convolution_one_month, inputs[:, i])
             convolution_all.append(vec)
@@ -667,7 +667,7 @@ if __name__ == '__main__':
     initrange = 1
     att_dim = 1
     n_filters = 3
-    a = 0.01
+    a = 0.005
     batch_size = 100
     epoch_max = 20 # training for maximum 3 epochs of training data
     n_iter_max_dev = 2000 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
@@ -675,7 +675,7 @@ if __name__ == '__main__':
 
     model_type = 'crnn2-bi-tanh-fn'
     # model_type = 'rnn-bi'
-    model_path = './saved_models/model_w2v_' + model_type + '_layer' + str(n_layers) + '_1.dat'
+    model_path = './saved_models/model_w2v_' + model_type + '_layer' + str(n_layers) + 'lr001.dat'
     # Build and train/load the model
     print('Build Model...')
     # by default build a LR model
@@ -768,7 +768,7 @@ if __name__ == '__main__':
     # #
     # # ============================ To evaluate model using testing set =============================================
     print('Start Testing...')
-    result_file = './results/test_results_w2v_' + model_type + '_layer' + str(n_layers) + '_1.pickle'
+    result_file = './results/test_results_w2v_' + model_type + '_layer' + str(n_layers) + '.pickle'
     # output_file = './results/test_outputs_' + model_type + '_layer' + str(n_layers) + '.pickle'
 
     # model_type = 'crnn2-bi-tanh-fn'

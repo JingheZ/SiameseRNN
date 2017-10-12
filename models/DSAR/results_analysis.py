@@ -12,7 +12,7 @@ def calculate_scores_bootstraps(pred, y, val):
     specificity = []
     aucs = []
     f1s = []
-    for p in range(50):
+    for p in range(20):
         # random.seed(p)
         sp = random.choices(list(zip(pred, y, val)), k=int(len(y)))
         # sp = list(zip(pred, y, val))
@@ -48,57 +48,57 @@ def calculate_results(result_file):
     res = calculate_scores_bootstraps(pred, y, val)
     return res
 
-
-def analyze_example_pts(result_file):
-    with open(result_file, 'rb') as f:
-        pred, val, y = pickle.load(f)
-    with open('./data/hospitalization_train_validate_test_ids.pickle', 'rb') as f:
-        train_ids, valid_ids, test_ids = pickle.load(f)
-    with open('./data/hospitalization_test_data_demoip.pickle', 'rb') as f:
-        test_genders, test_ages, test_ip = pickle.load(f)
-    f.close()
-
-    result = list(zip(test_ids, pred, y, val))
-    result = pd.DataFrame(result)
-    result.columns = ['ptid', 'pred_label', 'true_label', 'pred_val']
-    result['gender'] = test_genders
-    result['age'] = test_ages
-    result['ip'] = test_ip
-
-
-    result = result.sort_values(['true_label', 'pred_val'], ascending=[0, 0])
-    ptids1 = ['1676027', '826205', '956147']
-    ptids0 = ['656618', '1839296', '1334050']
-    ptids = ptids1 + ptids0
-    inds = [101, 141, 584, 677, 558, 182]
-
-    with open('./data/hospitalization_test_data_by_' + str(l) + 'month.pickle', 'rb') as f:
-        test, test_y = pickle.load(f)
-
-    def aggregate_codes(test, ind):
-        data = test[ind]
-        meds_seq = []
-        for i in range(4):
-            meds = []
-            for j in data[i]:
-                if j[:2] == 'dx':
-                    if j[2:] in dx_dict:
-                        dxgrp = get_dx_code(j[2:])
-                    else:
-                        dxgrp = j
-                    meds.append(dxgrp)
-                elif j[0] == 'p':
-                    if j[1:] in proc_dict:
-                        procgrp = get_proc_code(j[1:])
-                    else:
-                        procgrp = j
-                    meds.append(procgrp)
-                else:
-                    meds.append(j)
-            meds_seq.append(meds)
-        return meds_seq
-
-
+#
+# def analyze_example_pts(result_file):
+#     with open(result_file, 'rb') as f:
+#         pred, val, y = pickle.load(f)
+#     with open('./data/hospitalization_train_validate_test_ids.pickle', 'rb') as f:
+#         train_ids, valid_ids, test_ids = pickle.load(f)
+#     with open('./data/hospitalization_test_data_demoip.pickle', 'rb') as f:
+#         test_genders, test_ages, test_ip = pickle.load(f)
+#     f.close()
+#
+#     result = list(zip(test_ids, pred, y, val))
+#     result = pd.DataFrame(result)
+#     result.columns = ['ptid', 'pred_label', 'true_label', 'pred_val']
+#     result['gender'] = test_genders
+#     result['age'] = test_ages
+#     result['ip'] = test_ip
+#
+#
+#     result = result.sort_values(['true_label', 'pred_val'], ascending=[0, 0])
+#     ptids1 = ['1676027', '826205', '956147']
+#     ptids0 = ['656618', '1839296', '1334050']
+#     ptids = ptids1 + ptids0
+#     inds = [101, 141, 584, 677, 558, 182]
+#
+#     with open('./data/hospitalization_test_data_by_' + str(l) + 'month.pickle', 'rb') as f:
+#         test, test_y = pickle.load(f)
+#
+#     def aggregate_codes(test, ind):
+#         data = test[ind]
+#         meds_seq = []
+#         for i in range(4):
+#             meds = []
+#             for j in data[i]:
+#                 if j[:2] == 'dx':
+#                     if j[2:] in dx_dict:
+#                         dxgrp = get_dx_code(j[2:])
+#                     else:
+#                         dxgrp = j
+#                     meds.append(dxgrp)
+#                 elif j[0] == 'p':
+#                     if j[1:] in proc_dict:
+#                         procgrp = get_proc_code(j[1:])
+#                     else:
+#                         procgrp = j
+#                     meds.append(procgrp)
+#                 else:
+#                     meds.append(j)
+#             meds_seq.append(meds)
+#         return meds_seq
+#
+#
     # xs = []
     # for i in inds:
     #     x = test[i]
@@ -130,7 +130,8 @@ mlp = calculate_results(result_file)
 
 # =============================== rnn mge ===========================
 model_type = 'rnn'
-result_file = './results/test_results_cts_' + model_type + '_layer1.pickle'
+# result_file = './results/test_results_cts_' + model_type + '_layer1.pickle'
+result_file = './results/test_results_cts_' + model_type + '_layer1V2.pickle'
 rnn_mge = calculate_results(result_file)
 
 # =============================== bi-rnn mge ===========================

@@ -387,25 +387,25 @@ if __name__ == '__main__':
     # Model hyperparameters
     # model_type = 'rnn-rt'
     input_size = 433
-    embedding_size = 300
+    embedding_size = 100
     hidden_size = 256
     n_layers = 1
     seq_len = int(12/l)
     output_size = 2
     rnn_type = 'GRU'
     drop = 0.1
-    learning_rate = 0.0005
+    learning_rate = 0.001
     decay = 0.01
-    interval = 100
+    interval = 200
     initrange = 1
     att_dim = 100
 
     batch_size = 100
-    epoch_max = 10 # training for maximum 3 epochs of training data
+    epoch_max = 3 # training for maximum 3 epochs of training data
     n_iter_max_dev = 100 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
     model_type = 'rnn'
-    model_path = './saved_models/model_cts_' + model_type + '_layer' + str(n_layers) + '.dat'
+    model_path = './saved_models/model_cts_' + model_type + '_layer' + str(n_layers) + 'V2.dat'
     # Build and train/load the model
     print('Build Model...')
     # by default build a RNN model
@@ -487,7 +487,7 @@ if __name__ == '__main__':
 
     # ============================ To evaluate model using testing set =============================================
     print('Start Testing...')
-    result_file = './results/test_results_cts_' + model_type + '_layer' + str(n_layers) + '.pickle'
+    result_file = './results/test_results_cts_' + model_type + '_layer' + str(n_layers) + 'V2.pickle'
     # output_file = './results/test_outputs_' + model_type + '_layer' + str(n_layers) + '.pickle'
     model_type = 'rnn'
     # Build and train/load the model
