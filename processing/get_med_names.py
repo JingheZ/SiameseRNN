@@ -41,6 +41,7 @@ ages = ages['age'].to_dict()
 ages_pts = [ages[pid] for pid in ptids_dm]
 ages_pts = pd.Series(ages_pts, name='Age')
 ages_pts.to_csv('./data/dm_ages.csv', index=False)
-ax = sns.distplot(ages_pts)
 
-.quantile(0.3)
+ages_pts = pd.read_csv('./data/dm_ages.csv', index_col=None)
+ages_pts.name = 'Age'
+ax = sns.distplot(ages_pts)
