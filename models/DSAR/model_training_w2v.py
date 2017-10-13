@@ -790,7 +790,6 @@ if __name__ == '__main__':
     # # # ============================ To evaluate model using testing set =============================================
     # print('Start Testing...')
     # result_file = './results/test_results_w2v_' + model_type + '_layer' + str(n_layers) + '_1.pickle'
-    output_file = './results/test_outputs_' + model_type + '_layer' + str(n_layers) + '.pickle'
 
     # model_type = 'crnn2-bi-tanh-fn'
     # by default build a LR model
@@ -841,6 +840,7 @@ if __name__ == '__main__':
     code_wts_pos = [code_wts_test[i] for i in range(len(test_ids)) if test_y[i] == 1]
     seq_wts_pos = aggregate_seq_wts(seq_wts_pos)
 
+    output_file = './results/test_outputs_pos' + model_type + '_layer' + str(n_layers) + '.pickle'
     with open(output_file, 'wb') as f:
         pickle.dump([seq_wts_pos, code_wts_pos, context_pos, test_pos], f)
     f.close()

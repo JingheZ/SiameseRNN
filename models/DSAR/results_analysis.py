@@ -296,9 +296,10 @@ if __name__ == '__main__':
     # ============================= List of top 10 most important items in hospitalized pts ===============
     # get the code wts of all testing pts
     model_type = 'crnn2-bi-tanh-fn'
-    output_file = './results/test_outputs_' + model_type + '_layer1.pickle'
+    output_file = './results/test_outputs_pos' + model_type + '_layer1.pickle'
     with open(output_file, 'rb') as f:
-        seq_wts_test, code_wts_test = pickle.load(f)
+        seq_wts_pos, code_wts_pos, context_pos, test_pos = pickle.load(f)
+    f.close()
 
     with open('./data/hospitalization_train_validate_test_ids.pickle', 'rb') as f:
         train_ids, valid_ids, test_ids = pickle.load(f)
@@ -308,9 +309,58 @@ if __name__ == '__main__':
     f.close()
     itemdict = item_cats['cat'].to_dict()
 
-    top_items = []
-    for x, p in enumerate(test_ids):
-        meds_seq = get_codes(test, x, itemdict)
-        items = aggregate_code_wts_items_top(meds_seq, seq_wts_test, code_wts_test[x], n=20)
-        top_items += items
 
+    def aggregate_code_wts_items_top(meds_seq, seq_wts, data, n):
+        w = {}
+        for i in range(4):
+            if len(meds_seq[i]) > 0:
+                for k in range(len(meds_seq[i])):
+                    if not w.__contains__(meds_seq[i][k]):
+                        w[meds_seq[i][k]] = 0
+                    w[meds_seq[i][k]] += data[i][k] * seq_wts[i]
+        if w.__contains__('p0'):
+            del w['p0']
+        if w.__contains__('dx259'):
+            del w['dx259']
+        wk = list(w.keys())
+        wv = list(w.values())
+        wv = normalize(wv, norm='l1').tolist()[0]
+        w1 = dict(zip(wk, wv))
+        wts = sorted(w1.items(), key=operator.itemgetter(1), reverse=True)[:n]
+        # wts = w1.items().sort(key=operator.itemgetter(1), reverse=True)
+        items = [j[0] for j in wts]
+        return items, len(w)
+
+    from collections import Counter
+    top_items = []
+    num_items = []
+    for x in range(len(test_pos)):
+        meds_seq = get_codes(test_pos, x, itemdict)
+        items, nums = aggregate_code_wts_items_top(meds_seq, seq_wts_pos[x], code_wts_pos[x], n=10)
+        top_items += items
+        num_items.append(nums)
+
+    # num_items = np.array(num_items)
+    top_items_cts = dict(Counter(top_items))
+    top_items_sorted = sorted(top_items_cts.items(), key=operator.itemgetter(1), reverse=True)[:20]
+    top_items_sorted
+[('p33', 834),
+ ('p171', 772),
+ ('p19', 674),
+ ('p233', 532),
+ ('Diagnostic Products', 384),
+ ('p235', 370),
+ ('dx98', 352),
+ ('dx211', 283),
+ ('dx205', 278),
+ ('p112', 267),
+ ('dx133', 258),
+ ('p61', 256),
+ ('dx53', 241),
+ ('dx257', 226),
+ ('Analgesics-Narcotic', 224),
+ ('dx49', 222),
+ ('dx663', 214),
+ ('p211', 209),
+ ('dx95', 194),
+ ('dx258', 190)]
