@@ -24,7 +24,7 @@ print('Done!')
 
 with open('./data/med_names.pickle', 'rb') as f:
     meds = pickle.load(f)
-meds
+meds[meds['Med_Pharm_Cls'] == 'Diagnostic Products']
 
 
 # analysis on patient ages
@@ -36,11 +36,7 @@ with open('./data/data_dm_ptids.pickle', 'rb') as f:
 
 ages = pt_info_orders[['ptid', 'age']].drop_duplicates().groupby('ptid').min()
 ages = ages['age'].to_dict()
-# ptids = list(pos_ids) + list(neg_ids)
-# ptids = train_ids
 ages_pts = [ages[pid] for pid in ptids_dm]
 ages_pts = pd.Series(ages_pts, name='Age')
 ages_pts.to_csv('./data/dm_ages.csv', index=False)
 ax = sns.distplot(ages_pts)
-
-.quantile(0.3)
