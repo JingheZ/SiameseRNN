@@ -116,7 +116,7 @@ def aggregate_code_wts_items_top(meds_seq, data):
             wv = normalize(wv, norm='l1').tolist()[0]
             w1 = dict(zip(wk, wv))
             w = sorted(w1.items(), key=operator.itemgetter(1), reverse=True)[:10]
-            wts += [t[0] for t in w]
+        wts += [t[0] for t in w]
     return wts
 
 
@@ -296,9 +296,15 @@ if __name__ == '__main__':
                      0.8050177097320557]
 
     # ============================= List of top 10 most important items in hospitalized pts ===============
+    # get the code wts of all testing pts
+    model_type = 'crnn2-bi-tanh-fn'
+    output_file = './results/test_outputs_' + model_type + '_layer1.pickle'
+    with open(output_file, 'rb') as f:
+        code_wts_test = pickle.load(f)
+
     top_items = []
     for x, p in enumerate(test_ids):
         meds_seq = get_codes(test, x, itemdict)
-        items = aggregate_code_wts_items_top(meds_seq, code_wts[x])
+        items = aggregate_code_wts_items_top(meds_seq, code_wts_test[x])
         top_items += items
 
