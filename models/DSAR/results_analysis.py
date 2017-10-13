@@ -430,20 +430,22 @@ if __name__ == '__main__':
     pos_2 = result3[result3['pdxcat'] == '2']
     pos_100 = result3[result3['pdxcat'] == '100']
     pos_108 = result3[result3['pdxcat'] == '108']
+    pos_50 = result3[result3['pdxcat'] == '50']
     ids_203 = list(pos_203['ptid'].values)
     ids_2 = list(pos_2['ptid'].values)
     ids_100 = list(pos_100['ptid'].values)
     ids_108 = list(pos_108['ptid'].values)
+    ids_50 = list(pos_50['ptid'].values)
     inds_203 = [pos_ids.index(i) for i in ids_203]
     inds_2 = [pos_ids.index(i) for i in ids_2]
     inds_100 = [pos_ids.index(i) for i in ids_100]
     inds_108 = [pos_ids.index(i) for i in ids_108]
-
+    inds_50 = [pos_ids.index(i) for i in ids_50]
     top_items_203 = get_top_items(inds_203, test_pos, itemdict, seq_wts_pos, code_wts_pos, 5, 30)
     top_items_2 = get_top_items(inds_2, test_pos, itemdict, seq_wts_pos, code_wts_pos, 5, 30)
     top_items_100 = get_top_items(inds_100, test_pos, itemdict, seq_wts_pos, code_wts_pos, 5, 30)
     top_items_108 = get_top_items(inds_108, test_pos, itemdict, seq_wts_pos, code_wts_pos, 5, 30)
-
+    top_items_50 = get_top_items(inds_50, test_pos, itemdict, seq_wts_pos, code_wts_pos, 5, 30)
     # # visualize in t-sne
     # ys = [1] * len(pos_203) + [2] * len(pos_2) + [3] * len(pos_100) + [4] * len(pos_108)
 

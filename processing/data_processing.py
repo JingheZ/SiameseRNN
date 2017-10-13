@@ -305,6 +305,7 @@ if __name__ == '__main__':
     visits_dx = count_stat_summary(data_dx)
 
     # ============================ Med Data ===================================================
+
     filename = './data/2017_02feb_28_Orders_Meds.dat'
     colnames_med = ['med_order_num', 'Med_Nme', 'Med_Thera_Cls', 'Med_Pharm_Cls', 'Med_Pharm_Sub_Cls',
                     'ptid', 'age', 'sex', 'vid', 'VisitDXs', 'timeline', 'anon_adm_date', 'anon_dis_date',
