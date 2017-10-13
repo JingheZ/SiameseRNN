@@ -298,7 +298,7 @@ if __name__ == '__main__':
     # ============================= List of top 10 most important items in hospitalized pts ===============
     top_items = []
     for x, p in enumerate(test_ids):
-        meds_seq = get_codes(test, p, itemdict)
+        meds_seq = get_codes(test, x, itemdict)
         items = aggregate_code_wts_items_top(meds_seq, code_wts[x])
         top_items.append(items)
 
