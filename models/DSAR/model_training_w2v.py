@@ -540,12 +540,13 @@ def process_demoip():
 
 
 def model_testing_one_batch(model, batch_x, batch_demoip, batch_size):
-    y_pred, _, others = model(batch_x, batch_demoip, batch_size)
+    y_pred, seq_wts, others = model(batch_x, batch_demoip, batch_size)
     _, predicted = torch.max(y_pred.data, 1)
     pred = predicted.view(-1).tolist()
     val = y_pred[:, 1].data.tolist()
     cwts = others[2].data.tolist()
-    return pred, val, cwts
+    swts = seq_wts.data.tolist()
+    return pred, val, swts, cwts
 
 
 def model_testing_dev(y_pred):
@@ -560,12 +561,14 @@ def model_testing(model, test, test_y, test_demoips, w2v, vsize, pad_size, l, ba
     pred_all = []
     val_all = []
     code_wts = []
+    seq_wts = []
     while (i + 1) * batch_size <= len(test_y):
         batch_x, batch_demoip, _ = create_batch(i, batch_size, test, test_demoips, test_y, w2v, vsize, pad_size, l)
-        pred, val, cwts = model_testing_one_batch(model, batch_x, batch_demoip, batch_size)
+        pred, val, swts, cwts = model_testing_one_batch(model, batch_x, batch_demoip, batch_size)
         pred_all += pred
         val_all += val
         code_wts += cwts
+        seq_wts += swts
         i += 1
     # the remaining data less than one batch
     batch_demoip = test_demoips[i * batch_size:]
@@ -575,11 +578,12 @@ def model_testing(model, test, test_y, test_demoips, w2v, vsize, pad_size, l, ba
         batch_x.append(x)
     batch_x = Variable(torch.FloatTensor(batch_x), requires_grad=False)
     batch_demoip = Variable(torch.FloatTensor(batch_demoip), requires_grad=False)
-    pred, val, cwts = model_testing_one_batch(model, batch_x, batch_demoip, len(test_y) - i * batch_size)
+    pred, val, swts, cwts = model_testing_one_batch(model, batch_x, batch_demoip, len(test_y) - i * batch_size)
     pred_all += pred
     val_all += val
     code_wts += cwts
-    return pred_all, val_all, code_wts
+    seq_wts += swts
+    return pred_all, val_all, seq_wts, code_wts
 
 
 def calculate_performance(test_y, pred, vals):
@@ -614,6 +618,15 @@ def get_loss_v2(pred, y, criterion, wts, seq_len, batch_size, a=0.5):
     penalty /= batch_size
     loss = torch.add(criterion(pred, y), Variable(torch.FloatTensor([penalty / seq_len * a])))
     return loss
+
+
+def aggregate_seq_wts(wts):
+    seq_wts = np.array(torch.transpose(wts, 1, 2).data.tolist())
+    seq_wts_avg = np.sum(seq_wts, axis=2)/4
+
+    from sklearn.preprocessing import normalize
+    seq_wts_norm = normalize(seq_wts_avg, axis=1, norm='l1')
+
 
 if __name__ == '__main__':
 
@@ -804,7 +817,7 @@ if __name__ == '__main__':
     # # Evaluate the model
     model.eval()
     test_start_time = time.time()
-    pred_test, val_test, code_wts_test = model_testing(model, test, test_y, test_demoips, w2v_model, size, pad_size, l, batch_size=1000)
+    pred_test, val_test, seq_wts_test, code_wts_test = model_testing(model, test, test_y, test_demoips, w2v_model, size, pad_size, l, batch_size=1000)
     perfm, auc = calculate_performance(test_y, pred_test, val_test)
     elapsed_test = time.time() - test_start_time
     print(auc)
@@ -818,8 +831,11 @@ if __name__ == '__main__':
     # f.close()
 
     with open(output_file, 'wb') as f:
-        pickle.dump(code_wts_test, f)
+        pickle.dump([seq_wts_test, code_wts_test], f)
     f.close()
+    print(len(seq_wts_test))
+    print(len(seq_wts_test[0]))
+
     print('Results saved!')
     # print(pred_test[:10, :10])
     # # To do:

@@ -98,25 +98,23 @@ def aggregate_code_wts(meds_seq, data):
     return wts
 
 
-def aggregate_code_wts_items_top(meds_seq, data):
-    wts = []
+def aggregate_code_wts_items_top(meds_seq, seq_wts, data, n):
+    w = {}
     for i in range(4):
-        w = {}
         if len(meds_seq[i]) > 0:
             for k in range(len(meds_seq[i])):
                 if not w.__contains__(meds_seq[i][k]):
                     w[meds_seq[i][k]] = 0
-                w[meds_seq[i][k]] += data[i][k]
-            if w.__contains__('p0'):
-                del w['p0']
-            if w.__contains__('dx259'):
-                del w['dx259']
-            wk = list(w.keys())
-            wv = list(w.values())
-            wv = normalize(wv, norm='l1').tolist()[0]
-            w1 = dict(zip(wk, wv))
-            w = sorted(w1.items(), key=operator.itemgetter(1), reverse=True)[:10]
-        wts += [t[0] for t in w]
+                w[meds_seq[i][k]] += data[i][k] * seq_wts[i]
+    if w.__contains__('p0'):
+        del w['p0']
+    if w.__contains__('dx259'):
+        del w['dx259']
+    wk = list(w.keys())
+    wv = list(w.values())
+    wv = normalize(wv, norm='l1').tolist()[0]
+    w1 = dict(zip(wk, wv))
+    wts = sorted(w1.items(), key=operator.itemgetter(1), reverse=True)[:n]
     return wts
 
 
@@ -300,11 +298,19 @@ if __name__ == '__main__':
     model_type = 'crnn2-bi-tanh-fn'
     output_file = './results/test_outputs_' + model_type + '_layer1.pickle'
     with open(output_file, 'rb') as f:
-        code_wts_test = pickle.load(f)
+        seq_wts_test, code_wts_test = pickle.load(f)
+
+    with open('./data/hospitalization_train_validate_test_ids.pickle', 'rb') as f:
+        train_ids, valid_ids, test_ids = pickle.load(f)
+
+    with open('./data/ccs_codes_all_item_categories.pickle', 'rb') as f:
+        item_cats = pickle.load(f)
+    f.close()
+    itemdict = item_cats['cat'].to_dict()
 
     top_items = []
     for x, p in enumerate(test_ids):
         meds_seq = get_codes(test, x, itemdict)
-        items = aggregate_code_wts_items_top(meds_seq, code_wts_test[x])
+        items = aggregate_code_wts_items_top(meds_seq, seq_wts_test, code_wts_test[x], n=20)
         top_items += items
 
