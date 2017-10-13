@@ -540,11 +540,12 @@ def process_demoip():
 
 
 def model_testing_one_batch(model, batch_x, batch_demoip, batch_size):
-    y_pred, _, _ = model(batch_x, batch_demoip, batch_size)
+    y_pred, _, others = model(batch_x, batch_demoip, batch_size)
     _, predicted = torch.max(y_pred.data, 1)
     pred = predicted.view(-1).tolist()
     val = y_pred[:, 1].data.tolist()
-    return pred, val
+    cwts = others[2].data.tolist()
+    return pred, val, cwts
 
 
 def model_testing_dev(y_pred):
@@ -558,11 +559,13 @@ def model_testing(model, test, test_y, test_demoips, w2v, vsize, pad_size, l, ba
     i = 0
     pred_all = []
     val_all = []
+    code_wts = []
     while (i + 1) * batch_size <= len(test_y):
         batch_x, batch_demoip, _ = create_batch(i, batch_size, test, test_demoips, test_y, w2v, vsize, pad_size, l)
-        pred, val = model_testing_one_batch(model, batch_x, batch_demoip, batch_size)
+        pred, val, cwts = model_testing_one_batch(model, batch_x, batch_demoip, batch_size)
         pred_all += pred
         val_all += val
+        code_wts += cwts
         i += 1
     # the remaining data less than one batch
     batch_demoip = test_demoips[i * batch_size:]
@@ -575,7 +578,8 @@ def model_testing(model, test, test_y, test_demoips, w2v, vsize, pad_size, l, ba
     pred, val = model_testing_one_batch(model, batch_x, batch_demoip, len(test_y) - i * batch_size)
     pred_all += pred
     val_all += val
-    return pred_all, val_all
+    code_wts += cwts
+    return pred_all, val_all, code_wts
 
 
 def calculate_performance(test_y, pred, vals):
@@ -677,99 +681,99 @@ if __name__ == '__main__':
     # model_type = 'rnn-bi'
     model_path = './saved_models/model_w2v_' + model_type + '_layer' + str(n_layers) + '_1.dat'
     # Build and train/load the model
-    print('Build Model...')
-    # by default build a LR model
-    if model_type == 'rnn':
-        model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
-                         ct=False, bi=False, dropout_p=drop)
-    elif model_type == 'rnn-bi':
-        model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
-                         ct=False, bi=True, dropout_p=drop)
-    elif model_type == 'crnn':
-        model = Patient2Vec0(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
-                            rnn_type, seq_len, pad_size, dropout_p=drop)
-    elif model_type == 'crnn2':
-        model = Patient2Vec1(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
-                             rnn_type, seq_len, pad_size, n_filters, bi=False, dropout_p=drop)
-    elif model_type == 'crnn2-bi-tanh' or model_type == 'crnn2-bi-tanh-fn':
-        model = Patient2Vec1(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
-                            rnn_type, seq_len, pad_size, n_filters, bi=True, dropout_p=drop)
-    elif model_type == 'crnn-bi-med-fn':
-        model = Patient2Vec2(input_size, hidden_size, n_layers, initrange, output_size,
-                            rnn_type, seq_len, pad_size, n_filters, bi=True, dropout_p=drop)
-
-    criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 10]))
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
-    # model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '_l' + str(l) + 'filter' + str(n_filters) + '.dat'
-    print('Start Training...')
-    # if os.path.exists(model_path):
-    #     saved_model = torch.load(model_path)
-    #     model.load_state_dict(saved_model)
-    # # else:
-        # model.init_weights(initrange)
-        # Train the model
-    start_time = time.time()
-    best_loss_dev = 100
-    best_dev_iter = 0
-    n_iter = 0
-    epoch = 0
-    while epoch < epoch_max:
-        step = 0
-        while (step + 1) * batch_size < train_iters:
-            batch_x, batch_demoip, batch_y = create_batch(step, batch_size, train, train_demoips, train_y, w2v_model, size, pad_size, l)
-            optimizer.zero_grad()
-            y_pred, wts, _ = model(batch_x, batch_demoip, batch_size)
-            # states, alpha, beta = model(batch_x, batch_size)
-            if model_type == 'crnn2-bi-tanh-fn':
-                loss = get_loss(y_pred, batch_y, criterion, wts, a)
-            elif model_type == 'crnn-bi-med-fn':
-                loss = get_loss_v2(y_pred, batch_y, criterion, wts, seq_len, batch_size, a)
-            else:
-                loss = criterion(y_pred, batch_y)
-
-            loss.backward()
-            optimizer.step()
-
-            if step % interval == 0:
-                elapsed = time.time() - start_time
-                # acc = calcualte_accuracy(y_pred, batch_y, batch_size)
-                print('%i epoch, %i batches, elapsed time: %.2f, loss: %.3f' % (epoch + 1, step + 1, elapsed, loss.data[0]))
-                # Evaluate model performance on validation set
-                pred_dev, _, _ = model(validate_x, validate_demoips, len(valid_ids))
-                loss_dev = criterion(pred_dev, validate_y)
-                pred_ind_dev, val_dev = model_testing_dev(pred_dev)
-                perfm_dev, auc_dev = calculate_performance(validate_y.data.tolist(), pred_ind_dev, val_dev)
-                print("Performance on dev set: AUC is %.3f" % auc_dev)
-                # print(perfm_dev)
-
-                # pred_ind_batch = model_testing_one_batch(model, batch_x, batch_demoip, batch_size)
-                # perfm_batch, auc_batch = calculate_performance(batch_y.data.tolist(), pred_ind_batch)
-                # print("Performance on training set: AUC is %.3f" % auc_batch)
-                # # print(perfm_batch)
-                print('Validation, loss: %.3f' % (loss_dev.data[0]))
-                if loss_dev.data[0] < best_loss_dev:
-                    best_loss_dev = loss_dev.data[0]
-                    best_dev_iter = n_iter
-                    print('best validation at %i with loss %.3f' % (best_dev_iter, best_loss_dev))
-                    state_to_save = model.state_dict()
-                    torch.save(state_to_save, model_path)
-                if n_iter - best_dev_iter >= n_iter_max_dev:
-                    break
-            step += 1
-            n_iter += 1
-        if n_iter - best_dev_iter >= n_iter_max_dev:
-            break
-        epoch += 1
-    # save trained model
-    # state_to_save = model.state_dict()
-    # torch.save(state_to_save, model_path)
-    elapsed = time.time() - start_time
-    print('Training Finished! Total Training Time is: % .2f' % elapsed)
-    # #
-    # # ============================ To evaluate model using testing set =============================================
-    print('Start Testing...')
-    result_file = './results/test_results_w2v_' + model_type + '_layer' + str(n_layers) + '_1.pickle'
-    # output_file = './results/test_outputs_' + model_type + '_layer' + str(n_layers) + '.pickle'
+    # print('Build Model...')
+    # # by default build a LR model
+    # if model_type == 'rnn':
+    #     model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
+    #                      ct=False, bi=False, dropout_p=drop)
+    # elif model_type == 'rnn-bi':
+    #     model = RNNmodel(input_size, embedding_size, hidden_size, n_layers, initrange, output_size, rnn_type, seq_len,
+    #                      ct=False, bi=True, dropout_p=drop)
+    # elif model_type == 'crnn':
+    #     model = Patient2Vec0(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
+    #                         rnn_type, seq_len, pad_size, dropout_p=drop)
+    # elif model_type == 'crnn2':
+    #     model = Patient2Vec1(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
+    #                          rnn_type, seq_len, pad_size, n_filters, bi=False, dropout_p=drop)
+    # elif model_type == 'crnn2-bi-tanh' or model_type == 'crnn2-bi-tanh-fn':
+    #     model = Patient2Vec1(input_size, embedding_size, hidden_size, n_layers, att_dim, initrange, output_size,
+    #                         rnn_type, seq_len, pad_size, n_filters, bi=True, dropout_p=drop)
+    # elif model_type == 'crnn-bi-med-fn':
+    #     model = Patient2Vec2(input_size, hidden_size, n_layers, initrange, output_size,
+    #                         rnn_type, seq_len, pad_size, n_filters, bi=True, dropout_p=drop)
+    #
+    # criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor([1, 10]))
+    # optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=decay)
+    # # model_path = './saved_models/model_' + model_type + '_layer' + str(n_layers) + '_l' + str(l) + 'filter' + str(n_filters) + '.dat'
+    # print('Start Training...')
+    # # if os.path.exists(model_path):
+    # #     saved_model = torch.load(model_path)
+    # #     model.load_state_dict(saved_model)
+    # # # else:
+    #     # model.init_weights(initrange)
+    #     # Train the model
+    # start_time = time.time()
+    # best_loss_dev = 100
+    # best_dev_iter = 0
+    # n_iter = 0
+    # epoch = 0
+    # while epoch < epoch_max:
+    #     step = 0
+    #     while (step + 1) * batch_size < train_iters:
+    #         batch_x, batch_demoip, batch_y = create_batch(step, batch_size, train, train_demoips, train_y, w2v_model, size, pad_size, l)
+    #         optimizer.zero_grad()
+    #         y_pred, wts, _ = model(batch_x, batch_demoip, batch_size)
+    #         # states, alpha, beta = model(batch_x, batch_size)
+    #         if model_type == 'crnn2-bi-tanh-fn':
+    #             loss = get_loss(y_pred, batch_y, criterion, wts, a)
+    #         elif model_type == 'crnn-bi-med-fn':
+    #             loss = get_loss_v2(y_pred, batch_y, criterion, wts, seq_len, batch_size, a)
+    #         else:
+    #             loss = criterion(y_pred, batch_y)
+    #
+    #         loss.backward()
+    #         optimizer.step()
+    #
+    #         if step % interval == 0:
+    #             elapsed = time.time() - start_time
+    #             # acc = calcualte_accuracy(y_pred, batch_y, batch_size)
+    #             print('%i epoch, %i batches, elapsed time: %.2f, loss: %.3f' % (epoch + 1, step + 1, elapsed, loss.data[0]))
+    #             # Evaluate model performance on validation set
+    #             pred_dev, _, _ = model(validate_x, validate_demoips, len(valid_ids))
+    #             loss_dev = criterion(pred_dev, validate_y)
+    #             pred_ind_dev, val_dev = model_testing_dev(pred_dev)
+    #             perfm_dev, auc_dev = calculate_performance(validate_y.data.tolist(), pred_ind_dev, val_dev)
+    #             print("Performance on dev set: AUC is %.3f" % auc_dev)
+    #             # print(perfm_dev)
+    #
+    #             # pred_ind_batch = model_testing_one_batch(model, batch_x, batch_demoip, batch_size)
+    #             # perfm_batch, auc_batch = calculate_performance(batch_y.data.tolist(), pred_ind_batch)
+    #             # print("Performance on training set: AUC is %.3f" % auc_batch)
+    #             # # print(perfm_batch)
+    #             print('Validation, loss: %.3f' % (loss_dev.data[0]))
+    #             if loss_dev.data[0] < best_loss_dev:
+    #                 best_loss_dev = loss_dev.data[0]
+    #                 best_dev_iter = n_iter
+    #                 print('best validation at %i with loss %.3f' % (best_dev_iter, best_loss_dev))
+    #                 state_to_save = model.state_dict()
+    #                 torch.save(state_to_save, model_path)
+    #             if n_iter - best_dev_iter >= n_iter_max_dev:
+    #                 break
+    #         step += 1
+    #         n_iter += 1
+    #     if n_iter - best_dev_iter >= n_iter_max_dev:
+    #         break
+    #     epoch += 1
+    # # save trained model
+    # # state_to_save = model.state_dict()
+    # # torch.save(state_to_save, model_path)
+    # elapsed = time.time() - start_time
+    # print('Training Finished! Total Training Time is: % .2f' % elapsed)
+    # # #
+    # # # ============================ To evaluate model using testing set =============================================
+    # print('Start Testing...')
+    # result_file = './results/test_results_w2v_' + model_type + '_layer' + str(n_layers) + '_1.pickle'
+    output_file = './results/test_outputs_' + model_type + '_layer' + str(n_layers) + '.pickle'
 
     # model_type = 'crnn2-bi-tanh-fn'
     # by default build a LR model
@@ -800,22 +804,23 @@ if __name__ == '__main__':
     # # Evaluate the model
     model.eval()
     test_start_time = time.time()
-    pred_test, val_test = model_testing(model, test, test_y, test_demoips, w2v_model, size, pad_size, l, batch_size=1000)
+    pred_test, val_test, code_wts_test = model_testing(model, test, test_y, test_demoips, w2v_model, size, pad_size, l, batch_size=1000)
     perfm, auc = calculate_performance(test_y, pred_test, val_test)
     elapsed_test = time.time() - test_start_time
     print(auc)
     print(perfm)
-    with open(result_file, 'wb') as f:
-        pickle.dump([pred_test, val_test, test_y], f)
-    f.close()
+    # with open(result_file, 'wb') as f:
+    #     pickle.dump([pred_test, val_test, test_y], f)
+    # f.close()
     print('Testing Finished!')
     # with open('./data/test_demoips.pickle', 'wb') as f:
     #     pickle.dump(test_demoips, f)
     # f.close()
 
-    # with open(output_file, 'wb') as f:
-    #     pickle.dump(output_test, f)
-    # f.close()
+    with open(output_file, 'wb') as f:
+        pickle.dump(code_wts_test, f)
+    f.close()
+    print('Results saved!')
     # print(pred_test[:10, :10])
     # # To do:
     # # 1. When selecting variables, for labs select last or first two and last two;
@@ -828,71 +833,71 @@ if __name__ == '__main__':
     # f.close()
     # test_x, test_y = list2tensor(test_x, test_y)
 
-
-    # result analysis
-    inds = [15564, 2538, 11438, 2682, 7257, 5923, 2, 10, 18, 53, 182, 329]
-    testx_exm = [test[i] for i in inds]
-    testy_exm = [test_y[i] for i in inds]
-    testdemoip_exm = [test_demoips[i] for i in inds]
     #
-    x, y = create_full_set(testx_exm, testy_exm, w2v_model, size, pad_size, l)
-    x = Variable(torch.FloatTensor(x), requires_grad=False)
-    y = Variable(torch.LongTensor(y), requires_grad=False)
-    demoip = Variable(torch.FloatTensor(testdemoip_exm), requires_grad=False)
+    # # result analysis
+    # inds = [15564, 2538, 11438, 2682, 7257, 5923, 2, 10, 18, 53, 182, 329]
+    # testx_exm = [test[i] for i in inds]
+    # testy_exm = [test_y[i] for i in inds]
+    # testdemoip_exm = [test_demoips[i] for i in inds]
+    # #
+    # x, y = create_full_set(testx_exm, testy_exm, w2v_model, size, pad_size, l)
+    # x = Variable(torch.FloatTensor(x), requires_grad=False)
+    # y = Variable(torch.LongTensor(y), requires_grad=False)
+    # demoip = Variable(torch.FloatTensor(testdemoip_exm), requires_grad=False)
+    # #
+    # y_pred_exm, wts_seq_exm, others = model(x, demoip, len(inds))
+    # print(wts_seq_exm)
+    # print(others[2])
+    # # sequence level weights
+    # seq_wts = np.array(torch.transpose(wts_seq_exm, 1, 2).data.tolist())
+    # seq_wts_avg = np.sum(seq_wts, axis=2)/4
     #
-    y_pred_exm, wts_seq_exm, others = model(x, demoip, len(inds))
-    print(wts_seq_exm)
-    print(others[2])
-    # sequence level weights
-    seq_wts = np.array(torch.transpose(wts_seq_exm, 1, 2).data.tolist())
-    seq_wts_avg = np.sum(seq_wts, axis=2)/4
-
-    from sklearn.preprocessing import normalize
-    seq_wts_norm = normalize(seq_wts_avg, axis=1, norm='l1')
-
-    # code-level weights
-    code_wts = others[2].data.tolist()
-
-    with open('./results/example_pts_weights.pickle', 'wb') as f:
-        pickle.dump([seq_wts_norm, code_wts], f)
-
-
-    # further analysis on a group of patients
-    inds = [2538, 7257, 5923]
-    testdemoip_exm = [test_demoips[i] for i in inds]
-    test_exm = [test[i] for i in inds]
-    ages = [71, 64, 66] # 10 year is 0.443
-    testdemoip_exm_new1 = [[0.0, 1.1350491843712582, 1.0], [1.0, 1.1350491843712582, 1.0],
-                          [0.0, 1.578027, 1.0], [0.0, 1.1350491843712582, 0.0]]
-    testdemoip_exm_new2 = [[0.0, 0.8249648802368135, 0.0], [1.0, 0.8249648802368135, 0.0],
-                           [0.0, 0.8249648802368135 + 0.443, 0.0], [0.0, 0.8249648802368135, 1.0]]
-    testdemoip_exm_new3 = [[1.0, 0.9135603957037977, 0.0], [0.0, 0.9135603957037977, 0.0],
-                           [1.0, 0.9135603957037977 + 0.443, 0.0], [1.0, 0.9135603957037977, 1.0]]
-
-    testdemoip_exm_new = testdemoip_exm_new1 + testdemoip_exm_new2 + testdemoip_exm_new3
-    import copy
-    test1 = [copy.deepcopy(test_exm[0]), copy.deepcopy(test_exm[0]), copy.deepcopy(test_exm[0]), copy.deepcopy(test_exm[0])]
-    test2 = [copy.deepcopy(test_exm[1]), copy.deepcopy(test_exm[1]), copy.deepcopy(test_exm[1]), copy.deepcopy(test_exm[1])]
-    test3 = [copy.deepcopy(test_exm[2]), copy.deepcopy(test_exm[2]), copy.deepcopy(test_exm[2]), copy.deepcopy(test_exm[2])]
-    test_new = test1 + test2 + test3
-    testy_new = [1] * 12
-    x, y = create_full_set(test_new, testy_new, w2v_model, size, pad_size, l)
-    x = Variable(torch.FloatTensor(x), requires_grad=False)
-    y = Variable(torch.LongTensor(y), requires_grad=False)
-    demoip = Variable(torch.FloatTensor(testdemoip_exm_new), requires_grad=False)
+    # from sklearn.preprocessing import normalize
+    # seq_wts_norm = normalize(seq_wts_avg, axis=1, norm='l1')
     #
-    y_pred_exm, wts_seq_exm, others = model(x, demoip, 12)
-
-    new_pred_vals = [i[1] for i in y_pred_exm.data.tolist()]
-    new_pred_vals = [0.9587399959564209,
-                     0.9494227766990662,
-                     0.9671435952186584,
-                     0.956460177898407,
-                     0.7463871240615845,
-                     0.7039254903793335,
-                     0.7885023355484009,
-                     0.7568705081939697,
-                     0.7960509657859802,
-                     0.8285189270973206,
-                     0.8317776918411255,
-                     0.8050177097320557]
+    # # code-level weights
+    # code_wts = others[2].data.tolist()
+    #
+    # with open('./results/example_pts_weights.pickle', 'wb') as f:
+    #     pickle.dump([seq_wts_norm, code_wts], f)
+    #
+    #
+    # # further analysis on a group of patients
+    # inds = [2538, 7257, 5923]
+    # testdemoip_exm = [test_demoips[i] for i in inds]
+    # test_exm = [test[i] for i in inds]
+    # ages = [71, 64, 66] # 10 year is 0.443
+    # testdemoip_exm_new1 = [[0.0, 1.1350491843712582, 1.0], [1.0, 1.1350491843712582, 1.0],
+    #                       [0.0, 1.578027, 1.0], [0.0, 1.1350491843712582, 0.0]]
+    # testdemoip_exm_new2 = [[0.0, 0.8249648802368135, 0.0], [1.0, 0.8249648802368135, 0.0],
+    #                        [0.0, 0.8249648802368135 + 0.443, 0.0], [0.0, 0.8249648802368135, 1.0]]
+    # testdemoip_exm_new3 = [[1.0, 0.9135603957037977, 0.0], [0.0, 0.9135603957037977, 0.0],
+    #                        [1.0, 0.9135603957037977 + 0.443, 0.0], [1.0, 0.9135603957037977, 1.0]]
+    #
+    # testdemoip_exm_new = testdemoip_exm_new1 + testdemoip_exm_new2 + testdemoip_exm_new3
+    # import copy
+    # test1 = [copy.deepcopy(test_exm[0]), copy.deepcopy(test_exm[0]), copy.deepcopy(test_exm[0]), copy.deepcopy(test_exm[0])]
+    # test2 = [copy.deepcopy(test_exm[1]), copy.deepcopy(test_exm[1]), copy.deepcopy(test_exm[1]), copy.deepcopy(test_exm[1])]
+    # test3 = [copy.deepcopy(test_exm[2]), copy.deepcopy(test_exm[2]), copy.deepcopy(test_exm[2]), copy.deepcopy(test_exm[2])]
+    # test_new = test1 + test2 + test3
+    # testy_new = [1] * 12
+    # x, y = create_full_set(test_new, testy_new, w2v_model, size, pad_size, l)
+    # x = Variable(torch.FloatTensor(x), requires_grad=False)
+    # y = Variable(torch.LongTensor(y), requires_grad=False)
+    # demoip = Variable(torch.FloatTensor(testdemoip_exm_new), requires_grad=False)
+    # #
+    # y_pred_exm, wts_seq_exm, others = model(x, demoip, 12)
+    #
+    # new_pred_vals = [i[1] for i in y_pred_exm.data.tolist()]
+    # new_pred_vals = [0.9587399959564209,
+    #                  0.9494227766990662,
+    #                  0.9671435952186584,
+    #                  0.956460177898407,
+    #                  0.7463871240615845,
+    #                  0.7039254903793335,
+    #                  0.7885023355484009,
+    #                  0.7568705081939697,
+    #                  0.7960509657859802,
+    #                  0.8285189270973206,
+    #                  0.8317776918411255,
+    #                  0.8050177097320557]
