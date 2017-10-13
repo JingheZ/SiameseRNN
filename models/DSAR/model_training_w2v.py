@@ -830,7 +830,7 @@ if __name__ == '__main__':
 
 
     # result analysis
-    inds = [101, 141, 584, 677, 558, 182]
+    inds = [15564, 2538, 11438, 2682, 7257, 5923, 2, 10, 18, 53, 182, 329]
     testx_exm = [test[i] for i in inds]
     testy_exm = [test_y[i] for i in inds]
     testdemoip_exm = [test_demoips[i] for i in inds]
@@ -840,6 +840,59 @@ if __name__ == '__main__':
     y = Variable(torch.LongTensor(y), requires_grad=False)
     demoip = Variable(torch.FloatTensor(testdemoip_exm), requires_grad=False)
     #
-    y_pred_exm, wts_seq_exm, others = model(x, demoip, 6)
+    y_pred_exm, wts_seq_exm, others = model(x, demoip, len(inds))
     print(wts_seq_exm)
     print(others[2])
+    # sequence level weights
+    seq_wts = np.array(torch.transpose(wts_seq_exm, 1, 2).data.tolist())
+    seq_wts_avg = np.sum(seq_wts, axis=2)/4
+
+    from sklearn.preprocessing import normalize
+    seq_wts_norm = normalize(seq_wts_avg, axis=1, norm='l1')
+
+    # code-level weights
+    code_wts = others[2].data.tolist()
+
+    with open('./results/example_pts_weights.pickle', 'wb') as f:
+        pickle.dump([seq_wts_norm, code_wts], f)
+
+
+    # further analysis on a group of patients
+    inds = [2538, 7257, 5923]
+    testdemoip_exm = [test_demoips[i] for i in inds]
+    test_exm = [test[i] for i in inds]
+    ages = [71, 64, 66] # 10 year is 0.443
+    testdemoip_exm_new1 = [[0.0, 1.1350491843712582, 1.0], [1.0, 1.1350491843712582, 1.0],
+                          [0.0, 1.578027, 1.0], [0.0, 1.1350491843712582, 0.0]]
+    testdemoip_exm_new2 = [[0.0, 0.8249648802368135, 0.0], [1.0, 0.8249648802368135, 0.0],
+                           [0.0, 0.8249648802368135 + 0.443, 0.0], [0.0, 0.8249648802368135, 1.0]]
+    testdemoip_exm_new3 = [[1.0, 0.9135603957037977, 0.0], [0.0, 0.9135603957037977, 0.0],
+                           [1.0, 0.9135603957037977 + 0.443, 0.0], [1.0, 0.9135603957037977, 1.0]]
+
+    testdemoip_exm_new = testdemoip_exm_new1 + testdemoip_exm_new2 + testdemoip_exm_new3
+    import copy
+    test1 = [copy.deepcopy(test_exm[0]), copy.deepcopy(test_exm[0]), copy.deepcopy(test_exm[0]), copy.deepcopy(test_exm[0])]
+    test2 = [copy.deepcopy(test_exm[1]), copy.deepcopy(test_exm[1]), copy.deepcopy(test_exm[1]), copy.deepcopy(test_exm[1])]
+    test3 = [copy.deepcopy(test_exm[2]), copy.deepcopy(test_exm[2]), copy.deepcopy(test_exm[2]), copy.deepcopy(test_exm[2])]
+    test_new = test1 + test2 + test3
+    testy_new = [1] * 12
+    x, y = create_full_set(test_new, testy_new, w2v_model, size, pad_size, l)
+    x = Variable(torch.FloatTensor(x), requires_grad=False)
+    y = Variable(torch.LongTensor(y), requires_grad=False)
+    demoip = Variable(torch.FloatTensor(testdemoip_exm_new), requires_grad=False)
+    #
+    y_pred_exm, wts_seq_exm, others = model(x, demoip, 12)
+
+    new_pred_vals = [i[1] for i in y_pred_exm.data.tolist()]
+    new_pred_vals = [0.9587399959564209,
+                     0.9494227766990662,
+                     0.9671435952186584,
+                     0.956460177898407,
+                     0.7463871240615845,
+                     0.7039254903793335,
+                     0.7885023355484009,
+                     0.7568705081939697,
+                     0.7960509657859802,
+                     0.8285189270973206,
+                     0.8317776918411255,
+                     0.8050177097320557]

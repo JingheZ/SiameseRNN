@@ -395,7 +395,7 @@ if __name__ == '__main__':
     rnn_type = 'GRU'
     drop = 0.1
     learning_rate = 0.001
-    decay = 0.01
+    decay = 0.005
     interval = 200
     initrange = 1
     att_dim = 100
@@ -404,7 +404,7 @@ if __name__ == '__main__':
     epoch_max = 3 # training for maximum 3 epochs of training data
     n_iter_max_dev = 100 # if no improvement on dev set for maximum n_iter_max_dev, terminate training
     train_iters = len(train_ids)
-    model_type = 'rnn'
+    model_type = 'rnn-bi'
     model_path = './saved_models/model_cts_' + model_type + '_layer' + str(n_layers) + 'V2.dat'
     # Build and train/load the model
     print('Build Model...')
@@ -489,7 +489,7 @@ if __name__ == '__main__':
     print('Start Testing...')
     result_file = './results/test_results_cts_' + model_type + '_layer' + str(n_layers) + 'V2.pickle'
     # output_file = './results/test_outputs_' + model_type + '_layer' + str(n_layers) + '.pickle'
-    model_type = 'rnn'
+    model_type = 'rnn-bi'
     # Build and train/load the model
     print('Build Model...')
     # by default build a RNN model

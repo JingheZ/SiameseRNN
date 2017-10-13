@@ -4,6 +4,8 @@ from sklearn import metrics
 import numpy as np
 import pickle
 import pandas as pd
+import operator
+from sklearn.preprocessing import normalize
 
 
 def calculate_scores_bootstraps(pred, y, val):
@@ -48,81 +50,167 @@ def calculate_results(result_file):
     res = calculate_scores_bootstraps(pred, y, val)
     return res
 
-#
-# def analyze_example_pts(result_file):
-#     with open(result_file, 'rb') as f:
-#         pred, val, y = pickle.load(f)
-#     with open('./data/hospitalization_train_validate_test_ids.pickle', 'rb') as f:
-#         train_ids, valid_ids, test_ids = pickle.load(f)
-#     with open('./data/hospitalization_test_data_demoip.pickle', 'rb') as f:
-#         test_genders, test_ages, test_ip = pickle.load(f)
-#     f.close()
-#
-#     result = list(zip(test_ids, pred, y, val))
-#     result = pd.DataFrame(result)
-#     result.columns = ['ptid', 'pred_label', 'true_label', 'pred_val']
-#     result['gender'] = test_genders
-#     result['age'] = test_ages
-#     result['ip'] = test_ip
-#
-#
-#     result = result.sort_values(['true_label', 'pred_val'], ascending=[0, 0])
-#     ptids1 = ['1676027', '826205', '956147']
-#     ptids0 = ['656618', '1839296', '1334050']
-#     ptids = ptids1 + ptids0
-#     inds = [101, 141, 584, 677, 558, 182]
-#
-#     with open('./data/hospitalization_test_data_by_' + str(l) + 'month.pickle', 'rb') as f:
-#         test, test_y = pickle.load(f)
-#
-#     def aggregate_codes(test, ind):
-#         data = test[ind]
-#         meds_seq = []
-#         for i in range(4):
-#             meds = []
-#             for j in data[i]:
-#                 if j[:2] == 'dx':
-#                     if j[2:] in dx_dict:
-#                         dxgrp = get_dx_code(j[2:])
-#                     else:
-#                         dxgrp = j
-#                     meds.append(dxgrp)
-#                 elif j[0] == 'p':
-#                     if j[1:] in proc_dict:
-#                         procgrp = get_proc_code(j[1:])
-#                     else:
-#                         procgrp = j
-#                     meds.append(procgrp)
-#                 else:
-#                     meds.append(j)
-#             meds_seq.append(meds)
-#         return meds_seq
-#
-#
-    # xs = []
-    # for i in inds:
-    #     x = test[i]
+
+def get_csv(result_file):
+    with open(result_file, 'rb') as f:
+        pred, val, y = pickle.load(f)
+    sp = list(zip(pred, y, val))
+    result = pd.DataFrame(sp)
+    result.columns = ['pred_label', 'true_label', 'pred_val']
+    result.to_csv('./data/result_' + model_type + '.csv', index=False)
 
 
-    # l = 3
-    # with open('./data/clinical_events_hospitalization.pickle', 'rb') as f:
-    #     data = pickle.load(f)
-    # data = data.sort(['ptid', 'adm_month'], ascending=[1, 1])
-    # with open('./data/hospitalization_test_data_by_' + str(l) + 'month.pickle', 'rb') as f:
-    #     test, test_y = pickle.load(f)
-    # f.close()
-    #
-    #
-    # batch_x, batch_demoip, _ = create_batch(i, batch_size, test, test_demoips, test_y, w2v, vsize, pad_size, l)
-    # y_pred, _, _ = model(batch_x, batch_demoip, batch_size)
-    #
 
+def analyze_example_pts(result_file):
+    with open(result_file, 'rb') as f:
+        pred, val, y = pickle.load(f)
+    with open('./data/hospitalization_train_validate_test_ids.pickle', 'rb') as f:
+        train_ids, valid_ids, test_ids = pickle.load(f)
+    with open('./data/hospitalization_test_data_demoip.pickle', 'rb') as f:
+        test_genders, test_ages, test_ip = pickle.load(f)
+    f.close()
+
+    result = list(zip(test_ids, pred, y, val))
+    result = pd.DataFrame(result)
+    result.columns = ['ptid', 'pred_label', 'true_label', 'pred_val']
+    result['gender'] = test_genders
+    result['age'] = test_ages
+    result['ip'] = test_ip
+
+    # get number of subseq
+    l = 3
+    with open('./data/clinical_events_hospitalization.pickle', 'rb') as f:
+        data = pickle.load(f)
+    data = data[data['ptid'].isin(test_ids)]
+    data = data.sort(['ptid', 'adm_month'], ascending=[1, 1])
+    data2 = data[data['adm_month'].isin((0, 11))]
+    data2['adm_subseq'] = data2['adm_month'].apply(lambda x: int(x/l))
+    subseq_cts = data2[['ptid', 'adm_subseq']].drop_duplicates().groupby('ptid').count()
+    subseq_cts.reset_index(inplace=True)
+
+    result = pd.merge(result, subseq_cts, left_on='ptid', right_on='ptid', how='inner')
+    result_neg = result[result['true_label'] == 0]
+    result = result.sort(['adm_subseq'], ascending=[0])
+
+    # get primary pdx for hospitalization
+    with open('./data/dxs_data_v2.pickle', 'rb') as f:
+        dxs = pickle.load(f)
+    f.close()
+
+    data_ip = data[data['adm_month'] > 17]
+    data_ip = data_ip[data_ip['cdrIPorOP'] == 'IP']
+    data_ip = data_ip.sort(['adm_month'], ascending=[1])
+    data_ip1 = data_ip[['ptid', 'adm_month']].groupby('ptid').min()
+    data_ip1.reset_index(inplace=True)
+    data_ip1.columns = ['ptid', 'first']
+    data_ip2 = pd.merge(data_ip, data_ip1, left_on='ptid', right_on='ptid', how='inner')
+    data_ip3 = data_ip2[data_ip2['adm_month'] == data_ip2['first']]
+
+    data_ip_pdx = pd.merge(data_ip3[['ptid', 'vid', 'first']], dxs[['vid', 'pdx']].drop_duplicates(), left_on='vid', right_on='vid', how='inner')
+    data_ip_pdx = data_ip_pdx[['ptid', 'first', 'pdx']].drop_duplicates()
+    data_ip_pdx.columns = ['ptid', 'ip_month', 'pdx_ip']
+    result2 = pd.merge(result, data_ip_pdx, left_on='ptid', right_on='ptid', how='inner')
+
+    chf = result2[result2['pdx_ip'].between('420', '4299')]
+    copd = result2[result2['pdx_ip'].between('490', '496')]
+
+    result2.to_csv('./results/result_table_pt_info_pos.csv', index=True)
+    result_neg.to_csv('./results/result_table_pt_info_neg.csv', index=True)
+
+    with open('./data/hospitalization_test_data_by_' + str(l) + 'month.pickle', 'rb') as f:
+        test, test_y = pickle.load(f)
+    f.close()
+    #get example patient
+    ptids1 = ['1446009', '1150550', '554938', '1348961', '1539136', '1703959']
+    ptids0 = ['1790610', '1634904', '1218594', '773135', '1334050', '1596720']
+    ptids = ptids1 + ptids0
+    inds = [list(test_ids).index(i) for i in ptids]
+
+
+    with open('./data/ccs_codes_all_item_categories.pickle', 'rb') as f:
+        item_cats = pickle.load(f)
+    f.close()
+    itemdict = item_cats['cat'].to_dict()
+
+    def get_codes(test, ind, itemdict):
+        data = test[ind]
+        meds_seq = []
+        for i in range(4):
+            meds = []
+            if len(data[i]) > 0:
+                for j in data[i]:
+                    if itemdict.__contains__(j):
+                        grp = itemdict[j]
+                    else:
+                        grp = j
+                    meds.append(grp)
+            meds_seq.append(meds)
+        return meds_seq
+
+    def aggregate_code_wts(meds_seq, data):
+        wts = []
+        for i in range(4):
+            w = {}
+            if len(meds_seq[i]) > 0:
+                for k in range(len(meds_seq[i])):
+                    if not w.__contains__(meds_seq[i][k]):
+                       w[meds_seq[i][k]] = 0
+                    w[meds_seq[i][k]] += data[i][k]
+                if w.__contains__('p0'):
+                    del w['p0']
+                if w.__contains__('dx259'):
+                    del w['dx259']
+                wk = list(w.keys())
+                wv = list(w.values())
+                wv = normalize(wv, norm='l1').tolist()[0]
+                w1 = dict(zip(wk, wv))
+                w = sorted(w1.items(), key=operator.itemgetter(1), reverse=True)
+            wts.append(w)
+        return wts
+
+    with open('./results/example_pts_weights.pickle', 'rb') as f:
+        seq_wts, code_wts = pickle.load(f)
+
+
+    all_wts = []
+    for x, p in enumerate(inds):
+        meds_seq = get_codes(test, p, itemdict)
+        wts = aggregate_code_wts(meds_seq, code_wts[x])
+        all_wts.append(wts)
+
+
+    exmple_pos = result2[result2['ptid'].isin(ptids1)]
+    exmple_neg = result_neg[result_neg['ptid'].isin(ptids0)]
+
+
+    # get demographics info:
+    with open('./data/orders_pt_info.pickle', 'rb') as f:
+        pt_info_orders = pickle.load(f)
+
+    ages = pt_info_orders[['ptid', 'age']].drop_duplicates().groupby('ptid').min()
+    ages = ages['age'].to_dict()
+
+    ages_exmple = [ages[x] for x in ptids]
+    actual_ages = [77, 71, 81, 51, 64, 66, 44, 12, 69, 55, 66, 12]
+    ptids1 = ['1446009', '1150550', '554938', '1348961', '1539136', '1703959']
+    ptids0 = ['1790610', '1634904', '1218594', '773135', '1334050', '1596720']
+
+    # selected pts for further analysis
+    ptids = ['1150550', '1539136', '1703959']
+    inds = [list(test_ids).index(i) for i in ptids]
+    # ages_exmple = [ages[x] for x in ptids]
+    exmple = result2[result2['ptid'].isin(ptids)]
+    seq_wts_exmple = [seq_wts[i] for i in [1, 4, 5]]
+    code_wts_exmple = [all_wts[i] for i in [1, 4, 5]]
+
+    with open('./results/example_pts_info.pickle', 'wb') as f:
+        pickle.dump([exmple, seq_wts_exmple, code_wts_exmple], f)
 
 # =============================== LR ================================
 model_type = 'LR'
 result_file = './results/test_results_' + model_type + '.pickle'
 lr = calculate_results(result_file)
-
+get_csv(result_file)
 # =============================== MLP ===============================
 model_type = 'MLP-256'
 result_file = './results/test_results_' + model_type + '.pickle'
@@ -136,7 +224,7 @@ rnn_mge = calculate_results(result_file)
 
 # =============================== bi-rnn mge ===========================
 model_type = 'rnn-bi'
-result_file = './results/test_results_cts_' + model_type + '_layer1.pickle'
+result_file = './results/test_results_cts_' + model_type + '_layer1V2.pickle'
 birnn_mge = calculate_results(result_file)
 
 # =============================== retain ===========================
@@ -156,10 +244,10 @@ birnn_mve = calculate_results(result_file)
 
 # =============================== p2v ===============================
 model_type = 'crnn2-bi-tanh-fn'
-result_file = './results/test_results_' + model_type + '_layer1.pickle'
+result_file = './results/test_results_w2v_' + model_type + '_layer1_1.pickle'
 p2v = calculate_results(result_file)
-result_file = './results/test_results_w2v_' + model_type + '_layer1_nf10_a01_v2.pickle'
-p2v = calculate_results(result_file)
-
-result_file = './results/test_results_w2v_' + model_type + '_layer1_nf3_a1.pickle'
-p2v = calculate_results(result_file)
+# result_file = './results/test_results_w2v_' + model_type + '_layer1_nf10_a01_v2.pickle'
+# p2v = calculate_results(result_file)
+#
+# result_file = './results/test_results_w2v_crnn2-bi-tanh-fn_layer1a001_saved.pickle'
+# p2v = calculate_results(result_file)
