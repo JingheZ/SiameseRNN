@@ -835,14 +835,16 @@ if __name__ == '__main__':
 
     # among all positive test pts
     test_pos = [test[i] for i in range(len(test_ids)) if test_y[i] == 1]
+    pos_ids = [test_ids[i] for i in range(len(test_ids)) if test_y[i] == 1]
     context_pos = [context_code_test[i] for i in range(len(test_ids)) if test_y[i] == 1]
     seq_wts_pos = [seq_wts_test[i] for i in range(len(test_ids)) if test_y[i] == 1]
     code_wts_pos = [code_wts_test[i] for i in range(len(test_ids)) if test_y[i] == 1]
+    demoips_pos = [test_demoips[i] for i in range(len(test_ids)) if test_y[i] == 1]
     seq_wts_pos = aggregate_seq_wts(seq_wts_pos)
 
     output_file = './results/test_outputs_pos' + model_type + '_layer' + str(n_layers) + '.pickle'
     with open(output_file, 'wb') as f:
-        pickle.dump([seq_wts_pos, code_wts_pos, context_pos, test_pos], f)
+        pickle.dump([pos_ids, seq_wts_pos, code_wts_pos, context_pos, demoips_pos, test_pos], f)
     f.close()
 
 

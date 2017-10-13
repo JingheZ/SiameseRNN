@@ -6,6 +6,7 @@ import pickle
 import pandas as pd
 import operator
 from sklearn.preprocessing import normalize
+from collections import Counter
 
 
 def calculate_scores_bootstraps(pred, y, val):
@@ -266,11 +267,12 @@ if __name__ == '__main__':
     inds = [list(test_ids).index(i) for i in ptids]
     # ages_exmple = [ages[x] for x in ptids]
     exmple = result2[result2['ptid'].isin(ptids)]
+    exmple_seq = [test[i] for i in inds]
     seq_wts_exmple = [seq_wts[i] for i in [0, 4, 5]]
     code_wts_exmple = [all_wts[i] for i in [0, 4, 5]]
 
     with open('./results/example_pts_info.pickle', 'wb') as f:
-        pickle.dump([exmple, seq_wts_exmple, code_wts_exmple], f)
+        pickle.dump([exmple, exmple_seq, seq_wts_exmple, code_wts_exmple], f)
 
     ages = [77, 64, 66]  # 10 year is 0.443
     testdemoip_exm_new1 = [[0.0, 1.4008357307722108, 1.0], [1.0, 1.4008357307722108, 1.0],
@@ -298,7 +300,7 @@ if __name__ == '__main__':
     model_type = 'crnn2-bi-tanh-fn'
     output_file = './results/test_outputs_pos' + model_type + '_layer1.pickle'
     with open(output_file, 'rb') as f:
-        seq_wts_pos, code_wts_pos, context_pos, test_pos = pickle.load(f)
+        pos_ids, seq_wts_pos, code_wts_pos, context_pos, demoips_pos, test_pos = pickle.load(f)
     f.close()
 
     with open('./data/hospitalization_train_validate_test_ids.pickle', 'rb') as f:
@@ -331,36 +333,134 @@ if __name__ == '__main__':
         items = [j[0] for j in wts]
         return items, len(w)
 
-    from collections import Counter
-    top_items = []
-    num_items = []
-    for x in range(len(test_pos)):
-        meds_seq = get_codes(test_pos, x, itemdict)
-        items, nums = aggregate_code_wts_items_top(meds_seq, seq_wts_pos[x], code_wts_pos[x], n=10)
-        top_items += items
-        num_items.append(nums)
+    def get_top_items(inds, test_pos, itemdict, seq_wts_pos, code_wts_pos, n1, n2):
+        top_items = []
+        num_items = []
+        for x in inds:
+            meds_seq = get_codes(test_pos, x, itemdict)
+            items, nums = aggregate_code_wts_items_top(meds_seq, seq_wts_pos[x], code_wts_pos[x], n=n1)
+            top_items += items
+            num_items.append(nums)
+        top_items_cts = dict(Counter(top_items))
+        top_items_sorted = sorted(top_items_cts.items(), key=operator.itemgetter(1), reverse=True)[:n2]
+        return top_items_sorted
 
-    # num_items = np.array(num_items)
-    top_items_cts = dict(Counter(top_items))
-    top_items_sorted = sorted(top_items_cts.items(), key=operator.itemgetter(1), reverse=True)[:20]
-    top_items_sorted
-[('p33', 834),
- ('p171', 772),
- ('p19', 674),
- ('p233', 532),
- ('Diagnostic Products', 384),
- ('p235', 370),
- ('dx98', 352),
- ('dx211', 283),
- ('dx205', 278),
- ('p112', 267),
- ('dx133', 258),
- ('p61', 256),
- ('dx53', 241),
- ('dx257', 226),
- ('Analgesics-Narcotic', 224),
- ('dx49', 222),
- ('dx663', 214),
- ('p211', 209),
- ('dx95', 194),
- ('dx258', 190)]
+    top_items_sorted = get_top_items(range(len(test_pos)), test_pos, itemdict, seq_wts_pos, code_wts_pos, 5, 30)
+    # top_items_sorted
+    # [('p33', 834),
+    #  ('p171', 772),
+    #  ('p19', 674),
+    #  ('p233', 532),
+    #  ('Diagnostic Products', 384),
+    #  ('p235', 370),
+    #  ('dx98', 352),
+    #  ('dx211', 283),
+    #  ('dx205', 278),
+    #  ('p112', 267),
+    #  ('dx133', 258),
+    #  ('p61', 256),
+    #  ('dx53', 241),
+    #  ('dx257', 226),
+    #  ('Analgesics-Narcotic', 224),
+    #  ('dx49', 222),
+    #  ('dx663', 214),
+    #  ('p211', 209),
+    #  ('dx95', 194),
+    #  ('dx258', 190)]
+
+    # =========================== visualize the learned representation for patients in some groups =========
+    def dx2dxcat():
+        filename1 = './data/dxref.csv'
+        filename2 = './data/ccs_dx_icd10cm_2016.csv'
+
+        def CCS(filename):
+            data = pd.read_csv(filename, dtype=object)
+            cols = data.columns
+            data = data[cols[:3]]
+            data.columns = ['icd', 'category', 'name']
+            data['icd'] = data['icd'].str.replace("'", "")
+            data['category'] = data['category'].str.replace("'", "")
+            data['name'] = data['name'].str.replace("'", "")
+            data['icd'] = data['icd'].str.replace(" ", "")
+            data['category'] = data['category'].str.replace(" ", "")
+            return data
+        dxgrps9 = CCS(filename1)
+        dxgrps10 = CCS(filename2)
+        dxgrps = pd.concat([dxgrps9, dxgrps10], axis=0)
+        dxgrps.index = dxgrps['icd']
+        dxgrps_dict = dxgrps[['category']].to_dict()['category']
+        del dxgrps_dict['']
+        dxgrps_dict['F431'] = '651'
+        icd10_init = ['R', 'L', 'M', 'G', 'W', 'S', 'V', 'F', 'D', 'X', 'P', 'T', 'N', 'O', 'Z', 'Y', 'I', 'C', 'Q', 'H', 'J', 'E', 'K']
+        dxgrps_dict2 = {}
+        for k, v in dxgrps_dict.items():
+            if k[0] in icd10_init and len(k) > 5:
+                if not dxgrps_dict2.__contains__(k[:5]):
+                    dxgrps_dict2[k[:5]] = v
+        return dxgrps, dxgrps_dict, dxgrps_dict2
+
+    def process_pdxs(data, dxgrps_dict, dxgrps_dict2):
+        data['pdx_ip'] = data['pdx_ip'].str.replace('.', '')
+        dxs = data['pdx_ip'].values.tolist()
+        dxcats = []
+        for i in dxs:
+            if dxgrps_dict.__contains__(i):
+                dxcats.append(dxgrps_dict[i])
+            elif dxgrps_dict2.__contains__(i):
+                dxcats.append(dxgrps_dict2[i])
+            else:
+                dxcats.append('0')
+        data['pdxcat'] = dxcats
+        data = data[data['pdxcat'] != '0']
+        return data
+
+    result2_repeated = result2[['ptid', 'pdx_ip']].groupby('ptid').count()
+    result2_repeated.reset_index(inplace=True)
+    result2_repeated = result2_repeated[result2_repeated['pdx_ip'] > 1]
+    repeat_ids = list(result2_repeated['ptid'].values)
+
+    dxgrps0, dxgrps_dict0, dxgrps_dict20 = dx2dxcat()
+    result3 = result2[~result2['ptid'].isin(repeat_ids)]
+    result3 = process_pdxs(result3, dxgrps_dict0, dxgrps_dict20)
+    result3_pdxgrp_cts = result3[['ptid', 'pdxcat']].groupby('pdxcat').count()
+    result3_pdxgrp_cts.reset_index(inplace=True)
+    result3_pdxgrp_cts = result3_pdxgrp_cts.sort(['ptid'], ascending=[0])
+
+    pos_203 = result3[result3['pdxcat'] == '203']
+    pos_2 = result3[result3['pdxcat'] == '2']
+    pos_100 = result3[result3['pdxcat'] == '100']
+    pos_108 = result3[result3['pdxcat'] == '108']
+    ids_203 = list(pos_203['ptid'].values)
+    ids_2 = list(pos_2['ptid'].values)
+    ids_100 = list(pos_100['ptid'].values)
+    ids_108 = list(pos_108['ptid'].values)
+    inds_203 = [pos_ids.index(i) for i in ids_203]
+    inds_2 = [pos_ids.index(i) for i in ids_2]
+    inds_100 = [pos_ids.index(i) for i in ids_100]
+    inds_108 = [pos_ids.index(i) for i in ids_108]
+
+    top_items_203 = get_top_items(inds_203, test_pos, itemdict, seq_wts_pos, code_wts_pos, 5, 30)
+    top_items_2 = get_top_items(inds_2, test_pos, itemdict, seq_wts_pos, code_wts_pos, 5, 30)
+    top_items_100 = get_top_items(inds_100, test_pos, itemdict, seq_wts_pos, code_wts_pos, 5, 30)
+    top_items_108 = get_top_items(inds_108, test_pos, itemdict, seq_wts_pos, code_wts_pos, 5, 30)
+
+    # # visualize in t-sne
+    # ys = [1] * len(pos_203) + [2] * len(pos_2) + [3] * len(pos_100) + [4] * len(pos_108)
+
+    #
+    # import numpy as np
+    # context_pos_all = np.concatenate((context_pos, demoips_pos), axis=1)
+    # context_groups = [context_pos_all[pos_ids.index(i)] for i in ids]
+    #
+    # from sklearn.manifold import TSNE
+    # import matplotlib.pyplot as plt
+    # import seaborn as sns
+    #
+    # tsne = TSNE(n_components=2, n_iter=5000)
+    # context_2d = tsne.fit_transform(context_groups)
+    # contex_x = [a[0] for a in context_2d]
+    # contex_y = [a[1] for a in context_2d]
+    # df = pd.DataFrame(dict(x=contex_x, y=contex_y, color=ys))
+    # sns.lmplot('x', 'y', data=df, hue='color', fit_reg=False)
+    # plt.show()
+
