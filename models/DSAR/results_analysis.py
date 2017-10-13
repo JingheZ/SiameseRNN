@@ -115,8 +115,8 @@ def aggregate_code_wts_items_top(meds_seq, data):
             wv = list(w.values())
             wv = normalize(wv, norm='l1').tolist()[0]
             w1 = dict(zip(wk, wv))
-            w = sorted(w1.items()[0], key=operator.itemgetter(1), reverse=True)[:10]
-        wts += w
+            w = sorted(w1.items(), key=operator.itemgetter(1), reverse=True)[:10]
+            wts += [t[0] for t in w]
     return wts
 
 
@@ -300,5 +300,5 @@ if __name__ == '__main__':
     for x, p in enumerate(test_ids):
         meds_seq = get_codes(test, x, itemdict)
         items = aggregate_code_wts_items_top(meds_seq, code_wts[x])
-        top_items.append(items)
+        top_items += items
 
