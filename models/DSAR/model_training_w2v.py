@@ -540,12 +540,12 @@ def process_demoip():
 
 
 def model_testing_one_batch(model, batch_x, batch_demoip, batch_size):
-    y_pred, seq_wts, others = model(batch_x, batch_demoip, batch_size)
+    y_pred, swts, others = model(batch_x, batch_demoip, batch_size)
     _, predicted = torch.max(y_pred.data, 1)
     pred = predicted.view(-1).tolist()
     val = y_pred[:, 1].data.tolist()
     cwts = others[2].data.tolist()
-    swts = seq_wts.data.tolist()
+    # swts = seq_wts.data.tolist()
     return pred, val, swts, cwts
 
 
@@ -830,11 +830,21 @@ if __name__ == '__main__':
     #     pickle.dump(test_demoips, f)
     # f.close()
 
+    # among all positive test pts
+    test_pos = [test[i] for i in range(len(test_ids)) if test_y[i] == 1]
+    testy_pos = [1] * len(test_pos)
+    test_demoips_pos = [test_demoips[i] for i in range(len(test_ids)) if test_y[i] == 1]
+    pos_x, pos_y = create_full_set(test_pos, testy_pos, w2v_model, size, pad_size, l)
+    pos_demoips = Variable(torch.FloatTensor(test_demoips_pos), requires_grad=False)
+    pred, val, swts, cwts = model_testing_one_batch(model, pos_x, pos_demoips, len(testy_pos))
+
+
+
+
     with open(output_file, 'wb') as f:
-        pickle.dump([seq_wts_test, code_wts_test], f)
+        pickle.dump([swts, cwts], f)
     f.close()
-    print(len(seq_wts_test))
-    print(len(seq_wts_test[0]))
+
 
     print('Results saved!')
     # print(pred_test[:10, :10])
