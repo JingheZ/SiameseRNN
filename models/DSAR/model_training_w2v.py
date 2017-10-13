@@ -11,6 +11,7 @@ from torch.autograd import Variable
 from gensim.models import Word2Vec
 import numpy as np
 from sklearn import metrics
+from sklearn.preprocessing import normalize
 
 
 class RNNmodel(nn.Module):
@@ -545,8 +546,9 @@ def model_testing_one_batch(model, batch_x, batch_demoip, batch_size):
     pred = predicted.view(-1).tolist()
     val = y_pred[:, 1].data.tolist()
     cwts = others[2].data.tolist()
-    # swts = seq_wts.data.tolist()
-    return pred, val, swts, cwts
+    context = others[1].data.tolist()
+    swts = swts.data.tolist()
+    return pred, val, swts, cwts, context
 
 
 def model_testing_dev(y_pred):
@@ -562,13 +564,15 @@ def model_testing(model, test, test_y, test_demoips, w2v, vsize, pad_size, l, ba
     val_all = []
     code_wts = []
     seq_wts = []
+    contexts = []
     while (i + 1) * batch_size <= len(test_y):
         batch_x, batch_demoip, _ = create_batch(i, batch_size, test, test_demoips, test_y, w2v, vsize, pad_size, l)
-        pred, val, swts, cwts = model_testing_one_batch(model, batch_x, batch_demoip, batch_size)
+        pred, val, swts, cwts, context = model_testing_one_batch(model, batch_x, batch_demoip, batch_size)
         pred_all += pred
         val_all += val
         code_wts += cwts
         seq_wts += swts
+        contexts += context
         i += 1
     # the remaining data less than one batch
     batch_demoip = test_demoips[i * batch_size:]
@@ -578,12 +582,13 @@ def model_testing(model, test, test_y, test_demoips, w2v, vsize, pad_size, l, ba
         batch_x.append(x)
     batch_x = Variable(torch.FloatTensor(batch_x), requires_grad=False)
     batch_demoip = Variable(torch.FloatTensor(batch_demoip), requires_grad=False)
-    pred, val, swts, cwts = model_testing_one_batch(model, batch_x, batch_demoip, len(test_y) - i * batch_size)
+    pred, val, swts, cwts, context = model_testing_one_batch(model, batch_x, batch_demoip, len(test_y) - i * batch_size)
     pred_all += pred
     val_all += val
     code_wts += cwts
     seq_wts += swts
-    return pred_all, val_all, seq_wts, code_wts
+    contexts += context
+    return pred_all, val_all, seq_wts, code_wts, contexts
 
 
 def calculate_performance(test_y, pred, vals):
@@ -621,11 +626,10 @@ def get_loss_v2(pred, y, criterion, wts, seq_len, batch_size, a=0.5):
 
 
 def aggregate_seq_wts(wts):
-    seq_wts = np.array(torch.transpose(wts, 1, 2).data.tolist())
-    seq_wts_avg = np.sum(seq_wts, axis=2)/4
-
-    from sklearn.preprocessing import normalize
+    seq_wts = np.array(wts)
+    seq_wts_avg = np.sum(seq_wts, axis=1)/3
     seq_wts_norm = normalize(seq_wts_avg, axis=1, norm='l1')
+    return seq_wts_norm
 
 
 if __name__ == '__main__':
@@ -817,7 +821,7 @@ if __name__ == '__main__':
     # # Evaluate the model
     model.eval()
     test_start_time = time.time()
-    pred_test, val_test, seq_wts_test, code_wts_test = model_testing(model, test, test_y, test_demoips, w2v_model, size, pad_size, l, batch_size=1000)
+    pred_test, val_test, seq_wts_test, code_wts_test, context_code_test = model_testing(model, test, test_y, test_demoips, w2v_model, size, pad_size, l, batch_size=1000)
     perfm, auc = calculate_performance(test_y, pred_test, val_test)
     elapsed_test = time.time() - test_start_time
     print(auc)
@@ -832,17 +836,13 @@ if __name__ == '__main__':
 
     # among all positive test pts
     test_pos = [test[i] for i in range(len(test_ids)) if test_y[i] == 1]
-    testy_pos = [1] * len(test_pos)
-    test_demoips_pos = [test_demoips[i] for i in range(len(test_ids)) if test_y[i] == 1]
-    pos_x, pos_y = create_full_set(test_pos, testy_pos, w2v_model, size, pad_size, l)
-    pos_demoips = Variable(torch.FloatTensor(test_demoips_pos), requires_grad=False)
-    pred, val, swts, cwts = model_testing_one_batch(model, pos_x, pos_demoips, len(testy_pos))
-
-
-
+    context_pos = [context_code_test[i] for i in range(len(test_ids)) if test_y[i] == 1]
+    seq_wts_pos = [seq_wts_test[i] for i in range(len(test_ids)) if test_y[i] == 1]
+    code_wts_pos = [code_wts_test[i] for i in range(len(test_ids)) if test_y[i] == 1]
+    seq_wts_pos = aggregate_seq_wts(seq_wts_pos)
 
     with open(output_file, 'wb') as f:
-        pickle.dump([swts, cwts], f)
+        pickle.dump([seq_wts_pos, code_wts_pos, context_pos, test_pos], f)
     f.close()
 
 
@@ -859,71 +859,71 @@ if __name__ == '__main__':
     # f.close()
     # test_x, test_y = list2tensor(test_x, test_y)
 
+
+    # result analysis
+    inds = [15564, 2538, 11438, 2682, 7257, 5923, 2, 10, 18, 53, 182, 329]
+    testx_exm = [test[i] for i in inds]
+    testy_exm = [test_y[i] for i in inds]
+    testdemoip_exm = [test_demoips[i] for i in inds]
     #
-    # # result analysis
-    # inds = [15564, 2538, 11438, 2682, 7257, 5923, 2, 10, 18, 53, 182, 329]
-    # testx_exm = [test[i] for i in inds]
-    # testy_exm = [test_y[i] for i in inds]
-    # testdemoip_exm = [test_demoips[i] for i in inds]
-    # #
-    # x, y = create_full_set(testx_exm, testy_exm, w2v_model, size, pad_size, l)
-    # x = Variable(torch.FloatTensor(x), requires_grad=False)
-    # y = Variable(torch.LongTensor(y), requires_grad=False)
-    # demoip = Variable(torch.FloatTensor(testdemoip_exm), requires_grad=False)
-    # #
-    # y_pred_exm, wts_seq_exm, others = model(x, demoip, len(inds))
-    # print(wts_seq_exm)
-    # print(others[2])
-    # # sequence level weights
-    # seq_wts = np.array(torch.transpose(wts_seq_exm, 1, 2).data.tolist())
-    # seq_wts_avg = np.sum(seq_wts, axis=2)/4
+    x, y = create_full_set(testx_exm, testy_exm, w2v_model, size, pad_size, l)
+    x = Variable(torch.FloatTensor(x), requires_grad=False)
+    y = Variable(torch.LongTensor(y), requires_grad=False)
+    demoip = Variable(torch.FloatTensor(testdemoip_exm), requires_grad=False)
     #
-    # from sklearn.preprocessing import normalize
-    # seq_wts_norm = normalize(seq_wts_avg, axis=1, norm='l1')
-    #
-    # # code-level weights
-    # code_wts = others[2].data.tolist()
-    #
-    # with open('./results/example_pts_weights.pickle', 'wb') as f:
-    #     pickle.dump([seq_wts_norm, code_wts], f)
+    y_pred_exm, wts_seq_exm, others = model(x, demoip, len(inds))
+    print(wts_seq_exm)
+    print(others[2])
+    # sequence level weights
+    seq_wts = np.array(wts_seq_exm.data.tolist())
+    seq_wts_avg = np.sum(seq_wts, axis=1)/3
+
+    from sklearn.preprocessing import normalize
+    seq_wts_norm = normalize(seq_wts_avg, axis=1, norm='l1')
+
+    # code-level weights
+    code_wts = others[2].data.tolist()
+
+    with open('./results/example_pts_weights.pickle', 'wb') as f:
+        pickle.dump([seq_wts_norm, code_wts], f)
     #
     #
-    # # further analysis on a group of patients
-    # inds = [2538, 7257, 5923]
-    # testdemoip_exm = [test_demoips[i] for i in inds]
-    # test_exm = [test[i] for i in inds]
-    # ages = [71, 64, 66] # 10 year is 0.443
-    # testdemoip_exm_new1 = [[0.0, 1.1350491843712582, 1.0], [1.0, 1.1350491843712582, 1.0],
-    #                       [0.0, 1.578027, 1.0], [0.0, 1.1350491843712582, 0.0]]
-    # testdemoip_exm_new2 = [[0.0, 0.8249648802368135, 0.0], [1.0, 0.8249648802368135, 0.0],
-    #                        [0.0, 0.8249648802368135 + 0.443, 0.0], [0.0, 0.8249648802368135, 1.0]]
-    # testdemoip_exm_new3 = [[1.0, 0.9135603957037977, 0.0], [0.0, 0.9135603957037977, 0.0],
-    #                        [1.0, 0.9135603957037977 + 0.443, 0.0], [1.0, 0.9135603957037977, 1.0]]
+    # further analysis on a group of patients
+    inds = [15564, 7257, 5923]
+    testdemoip_exm = [test_demoips[i] for i in inds]
+    test_exm = [test[i] for i in inds]
+    ages = [77, 64, 66] # 10 year is 0.443
+    testdemoip_exm_new1 = [[0.0, 1.4008357307722108, 1.0], [1.0, 1.4008357307722108, 1.0],
+                          [0.0, 1.4008357307722108 + 0.443, 1.0], [0.0, 1.4008357307722108, 0.0]]
+    testdemoip_exm_new2 = [[0.0, 0.8249648802368135, 0.0], [1.0, 0.8249648802368135, 0.0],
+                           [0.0, 0.8249648802368135 + 0.443, 0.0], [0.0, 0.8249648802368135, 1.0]]
+    testdemoip_exm_new3 = [[1.0, 0.9135603957037977, 0.0], [0.0, 0.9135603957037977, 0.0],
+                           [1.0, 0.9135603957037977 + 0.443, 0.0], [1.0, 0.9135603957037977, 1.0]]
+
+    testdemoip_exm_new = testdemoip_exm_new1 + testdemoip_exm_new2 + testdemoip_exm_new3
+    import copy
+    test1 = [copy.deepcopy(test_exm[0]), copy.deepcopy(test_exm[0]), copy.deepcopy(test_exm[0]), copy.deepcopy(test_exm[0])]
+    test2 = [copy.deepcopy(test_exm[1]), copy.deepcopy(test_exm[1]), copy.deepcopy(test_exm[1]), copy.deepcopy(test_exm[1])]
+    test3 = [copy.deepcopy(test_exm[2]), copy.deepcopy(test_exm[2]), copy.deepcopy(test_exm[2]), copy.deepcopy(test_exm[2])]
+    test_new = test1 + test2 + test3
+    testy_new = [1] * 12
+    x, y = create_full_set(test_new, testy_new, w2v_model, size, pad_size, l)
+    x = Variable(torch.FloatTensor(x), requires_grad=False)
+    y = Variable(torch.LongTensor(y), requires_grad=False)
+    demoip = Variable(torch.FloatTensor(testdemoip_exm_new), requires_grad=False)
     #
-    # testdemoip_exm_new = testdemoip_exm_new1 + testdemoip_exm_new2 + testdemoip_exm_new3
-    # import copy
-    # test1 = [copy.deepcopy(test_exm[0]), copy.deepcopy(test_exm[0]), copy.deepcopy(test_exm[0]), copy.deepcopy(test_exm[0])]
-    # test2 = [copy.deepcopy(test_exm[1]), copy.deepcopy(test_exm[1]), copy.deepcopy(test_exm[1]), copy.deepcopy(test_exm[1])]
-    # test3 = [copy.deepcopy(test_exm[2]), copy.deepcopy(test_exm[2]), copy.deepcopy(test_exm[2]), copy.deepcopy(test_exm[2])]
-    # test_new = test1 + test2 + test3
-    # testy_new = [1] * 12
-    # x, y = create_full_set(test_new, testy_new, w2v_model, size, pad_size, l)
-    # x = Variable(torch.FloatTensor(x), requires_grad=False)
-    # y = Variable(torch.LongTensor(y), requires_grad=False)
-    # demoip = Variable(torch.FloatTensor(testdemoip_exm_new), requires_grad=False)
-    # #
-    # y_pred_exm, wts_seq_exm, others = model(x, demoip, 12)
-    #
-    # new_pred_vals = [i[1] for i in y_pred_exm.data.tolist()]
-    # new_pred_vals = [0.9587399959564209,
-    #                  0.9494227766990662,
-    #                  0.9671435952186584,
-    #                  0.956460177898407,
-    #                  0.7463871240615845,
-    #                  0.7039254903793335,
-    #                  0.7885023355484009,
-    #                  0.7568705081939697,
-    #                  0.7960509657859802,
-    #                  0.8285189270973206,
-    #                  0.8317776918411255,
-    #                  0.8050177097320557]
+    y_pred_exm, wts_seq_exm, others = model(x, demoip, 12)
+
+    new_pred_vals = [i[1] for i in y_pred_exm.data.tolist()]
+    new_pred_vals = [0.9640013575553894,
+                     0.955817461013794,
+                     0.9713656902313232,
+                     0.9620007276535034,
+                     0.7463871240615845,
+                     0.7039254903793335,
+                     0.7885023355484009,
+                     0.7568705081939697,
+                     0.7960509657859802,
+                     0.8285189270973206,
+                     0.8317776918411255,
+                     0.8050177097320557]
