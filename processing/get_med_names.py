@@ -46,8 +46,11 @@ import numpy as np
 # ages_pts.name = 'Age'
 # ax = sns.distplot(ages_pts)
 
+#
+# with open('./results/example_pts_info.pickle', 'rb') as f:
+#     exmple, exmple_seq, seq_wts_exmple, code_wts_exmple = pickle.load(f)
 
-with open('./results/example_pts_info.pickle', 'rb') as f:
+with open('example_pts_info.pickle', 'rb') as f:
     exmple, exmple_seq, seq_wts_exmple, code_wts_exmple = pickle.load(f)
 
 def prepare_for_heatmap(data):
@@ -64,14 +67,31 @@ def prepare_for_heatmap(data):
     df = pd.DataFrame([grp, val, lab])
     df = df.transpose()
     df.columns = ['clinical_group', 'weight', 'time']
-    return df
+    dt1 = df.pivot(index='clinical_group', columns='time', values='weight')
+    dt1 = dt1.fillna(0)
+    dt1.reset_index(inplace=True)
+    return dt1
+# example pt1
 dt1 = prepare_for_heatmap(code_wts_exmple[0])
-dt1 = dt1.pivot(index='clinical_group', columns='time', values='weight')
-dt1 = dt1.fillna(0)
-dt1.reset_index(inplace=True)
 dt1.columns = ['name', 't1', 't2', 't4']
 dt1['t3'] = 0.0
 dt1 = dt1[['name', 't1', 't2', 't3', 't4']]
 dt1 = dt1.sort(['t4', 't3', 't2', 't1'], ascending=[0, 0, 0, 0])
 hm1 = sns.heatmap(dt1[['t1', 't2', 't3', 't4']].values, vmin=0, vmax=0.2)
 hm1.savefig("example_heatmap1.png")
+
+# example pt2
+dt2 = prepare_for_heatmap(code_wts_exmple[1])
+dt2.columns = ['name', 't1', 't2', 't3', 't4']
+dt2 = dt2.sort(['t4', 't3', 't2', 't1'], ascending=[0, 0, 0, 0])
+hm2 = sns.heatmap(dt2[['t1', 't2', 't3', 't4']].values, vmin=0, vmax=0.4)
+hm2.savefig("example_heatmap2.png")
+
+# example pt3
+dt3 = prepare_for_heatmap(code_wts_exmple[2])
+dt3.columns = ['name', 't1', 't3', 't4']
+dt3['t2'] = 0.0
+dt3 = dt3[['name', 't1', 't2', 't3', 't4']]
+dt3 = dt3.sort(['t4', 't3', 't2', 't1'], ascending=[0, 0, 0, 0])
+hm3 = sns.heatmap(dt3[['t1', 't2', 't3', 't4']].values, vmin=0, vmax=0.3)
+hm3.savefig("example_heatmap3.png")
