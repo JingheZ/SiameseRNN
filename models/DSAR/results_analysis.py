@@ -7,7 +7,7 @@ import pandas as pd
 import operator
 from sklearn.preprocessing import normalize
 from collections import Counter
-
+import seaborn as sns
 
 def calculate_scores_bootstraps(pred, y, val):
     f2s = []
@@ -295,6 +295,34 @@ if __name__ == '__main__':
                      0.8317776918411255,
                      0.8050177097320557]
 
+with open('./results/example_pts_info.pickle', 'rb') as f:
+    exmple, exmple_seq, seq_wts_exmple, code_wts_exmple = pickle.load(f)
+
+def prepare_for_heatmap(data):
+    grp = []
+    val = []
+    lab = []
+    for i, d in enumerate(data):
+        k = [d0[0] for d0 in d]
+        v = [d0[1] for d0 in d]
+        c = [i] * len(d)
+        grp += k
+        val += v
+        lab += c
+    df = pd.DataFrame([grp, val, lab])
+    df = df.transpose()
+    df.columns = ['clinical_group', 'weight', 'time']
+    return df
+dt1 = prepare_for_heatmap(code_wts_exmple[0])
+dt1 = dt1.pivot(index='clinical_group', columns='time', values='weight')
+dt1 = dt1.fillna(0)
+dt1.reset_index(inplace=True)
+dt1.columns = ['name', 't1', 't2', 't4']
+dt1['t3'] = 0.0
+dt1 = dt1[['name', 't1', 't2', 't3', 't4']]
+dt1 = dt1.sort(['t4', 't3', 't2', 't1'], ascending=[0, 0, 0, 0])
+hm1 = sns.heatmap(dt1[['t1', 't2', 't3', 't4']].values, vmin=0, vmax=0.2)
+hm1.savefig("example_heatmap1.png")
     # ============================= List of top 10 most important items in hospitalized pts ===============
     # get the code wts of all testing pts
     model_type = 'crnn2-bi-tanh-fn'
