@@ -24,7 +24,7 @@ print('Done!')
 
 with open('./data/med_names.pickle', 'rb') as f:
     meds = pickle.load(f)
-meds[meds['Med_Pharm_Cls'] == 'Diagnostic Products']
+meds[meds['Med_Pharm_Cls'] == 'Diagnostic Products'].to_csv('./data/med_names_diagnostic_products.csv', index=False)
 
 
 # analysis on patient ages
