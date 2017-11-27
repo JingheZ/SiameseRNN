@@ -46,11 +46,14 @@ ages_pts.name = 'Age'
 ax = sns.distplot(ages_pts)
 
 #
-with open('./results/example_pts_info.pickle', 'rb') as f:
-    exmple, exmple_seq, seq_wts_exmple, code_wts_exmple = pickle.load(f)
-
-# with open('example_pts_info.pickle', 'rb') as f:
+# with open('./results/example_pts_info.pickle', 'rb') as f:
 #     exmple, exmple_seq, seq_wts_exmple, code_wts_exmple = pickle.load(f)
+#
+# with open('./results/example_pts_info_v2.pickle', 'wb') as f:
+#     pickle.dump([seq_wts_exmple, code_wts_exmple], f )
+
+with open('example_pts_info_v2.pickle', 'rb') as f:
+    seq_wts_exmple, code_wts_exmple = pickle.load(f)
 
 def prepare_for_heatmap(data):
     grp = []
@@ -75,7 +78,7 @@ dt1 = prepare_for_heatmap(code_wts_exmple[0])
 dt1.columns = ['name', 't1', 't2', 't4']
 dt1['t3'] = 0.0
 dt1 = dt1[['name', 't1', 't2', 't3', 't4']]
-dt1 = dt1.sort(['name', 't4', 't3', 't2', 't1'], ascending=[1, 0, 0, 0, 0])
+dt1 = dt1.sort_values(['name', 't4', 't3', 't2', 't1'], ascending=[1, 0, 0, 0, 0])
 dt1.index = dt1['name']
 del dt1['name']
 dt1.loc['Weight'] = seq_wts_exmple[0]
@@ -96,7 +99,7 @@ dt1.index = list(dt1.index[:10]) + ['Coronary atherosclerosis & heart disease', 
              'OR therapeutic procedures; nose, mouth, pharynx', 'Other OR heart procedures',
              'Embolectomy and endarterectomy of lower limbs', 'Therapeutic procedures; hemic & lymphatic system',
              'OR therapeutic nervous system procedures', 'sequence-level weight']
-
+dt1.to_csv('./results/heatmap1_data.csv')
 plt.figure(figsize=(32, 15))
 sns.set(font_scale=1.2)
 hm1 = sns.heatmap(dt1, vmin=0, vmax=0.35)
@@ -108,7 +111,7 @@ plt.savefig("./results/example_heatmap1.png")
 # example pt2
 dt2 = prepare_for_heatmap(code_wts_exmple[1])
 dt2.columns = ['name', 't1', 't2', 't3', 't4']
-dt2 = dt2.sort(['name', 't4', 't3', 't2', 't1'], ascending=[1, 0, 0, 0, 0])
+dt2 = dt2.sort_values(['name', 't4', 't3', 't2', 't1'], ascending=[1, 0, 0, 0, 0])
 dt2.index = dt2['name']
 del dt2['name']
 dt2.loc['Weight'] = seq_wts_exmple[1]
@@ -122,6 +125,7 @@ dt2.index = ['Diagnostic Products', 'Coronary atherosclerosis & heart disease',
              'Microscopic examination', 'Other radioisotope scan',
              'Other laboratory', 'Other OR heart procedures',
              'Non-OR therapeutic nervous system procedures', 'Sequence-level weight']
+dt2.to_csv('./results/heatmap2_data.csv')
 plt.figure(figsize=(30, 15))
 sns.set(font_scale=1.2)
 hm2 = sns.heatmap(dt2[['t1', 't2', 't3', 't4']], vmin=0, vmax=0.35)
