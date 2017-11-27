@@ -298,38 +298,50 @@ def get_all_item_categories(dx_df, proc_df, all_meds):
 
 
 if __name__ == '__main__':
-    # ============================ DX Data =================================================
-    filename = './data/2017_02feb_28_ALL_Diagnoses.dat'
-    data_dx = load_data(filename, colnames=['ptid', 'vid', 'dx', 'primary_dx'])
-    all_dxs = data_dx['dx'].unique()
-    visits_dx = count_stat_summary(data_dx)
-
-    # ============================ Med Data ===================================================
-
-    filename = './data/2017_02feb_28_Orders_Meds.dat'
-    colnames_med = ['med_order_num', 'Med_Nme', 'Med_Thera_Cls', 'Med_Pharm_Cls', 'Med_Pharm_Sub_Cls',
-                    'ptid', 'age', 'sex', 'vid', 'VisitDXs', 'timeline', 'anon_adm_date', 'anon_dis_date',
-                    'cdrIPorOP', 'order_pt_loc', 'author_physid_deid', 'order_physid_deid']
-    selected_colnames_med = ['ptid', 'age', 'sex', 'vid', 'Med_Pharm_Cls', 'VisitDXs', 'timeline', 'anon_adm_date',
-                         'anon_dis_date', 'cdrIPorOP']
-    data_med, visit_med, all_meds = process_orders(filename, colnames_med, selected_colnames_med, ['Med_Pharm_Cls'])
-    with open('./data/all_dx_and_meds.pickle', 'wb') as f:
-        pickle.dump([all_dxs, all_meds], f)
-    f.close()
-    # ============================ Procedure Data ===================================================
-    filename = './data/2017_02feb_28_Orders_Procedures.dat'
-    colnames_proc = ['proc_order_num', 'PROC_ID', 'PROC_NAME', 'PROC_CAT', 'PROC_CAT_ID', 'ORDER_DISPLAY_NAME',
-                    'ptid', 'age', 'sex', 'vid', 'VisitDXs', 'timeline', 'anon_adm_date', 'anon_dis_date',
-                    'cdrIPorOP', 'physid_deid']
-    selected_colnames_proc = ['PROC_ID', 'PROC_NAME', 'ptid', 'age', 'sex', 'vid', 'VisitDXs', 'timeline',
-                             'anon_adm_date', 'anon_dis_date', 'cdrIPorOP']
-    data_proc, visit_proc, all_procs = process_orders(filename, colnames_proc, selected_colnames_proc, ['PROC_ID', 'PROC_NAME'])
-
-    with open('./data/all_procs.pickle', 'wb') as f:
-        pickle.dump(all_procs, f)
-    f.close()
+    # # ============================ DX Data =================================================
+    # filename = './data/2017_02feb_28_ALL_Diagnoses.dat'
+    # data_dx = load_data(filename, colnames=['ptid', 'vid', 'dx', 'primary_dx'])
+    # all_dxs = data_dx['dx'].unique()
+    # visits_dx = count_stat_summary(data_dx)
+    #
+    # # ============================ Med Data ===================================================
+    # filename = './data/2017_02feb_28_Orders_Meds.dat'
+    # colnames_med = ['med_order_num', 'Med_Nme', 'Med_Thera_Cls', 'Med_Pharm_Cls', 'Med_Pharm_Sub_Cls',
+    #                 'ptid', 'age', 'sex', 'vid', 'VisitDXs', 'timeline', 'anon_adm_date', 'anon_dis_date',
+    #                 'cdrIPorOP', 'order_pt_loc', 'author_physid_deid', 'order_physid_deid']
+    # selected_colnames_med = ['ptid', 'age', 'sex', 'vid', 'Med_Pharm_Cls', 'VisitDXs', 'timeline', 'anon_adm_date',
+    #                      'anon_dis_date', 'cdrIPorOP']
+    # data_med, visit_med, all_meds = process_orders(filename, colnames_med, selected_colnames_med, ['Med_Pharm_Cls'])
+    # with open('./data/all_dx_and_meds.pickle', 'wb') as f:
+    #     pickle.dump([all_dxs, all_meds], f)
+    # f.close()
+    # # ============================ Procedure Data ===================================================
+    # filename = './data/2017_02feb_28_Orders_Procedures.dat'
+    # colnames_proc = ['proc_order_num', 'PROC_ID', 'PROC_NAME', 'PROC_CAT', 'PROC_CAT_ID', 'ORDER_DISPLAY_NAME',
+    #                 'ptid', 'age', 'sex', 'vid', 'VisitDXs', 'timeline', 'anon_adm_date', 'anon_dis_date',
+    #                 'cdrIPorOP', 'physid_deid']
+    # selected_colnames_proc = ['PROC_ID', 'PROC_NAME', 'ptid', 'age', 'sex', 'vid', 'VisitDXs', 'timeline',
+    #                          'anon_adm_date', 'anon_dis_date', 'cdrIPorOP']
+    # data_proc, visit_proc, all_procs = process_orders(filename, colnames_proc, selected_colnames_proc, ['PROC_ID', 'PROC_NAME'])
+    #
+    # with open('./data/all_procs.pickle', 'wb') as f:
+    #     pickle.dump(all_procs, f)
+    # f.close()
 
     # ============================= Analyze pts and visits in orders and dx data ==============================
+
+    with open('./data/dxs_data.pickle', 'rb') as f:
+        visits_dx, data_dx = pickle.load(f)
+    f.close()
+
+    with open('./data/med_orders.pickle', 'rb') as f:
+        visit_med, data_med = pickle.load(f)
+    f.close()
+
+    with open('./data/proc_orders.pickle', 'rb') as f:
+        visit_proc, data_proc = pickle.load(f)
+    f.close()
+
     get_orders_visit_info(data_med, data_proc)
     get_orders_pt_info(data_med, data_proc)
 
@@ -345,10 +357,10 @@ if __name__ == '__main__':
     f.close()
 
     # ============================== Save data to pickle ========================================================
-    with open('./data/dxs_data.pickle', 'wb') as f:
-        pickle.dump(data_dx, f)
-    f.close()
-    data_dx.to_csv('./data/dxs_data.csv', index=False)
+    # with open('./data/dxs_data.pickle', 'wb') as f:
+    #     pickle.dump(data_dx, f)
+    # f.close()
+    # data_dx.to_csv('./data/dxs_data.csv', index=False)
 
     # with open('./data/med_orders.pickle', 'wb') as f:
     #     pickle.dump(data_med[['ptid', 'vid', 'Med_Pharm_Cls', 'anon_adm_date']], f)

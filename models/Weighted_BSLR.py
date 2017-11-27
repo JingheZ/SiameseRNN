@@ -390,12 +390,55 @@ if __name__ == '__main__':
     counts.columns = ['cat' + i for i in counts.columns[:-1]] + ['response']
     counts.to_csv('./data/comorbid_task_counts.csv')
 
+
+    # ================ split train and testing data ========================================
+
+    ratio = 1.5
+    # randomly select 60% for training and 40% for testing from target group
+    train_ids_dm_ckd, test_ids_dm_ckd = split_target_data(np.array(ptids_dmckd), 0.4)
+    train_ids_dm_ckd, valid_ids_dm_ckd = split_target_data(np.array(train_ids_dm_ckd), 0.33)
+    random.seed(5)
+    test_ids_dm = random.sample(ptids_dm, int(len(test_ids_dm_ckd) * ratio))
+    rest_dm_ptids = list(set(ptids_dm).difference(set(test_ids_dm)))
+    test_ids = list(test_ids_dm) + list(test_ids_dm_ckd)
+    pd.Series(test_ids).to_csv('./data/comorbid_risk_test_ids.csv', index=False)
+    random.seed(5)
+    valid_ids_dm = random.sample(rest_dm_ptids, int(len(valid_ids_dm_ckd) * ratio))
+    rest_dm_ptids = list(set(rest_dm_ptids).difference(set(valid_ids_dm)))
+    valid_ids = list(valid_ids_dm) + list(valid_ids_dm_ckd)
+    pd.Series(valid_ids).to_csv('./data/comorbid_risk_validation_ids.csv', index=False)
+    r = 0
+    print(r)
+    train_ids = list(train_ids_dm_ckd)
+    num_ckd = int(r * len(train_ids_dm_ckd))
+    if num_ckd < len(ptids_ckd):
+        random.seed(5)
+        train_ids_ckd = random.sample(ptids_ckd, num_ckd)
+    else:
+        train_ids_ckd = ptids_ckd
+    random.seed(5)
+    train_ids_dm = random.sample(rest_dm_ptids, int((len(train_ids_ckd) + len(train_ids_dm_ckd)) * ratio))
+    # train_ids_dm = random.sample(rest_dm_ptids, num_ckd * ratio)
+    train_ids += list(train_ids_dm) + list(train_ids_ckd)
+    pd.Series(train_ids).to_csv('./data/comorbid_risk_train_ids_r' + str(r) + '.csv', index=False)
+
+    #============= get bootstraps===================
+    for p in range(50):
+        random.seed(p)
+        sp = random.choices(list(enumerate(train_ids)), k=len(train_ids))
+        sp_ptids = [i[1] for i in sp]
+        sp_inds = [i[0] for i in sp]
+        sp_dt = pd.DataFrame([sp_ptids, sp_inds]).transpose()
+        sp_dt.columns = ['ptid', 'ind']
+        sp_dt.to_csv('./data/comorbid_risk_train_ids_bootstrap' + str(p) + '.csv', index=False)
+
+
     # get subw counts
-    counts_sub_dm = get_counts_subwindow(data_dm, 0, prelim_features, 6)
-    counts_sub_ckd = get_counts_subwindow(data_ckd, 1, prelim_features, 6)
-    counts_sub_dmckd = get_counts_subwindow(data_dmckd, 1, prelim_features, 6)
-    counts_sub = counts_sub_dm.append(counts_sub_ckd).append(counts_sub_dmckd).fillna(0)
-    counts_sub.to_csv('./data/comorbid_task_counts_sub_by6momth.csv')
+    # counts_sub_dm = get_counts_subwindow(data_dm, 0, prelim_features, 6)
+    # counts_sub_ckd = get_counts_subwindow(data_ckd, 1, prelim_features, 6)
+    # counts_sub_dmckd = get_counts_subwindow(data_dmckd, 1, prelim_features, 6)
+    # counts_sub = counts_sub_dm.append(counts_sub_ckd).append(counts_sub_dmckd).fillna(0)
+    # counts_sub.to_csv('./data/comorbid_task_counts_sub_by6momth.csv')
 
     counts_sub_dm = get_counts_subwindow(data_dm, 0, prelim_features, 4)
     counts_sub_ckd = get_counts_subwindow(data_ckd, 1, prelim_features, 4)
@@ -423,6 +466,15 @@ if __name__ == '__main__':
     counts_sub_y = counts_sub['response']
     features2 = counts_sub_x.columns.tolist()
 
+    # baseline 4: transitions
+    counts_trans = get_transition_counts(data_dmckd, data_dm, data_ckd, prelim_features)
+    counts_trans = pd.concat([counts_trans, counts], axis=1).fillna(0)
+    counts_trans.to_csv('./data/comorbid_risk_counts_trans.csv')
+
+    counts_trans_x = counts_trans[counts_trans.columns[:-1]]
+    counts_trans_y = counts_trans['response']
+    features4 = counts_trans.columns.tolist()[:-1]
+
     # # baseline 3: mining sequence patterns
     # get the sequence by sub-windows
     seq_dm = create_sequence(data_dmckd, 'comorbid_risk_dmckd_train')
@@ -449,48 +501,7 @@ if __name__ == '__main__':
     del counts_bps_x['response']
     features3 = counts_bps_x.columns.tolist()
 
-    # baseline 4: transitions
-    counts_trans = get_transition_counts(data_dmckd, data_dm, data_ckd, prelim_features)
-    counts_trans = pd.concat([counts_trans, counts], axis=1).fillna(0)
-    counts_trans.to_csv('./data/comorbid_risk_counts_trans.csv')
-
-    counts_trans_x = counts_trans[counts_trans.columns[:-1]]
-    counts_trans_y = counts_trans['response']
-    features4 = counts_trans.columns.tolist()[:-1]
-
-    # ================ split train and testing data ========================================
-
-    ratio = 1.5
-    # randomly select 60% for training and 40% for testing from target group
-    train_ids_dm_ckd, test_ids_dm_ckd = split_target_data(np.array(ptids_dmckd), 0.4)
-    train_ids_dm_ckd, valid_ids_dm_ckd = split_target_data(np.array(train_ids_dm_ckd), 0.33)
-    random.seed(5)
-    test_ids_dm = random.sample(ptids_dm, int(len(test_ids_dm_ckd) * ratio))
-    rest_dm_ptids = list(set(ptids_dm).difference(set(test_ids_dm)))
-    test_ids = list(test_ids_dm) + list(test_ids_dm_ckd)
-    pd.Series(test_ids).to_csv('./data/comorbid_risk_test_ids.csv', index=False)
-    random.seed(5)
-    valid_ids_dm = random.sample(rest_dm_ptids, int(len(valid_ids_dm_ckd) * ratio))
-    rest_dm_ptids = list(set(rest_dm_ptids).difference(set(valid_ids_dm)))
-    valid_ids = list(valid_ids_dm) + list(valid_ids_dm_ckd)
-    pd.Series(valid_ids).to_csv('./data/comorbid_risk_validation_ids.csv', index=False)
-
-    for r in [0, 1, 3, 6]:
-        print(r)
-        train_ids = list(train_ids_dm_ckd)
-        num_ckd = int(r * len(train_ids_dm_ckd))
-        if num_ckd < len(ptids_ckd):
-            random.seed(5)
-            train_ids_ckd = random.sample(ptids_ckd, num_ckd)
-        else:
-            train_ids_ckd = ptids_ckd
-        random.seed(5)
-        train_ids_dm = random.sample(rest_dm_ptids, int((len(train_ids_ckd) + len(train_ids_dm_ckd)) * ratio))
-        # train_ids_dm = random.sample(rest_dm_ptids, num_ckd * ratio)
-        train_ids += list(train_ids_dm) + list(train_ids_ckd)
-        pd.Series(train_ids).to_csv('./data/comorbid_risk_train_ids_r' + str(r) + '.csv', index=False)
-
-    r = 0
+    # =================== models and results ================================================
     test_ids = pd.read_csv('./data/comorbid_risk_test_ids.csv', header=None, dtype=object)
     test_ids = test_ids.values.flatten()
     train_ids = pd.read_csv('./data/comorbid_risk_train_ids_r0.csv', header=None, dtype=object)
@@ -577,22 +588,22 @@ if __name__ == '__main__':
     train_x3, train_y3, test_x3, test_y3, valid_x3, valid_y3 = split_shuffle_train_test_sets(train_ids, test_ids, valid_ids, counts_trans_x,counts_trans_y)
 
     train_x4, train_y4, test_x4, test_y4, valid_x4, valid_y4 = split_shuffle_train_test_sets(train_ids, test_ids,valid_ids, counts_sgl_x,counts_sgl_y)
-
-    clf0, results_by_f0 = make_prediction_and_tuning(train_x0, train_y0, valid_x0, valid_y0, [20, 15, 1, 'rf', 1])
-    clf0, results_by_f0 = make_prediction_and_tuning(train_x0, train_y0, valid_x0, valid_y0, [0.05, 15, 1, 'lr'])
-    clf0, results_by_f0 = make_prediction_and_tuning(train_x0, train_y0, valid_x0, valid_y0, [0.05, 15, 1, 'lr'])
-    # threshold: lr: 0.44; rf size = 20 (0.49); rf size = 50 (0.40);
-
-    clf2, results_by_f2 = make_prediction_and_tuning(train_x2, train_y2, valid_x2, valid_y2, [20, 15, 1, 'rf', 1])
-    clf2, results_by_f2 = make_prediction_and_tuning(train_x2, train_y2, valid_x2, valid_y2, [0.05, 15, 1, 'lr'])
-    # threshold: lr: 0.53; rf size = 20 (0.55); rf size = 50 (0.66);
-
-    clf3, results_by_f3 = make_prediction_and_tuning(train_x3, train_y3, valid_x3, valid_y3, [20, 15, 1, 'rf', 1])
-    clf3, results_by_f3 = make_prediction_and_tuning(train_x3, train_y3, valid_x3, valid_y3, [0.05, 15, 1, 'lr'])
-    # threshold: lr: 0.43; rf size = 20 (0.45); rf size = 50 (0.35);
-
-    clf4, results_by_f4 = make_prediction_and_tuning(train_x4, train_y4, valid_x4, valid_y4, [20, 15, 1, 'rf', 50])
-    clf4, results_by_f4 = make_prediction_and_tuning(train_x4, train_y4, valid_x4, valid_y4, [0.01, 15, 1, 'lr'])
+    #
+    # clf0, results_by_f0 = make_prediction_and_tuning(train_x0, train_y0, valid_x0, valid_y0, [20, 15, 1, 'rf', 1])
+    # clf0, results_by_f0 = make_prediction_and_tuning(train_x0, train_y0, valid_x0, valid_y0, [0.05, 15, 1, 'lr'])
+    # clf0, results_by_f0 = make_prediction_and_tuning(train_x0, train_y0, valid_x0, valid_y0, [0.05, 15, 1, 'lr'])
+    # # threshold: lr: 0.44; rf size = 20 (0.49); rf size = 50 (0.40);
+    #
+    # clf2, results_by_f2 = make_prediction_and_tuning(train_x2, train_y2, valid_x2, valid_y2, [20, 15, 1, 'rf', 1])
+    # clf2, results_by_f2 = make_prediction_and_tuning(train_x2, train_y2, valid_x2, valid_y2, [0.05, 15, 1, 'lr'])
+    # # threshold: lr: 0.53; rf size = 20 (0.55); rf size = 50 (0.66);
+    #
+    # clf3, results_by_f3 = make_prediction_and_tuning(train_x3, train_y3, valid_x3, valid_y3, [20, 15, 1, 'rf', 1])
+    # clf3, results_by_f3 = make_prediction_and_tuning(train_x3, train_y3, valid_x3, valid_y3, [0.05, 15, 1, 'lr'])
+    # # threshold: lr: 0.43; rf size = 20 (0.45); rf size = 50 (0.35);
+    #
+    # clf4, results_by_f4 = make_prediction_and_tuning(train_x4, train_y4, valid_x4, valid_y4, [20, 15, 1, 'rf', 50])
+    # clf4, results_by_f4 = make_prediction_and_tuning(train_x4, train_y4, valid_x4, valid_y4, [0.01, 15, 1, 'lr'])
     # threshold: lr: 0.48; rf size = 20 (0.36); rf size = 50 (0.37);
     # for n in [10, 20, 30, 50, 100, 150, 500]:
     n = 20
@@ -625,153 +636,144 @@ if __name__ == '__main__':
     test_proba.columns = ['b1_rf', 'b1_gbt', 'b1_lasso', 'b1_response',
                           'b3_rf', 'b3_gbt', 'b3_lasso', 'b3_response', 'b4_rf', 'b4_gbt', 'b4_lasso', 'b4_response',
                           'b5_rf', 'b5_gbt', 'b5_lasso', 'b5_response']
-    test_proba.to_csv('./data/comorbid_risk_test_proba_baselines_r' + str(r) + '_bs' + str(n) + '_v2.csv', index=False)
+    test_proba.to_csv('./data/comorbid_risk_test_proba_baselines_r' + str(r) + '_bs' + str(n) + '.csv', index=False)
 
-    # calculate F1 score
-    def calculate_fscores_bootstraps(test_proba, thres, y):
-        res = [1 if p >= thres else 0 for p in test_proba]
-        f2s = []
-        for p in range(50):
-            random.seed(p)
-            sp = random.choices(list(zip(res, y)), k=int(len(y) * 1))
-            sp_pred = [v[0] for v in sp]
-            sp_true = [v[1] for v in sp]
-            f2 = metrics.fbeta_score(sp_true, sp_pred, average='macro', beta=1)
-            f2s.append(f2)
-        avg = np.mean(f2s)
-        std = np.std(f2s)
-        return tuple((avg, std))
-    # baselines 1-4
-    test_proba = pd.read_csv('./data/comorbid_risk_test_proba_baselines_r' + str(r) + '_bs' + str(n) + '.csv')
-    cols = [['b1_rf', 'b1_lasso', 'b1_response', 0.40, 0.44],
-            ['b3_rf', 'b3_lasso', 'b3_response', 0.66, 0.53],
-            ['b4_rf', 'b4_lasso', 'b4_response', 0.35, 0.43],
-            ['b5_rf', 'b5_lasso', 'b5_response', 0.36, 0.48]]
-
-    fs = []
-    for i in cols:
-        results_rf = calculate_fscores_bootstraps(test_proba[i[0]].values, i[3], test_proba[i[2]].values)
-        results_lr = calculate_fscores_bootstraps(test_proba[i[1]].values, i[4], test_proba[i[2]].values)
-        fs.append([results_lr, results_rf])
-
-    test_proba = pd.read_csv('./data/comorbid_risk_prediction_test_20.csv')
-    f2_wbslr = calculate_fscores_bootstraps(test_proba['pred'].values, 0.42, test_proba['response'].values)
-
-    test_proba = pd.read_csv('./data/comorbid_risk_prediction_test_20_baggedslr_mv.csv')
-    f2_mvslr = calculate_fscores_bootstraps(test_proba['pred'].values, 0.5, test_proba['response'].values)
-
-    # get bootstraps
-    for p in range(100):
-        random.seed(p)
-        sp = random.choices(list(enumerate(train_ids)), k=len(train_ids))
-        sp_ptids = [i[1] for i in sp]
-        sp_inds = [i[0] for i in sp]
-        sp_dt = pd.DataFrame([sp_ptids, sp_inds]).transpose()
-        sp_dt.columns = ['ptid', 'ind']
-        sp_dt.to_csv('./data/comorbid_risk_train_ids_bootstrap' + str(p) + '.csv', index=False)
+    # # calculate F1 score
+    # def calculate_fscores_bootstraps(test_proba, thres, y):
+    #     res = [1 if p >= thres else 0 for p in test_proba]
+    #     f2s = []
+    #     for p in range(50):
+    #         random.seed(p)
+    #         sp = random.choices(list(zip(res, y)), k=int(len(y) * 1))
+    #         sp_pred = [v[0] for v in sp]
+    #         sp_true = [v[1] for v in sp]
+    #         f2 = metrics.fbeta_score(sp_true, sp_pred, average='macro', beta=1)
+    #         f2s.append(f2)
+    #     avg = np.mean(f2s)
+    #     std = np.std(f2s)
+    #     return tuple((avg, std))
+    # # baselines 1-4
+    # test_proba = pd.read_csv('./data/comorbid_risk_test_proba_baselines_r' + str(r) + '_bs' + str(n) + '.csv')
+    # cols = [['b1_rf', 'b1_lasso', 'b1_response', 0.40, 0.44],
+    #         ['b3_rf', 'b3_lasso', 'b3_response', 0.66, 0.53],
+    #         ['b4_rf', 'b4_lasso', 'b4_response', 0.35, 0.43],
+    #         ['b5_rf', 'b5_lasso', 'b5_response', 0.36, 0.48]]
+    #
+    # fs = []
+    # for i in cols:
+    #     results_rf = calculate_fscores_bootstraps(test_proba[i[0]].values, i[3], test_proba[i[2]].values)
+    #     results_lr = calculate_fscores_bootstraps(test_proba[i[1]].values, i[4], test_proba[i[2]].values)
+    #     fs.append([results_lr, results_rf])
+    #
+    # test_proba = pd.read_csv('./data/comorbid_risk_prediction_test_20.csv')
+    # f2_wbslr = calculate_fscores_bootstraps(test_proba['pred'].values, 0.42, test_proba['response'].values)
+    #
+    # test_proba = pd.read_csv('./data/comorbid_risk_prediction_test_20_baggedslr_mv.csv')
+    # f2_mvslr = calculate_fscores_bootstraps(test_proba['pred'].values, 0.5, test_proba['response'].values)
 
 
-
-
-    features5_all = pd.read_csv('./data/sgl_coefs_alpha7_r0_bootstrap28.csv')
-    i = features5_all.columns[1]
-    features5_inds = features5_all[i]
-    features5 = [features5a[j] for j in features5_inds.index if features5_inds.loc[j] != 0]
-    counts_sgl_x = counts_sub[features5]
-    counts_sgl_y = counts_sub['response']
-    train_x4, train_y4, test_x4, test_y4, valid_x4, valid_y5 = split_shuffle_train_test_sets(train_ids, test_ids, valid_ids, counts_sgl_x, counts_sgl_y)
-
-    for n in [10, 20, 30, 50, 100, 150, 500, 1000]:
-        # # # #
-        test_proba4a = make_predictions(train_x4, train_y4, test_x4, [n, 15, 'rf'])
-        test_proba4b = make_predictions(train_x4, train_y4, test_x4, [200, 15, 'lr'])
-        test_proba4c = make_predictions(train_x4, train_y4, test_x4, [0.01, 15, 'lr'])
-        # # # #
-        test_proba = pd.DataFrame([test_proba4a, test_proba4b, test_proba4c, test_y4.values.tolist()])
-        test_proba = test_proba.transpose()
-        test_proba.columns = ['b5_rf', 'b5_lr', 'b5_lasso', 'b5_response']
-        test_proba.to_csv('./data/comorbid_risk_test_proba_baseline_LSR_r' + str(r) + '_bs' + str(n) + '.csv', index=False)
-
-
-
-
-
-            # get the features of the model with the highest weight in the proposed framework
-            features5_all = pd.read_csv('./data/sgl_coefs_alpha7_r0_bootstrap28.csv')
-            i = features5_all.columns[1]
-            features5_inds = features5_all[i]
-            features5 = [(features5a[j], features5_inds.loc[j]) for j in features5_inds.index if features5_inds.loc[j] != 0]
-            features5 = sorted(features5, key=itemgetter(1), reverse=True)
-            with open('./data/comorbid_risk_features_wts_WBSLR_best.pickle', 'wb') as f:
-                pickle.dump(features5, f)
-            f.close()
-            # tune the threshold for the proposed model on validation set
-            valid_proba = pd.read_csv('./data/comorbid_risk_prediction_valid_20.csv')
-            tune_proba_threshold_pred(valid_proba['pred'].values, valid_proba['response'], 1)
-
-            # get example pt records
-            data_dmckd[data_dmckd['ptid'] == '1658503'].to_csv('./data/comorbid_risk_pos_example1_withselectvar_obswindow.csv')  # rf predicted proba: 0.782
-            data_dm_ckd3[data_dm_ckd3['ptid'] == '1658503'].to_csv('./data/comorbid_risk_pos_example1_obswindow.csv')
-            data_dm_ckd[data_dm_ckd['ptid'] == '1658503'].to_csv('./data/comorbid_risk_pos_example1_all.csv')
-
-            data_dmckd[data_dmckd['ptid'] == '651172'].to_csv('./data/comorbid_risk_pos_example2_withselectvar_obswindow.csv')  # rf predicted proba: 0.782
-            data_dm_ckd3[data_dm_ckd3['ptid'] == '651172'].to_csv('./data/comorbid_risk_pos_example2_obswindow.csv')
-            data_dm_ckd[data_dm_ckd['ptid'] == '651172'].to_csv('./data/comorbid_risk_pos_example2_all.csv')
-
-            data_dm[data_dm['ptid'] == '1726071'].to_csv('./data/comorbid_risk_neg_example1_withselectvar_obswindow.csv')  # rf predicted proba: 0.782
-            data_dm5[data_dm5['ptid'] == '1726071'].to_csv('./data/comorbid_risk_neg_example1_obswindow.csv')
-            data_dm_ckd[data_dm_ckd['ptid'] == '1726071'].to_csv('./data/comorbid_risk_neg_example1_all.csv')
-
-            data_dm[data_dm['ptid'] == '387115'].to_csv('./data/comorbid_risk_neg_example2_withselectvar_obswindow.csv')  # rf predicted proba: 0.782
-            data_dm5[data_dm5['ptid'] == '387115'].to_csv('./data/comorbid_risk_neg_example2_obswindow.csv')
-            data_dm2[data_dm2['ptid'] == '387115'].to_csv('./data/comorbid_risk_neg_example2_all.csv')
-
-
-            # # analysis on example patient
-            # import pandas as pd
-            # exm1 = pd.read_csv('./data/comorbid_risk_neg_example2_all.csv')
-            # exm1['adm_day'] = exm1['adm_date'].apply(lambda x: int(x / 60 / 24))
-            # exm1['adm_month'] = exm1['adm_day'].apply(lambda x: int(x / 30))
-            # del exm1['rank']
-            # del exm1['dis_date']
-            # del exm1['adm_date']
-            # exm1 = exm1[['dxcat', 'adm_day', 'adm_month', 'first_dm_date']]
-
-            # optimize the nonnegative weight logistic function
-            import scipy as sp
-            from scipy import optimize as opt
-            import random
-
-            def nnlr(X, y):
-                """
-                Non-negative Logistic Regression
-                """
-
-                def lr_cost(X, y, theta):
-                    m = len(y)
-                    return (1. / m) * (sp.dot(-y, sp.log(sigmoid(sp.dot(X, theta)))) - sp.dot((1 - y), sp.log(1 - sigmoid(sp.dot(X, theta)))))
-
-                def lr_grad(X, y, theta):
-                    m = len(y)
-                    return (1. / m) * (sp.dot(X.T, sigmoid(sp.dot(X, theta)) - y))
-
-                def sigmoid(z):
-                    return 1 / (1 + sp.exp(-z))
-
-                N = X.shape[1]
-                J = lambda theta: lr_cost(X, y, theta)
-                J_grad = lambda theta: lr_grad(X, y, theta)
-                random.seed(1)
-                theta0 = np.random.uniform(0, 1, N)
-                x, nfeval, rc = opt.fmin_tnc(J, theta0, fprime=J_grad, bounds=[(0, None)] * N,
-                                             disp=0)
-                return x
-
-            n = 30
-            preds_bagslr = pd.read_csv('./data/comorbid_risk_pred_y_' + str(n) + '.csv', index_col=0)
-            y = preds_bagslr['response'].values
-            del preds_bagslr['response']
-            coefs = nnlr(preds_bagslr, y)
-            pd.Series(coefs).to_csv('./data/comorbid_risk_bagging_weights_' + str(n) + '.csv')
-
-
+    #
+    #
+    #
+    # features5_all = pd.read_csv('./data/sgl_coefs_alpha7_r0_bootstrap28.csv')
+    # i = features5_all.columns[1]
+    # features5_inds = features5_all[i]
+    # features5 = [features5a[j] for j in features5_inds.index if features5_inds.loc[j] != 0]
+    # counts_sgl_x = counts_sub[features5]
+    # counts_sgl_y = counts_sub['response']
+    # train_x4, train_y4, test_x4, test_y4, valid_x4, valid_y5 = split_shuffle_train_test_sets(train_ids, test_ids, valid_ids, counts_sgl_x, counts_sgl_y)
+    #
+    # for n in [10, 20, 30, 50, 100, 150, 500, 1000]:
+    #     # # # #
+    #     test_proba4a = make_predictions(train_x4, train_y4, test_x4, [n, 15, 'rf'])
+    #     test_proba4b = make_predictions(train_x4, train_y4, test_x4, [200, 15, 'lr'])
+    #     test_proba4c = make_predictions(train_x4, train_y4, test_x4, [0.01, 15, 'lr'])
+    #     # # # #
+    #     test_proba = pd.DataFrame([test_proba4a, test_proba4b, test_proba4c, test_y4.values.tolist()])
+    #     test_proba = test_proba.transpose()
+    #     test_proba.columns = ['b5_rf', 'b5_lr', 'b5_lasso', 'b5_response']
+    #     test_proba.to_csv('./data/comorbid_risk_test_proba_baseline_LSR_r' + str(r) + '_bs' + str(n) + '.csv', index=False)
+    #
+    #
+    #
+    #
+    #
+    #         # get the features of the model with the highest weight in the proposed framework
+    #         features5_all = pd.read_csv('./data/sgl_coefs_alpha7_r0_bootstrap28.csv')
+    #         i = features5_all.columns[1]
+    #         features5_inds = features5_all[i]
+    #         features5 = [(features5a[j], features5_inds.loc[j]) for j in features5_inds.index if features5_inds.loc[j] != 0]
+    #         features5 = sorted(features5, key=itemgetter(1), reverse=True)
+    #         with open('./data/comorbid_risk_features_wts_WBSLR_best.pickle', 'wb') as f:
+    #             pickle.dump(features5, f)
+    #         f.close()
+    #         # tune the threshold for the proposed model on validation set
+    #         valid_proba = pd.read_csv('./data/comorbid_risk_prediction_valid_20.csv')
+    #         tune_proba_threshold_pred(valid_proba['pred'].values, valid_proba['response'], 1)
+    #
+    #         # get example pt records
+    #         data_dmckd[data_dmckd['ptid'] == '1658503'].to_csv('./data/comorbid_risk_pos_example1_withselectvar_obswindow.csv')  # rf predicted proba: 0.782
+    #         data_dm_ckd3[data_dm_ckd3['ptid'] == '1658503'].to_csv('./data/comorbid_risk_pos_example1_obswindow.csv')
+    #         data_dm_ckd[data_dm_ckd['ptid'] == '1658503'].to_csv('./data/comorbid_risk_pos_example1_all.csv')
+    #
+    #         data_dmckd[data_dmckd['ptid'] == '651172'].to_csv('./data/comorbid_risk_pos_example2_withselectvar_obswindow.csv')  # rf predicted proba: 0.782
+    #         data_dm_ckd3[data_dm_ckd3['ptid'] == '651172'].to_csv('./data/comorbid_risk_pos_example2_obswindow.csv')
+    #         data_dm_ckd[data_dm_ckd['ptid'] == '651172'].to_csv('./data/comorbid_risk_pos_example2_all.csv')
+    #
+    #         data_dm[data_dm['ptid'] == '1726071'].to_csv('./data/comorbid_risk_neg_example1_withselectvar_obswindow.csv')  # rf predicted proba: 0.782
+    #         data_dm5[data_dm5['ptid'] == '1726071'].to_csv('./data/comorbid_risk_neg_example1_obswindow.csv')
+    #         data_dm_ckd[data_dm_ckd['ptid'] == '1726071'].to_csv('./data/comorbid_risk_neg_example1_all.csv')
+    #
+    #         data_dm[data_dm['ptid'] == '387115'].to_csv('./data/comorbid_risk_neg_example2_withselectvar_obswindow.csv')  # rf predicted proba: 0.782
+    #         data_dm5[data_dm5['ptid'] == '387115'].to_csv('./data/comorbid_risk_neg_example2_obswindow.csv')
+    #         data_dm2[data_dm2['ptid'] == '387115'].to_csv('./data/comorbid_risk_neg_example2_all.csv')
+    #
+    #
+    #         # # analysis on example patient
+    #         # import pandas as pd
+    #         # exm1 = pd.read_csv('./data/comorbid_risk_neg_example2_all.csv')
+    #         # exm1['adm_day'] = exm1['adm_date'].apply(lambda x: int(x / 60 / 24))
+    #         # exm1['adm_month'] = exm1['adm_day'].apply(lambda x: int(x / 30))
+    #         # del exm1['rank']
+    #         # del exm1['dis_date']
+    #         # del exm1['adm_date']
+    #         # exm1 = exm1[['dxcat', 'adm_day', 'adm_month', 'first_dm_date']]
+    #
+    #         # optimize the nonnegative weight logistic function
+    #         import scipy as sp
+    #         from scipy import optimize as opt
+    #         import random
+    #
+    #         def nnlr(X, y):
+    #             """
+    #             Non-negative Logistic Regression
+    #             """
+    #
+    #             def lr_cost(X, y, theta):
+    #                 m = len(y)
+    #                 return (1. / m) * (sp.dot(-y, sp.log(sigmoid(sp.dot(X, theta)))) - sp.dot((1 - y), sp.log(1 - sigmoid(sp.dot(X, theta)))))
+    #
+    #             def lr_grad(X, y, theta):
+    #                 m = len(y)
+    #                 return (1. / m) * (sp.dot(X.T, sigmoid(sp.dot(X, theta)) - y))
+    #
+    #             def sigmoid(z):
+    #                 return 1 / (1 + sp.exp(-z))
+    #
+    #             N = X.shape[1]
+    #             J = lambda theta: lr_cost(X, y, theta)
+    #             J_grad = lambda theta: lr_grad(X, y, theta)
+    #             random.seed(1)
+    #             theta0 = np.random.uniform(0, 1, N)
+    #             x, nfeval, rc = opt.fmin_tnc(J, theta0, fprime=J_grad, bounds=[(0, None)] * N,
+    #                                          disp=0)
+    #             return x
+    #
+    #         n = 30
+    #         preds_bagslr = pd.read_csv('./data/comorbid_risk_pred_y_' + str(n) + '.csv', index_col=0)
+    #         y = preds_bagslr['response'].values
+    #         del preds_bagslr['response']
+    #         coefs = nnlr(preds_bagslr, y)
+    #         pd.Series(coefs).to_csv('./data/comorbid_risk_bagging_weights_' + str(n) + '.csv')
+    #
+    #
