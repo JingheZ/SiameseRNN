@@ -496,7 +496,7 @@ if __name__ == '__main__':
     with open('./data/visits_v4.pickle', 'rb') as f:
         visits = pickle.load(f)
     f.close()
-    visits.columns = ['ptid', 'vid', 'IPorOP', 'adm_date', 'dis_date', 'rank']
+    visits.columns = ['ptid', 'vid', 'IPorOP', 'adm_date', 'dis_date']
     with open('./data/dxs_data_v2.pickle', 'rb') as f:
         data_dx = pickle.load(f)
     f.close()
@@ -506,23 +506,23 @@ if __name__ == '__main__':
     data_dx2.head()
 
     data = merge_visit_and_dx(data_dx2, visits)
-    with open('./data/data_all4comorbidity.pickle', 'wb') as f:
-        pickle.dump(data, f)
-    f.close()
+    # with open('./data/data_all4comorbidity.pickle', 'wb') as f:
+    #     pickle.dump(data, f)
+    # f.close()
     # find patients with diabetes: dxcat = '49' or '50'
     data_dm, ptids_dm = find_visit_gaps(data, ['49', '50'], 'dm')
-    ptids_dm2 = find_patient_counts(data_dm)
-    data_dm2 = data_dm[data_dm['ptid'].isin(ptids_dm2)]
-    # get the visits in the observation window of the target patients
-    data_dm3 = data_dm2[data_dm2['gap_dm'].between(180 * 24 * 60, 540 * 24 * 60)]
-    ptids_dm3 = set(data_dm3['ptid']) # 4534 pts
+    # ptids_dm2 = find_patient_counts(data_dm)
+    # data_dm2 = data_dm[data_dm['ptid'].isin(ptids_dm2)]
+    # # get the visits in the observation window of the target patients
+    # data_dm3 = data_dm2[data_dm2['gap_dm'].between(180 * 24 * 60, 540 * 24 * 60)]
+    # ptids_dm3 = set(data_dm3['ptid']) # 4534 pts
 
     # # find patients with CHF: dxcat = '108'
     # data_chf, ptids_chf = find_visit_gaps(data, ['108'], 'chf')
     # # ptids_chf2 = find_patient_counts(data_chf)
     #
     # # find patients with CKD: dxcat = '158'
-    # data_ckd, ptids_ckd = find_visit_gaps(data, ['158'], 'ckd')
+    data_ckd, ptids_ckd = find_visit_gaps(data, ['158'], 'ckd')
     # # find_patient_counts(data_ckd)
     #
     # # find patients with CKD: dxcat = '127'
@@ -535,12 +535,12 @@ if __name__ == '__main__':
     # with open('./data/data_chf_ptids.pickle', 'wb') as f:
     #     pickle.dump([data_chf, ptids_chf], f)
     # f.close()
-    # with open('./data/data_dm_ptids.pickle', 'wb') as f:
-    #     pickle.dump([data_dm, ptids_dm], f)
-    # f.close()
-    # with open('./data/data_ckd_ptids.pickle', 'wb') as f:
-    #     pickle.dump([data_ckd, ptids_ckd], f)
-    # f.close()
+    with open('./data/data_dm_ptids.pickle', 'wb') as f:
+        pickle.dump([data_dm, ptids_dm], f)
+    f.close()
+    with open('./data/data_ckd_ptids.pickle', 'wb') as f:
+        pickle.dump([data_ckd, ptids_ckd], f)
+    f.close()
     # with open('./data/data_copd_ptids.pickle', 'wb') as f:
     #     pickle.dump([data_copd, ptids_chf], f)
     # f.close()
@@ -551,320 +551,320 @@ if __name__ == '__main__':
     # # find patients with at least four years of complete visits
     # # 1. first visit date = 0
     # # 2. one year of observation window and three years of prediction window
-    thres = 60 * 24 * 360 * 4
-    data_control = find_visit_gaps_control(data, ptids_dm, thres)
-    data_control2 = data_control[data_control['adm_date'] <= 24 * 60 * 360]
-    data_control3 = data_control2[data_control2['dis_date'] <= 24 * 60 * 360]
-    ptids_control = set(data_control3['ptid']) # 30751 pts
-
-    # get the counts of dxcats of patients
-    counts_dm = get_counts_by_class(data_dm3, 1, len(ptids_dm3) * 0.05)
-    counts_control = get_counts_by_class(data_control3, 0, len(ptids_control) * 0.05)
-    counts = counts_dm.append(counts_control).fillna(0)
-    prelim_features = set(counts.columns[:-1]) #34
-
-    # filter out the rows with excluded features
-    data_dm4 = data_dm3[data_dm3['dxcat'].isin(prelim_features)]
-    data_control4 = data_control3[data_control3['dxcat'].isin(prelim_features)]
-    counts_dm = get_counts_by_class(data_dm4, 1, 0)
-    counts_control = get_counts_by_class(data_control4, 0, 0)
-    counts = counts_dm.append(counts_control).fillna(0)
-
-    counts.columns = ['cat' + i for i in counts.columns[:-1]] + ['response']
-    # counts.to_csv('./data/dm_control_counts.csv')
-    # # get training and testing ptids
-    y = counts['response']
-    train_ids, test_ids = split_train_test_ptids(y, 0.2)
-    # with open('./data/train_test_ptids.pickle', 'wb') as f:
-    #     pickle.dump([train_ids, test_ids], f)
-    # f.close()
-    # pd.Series(train_ids).to_csv('./data/train_ids.csv', index=False)
-    # pd.Series(test_ids).to_csv('./data/test_ids.csv', index=False)
-    # # # get counts and do preliminary feature selection
-    # # counts_x, counts_y, features = feature_selection_prelim(counts, 50)
-    # # ============== Baseline 1: frequency =====================================
-    # # use actual ratio in training and testing:
+    # thres = 60 * 24 * 360 * 4
+    # data_control = find_visit_gaps_control(data, ptids_dm, thres)
+    # data_control2 = data_control[data_control['adm_date'] <= 24 * 60 * 360]
+    # data_control3 = data_control2[data_control2['dis_date'] <= 24 * 60 * 360]
+    # ptids_control = set(data_control3['ptid']) # 30751 pts
     #
+    # # get the counts of dxcats of patients
+    # counts_dm = get_counts_by_class(data_dm3, 1, len(ptids_dm3) * 0.05)
+    # counts_control = get_counts_by_class(data_control3, 0, len(ptids_control) * 0.05)
+    # counts = counts_dm.append(counts_control).fillna(0)
+    # prelim_features = set(counts.columns[:-1]) #34
+    #
+    # # filter out the rows with excluded features
+    # data_dm4 = data_dm3[data_dm3['dxcat'].isin(prelim_features)]
+    # data_control4 = data_control3[data_control3['dxcat'].isin(prelim_features)]
+    # counts_dm = get_counts_by_class(data_dm4, 1, 0)
+    # counts_control = get_counts_by_class(data_control4, 0, 0)
+    # counts = counts_dm.append(counts_control).fillna(0)
+    #
+    # counts.columns = ['cat' + i for i in counts.columns[:-1]] + ['response']
+    # # counts.to_csv('./data/dm_control_counts.csv')
+    # # # get training and testing ptids
+    # y = counts['response']
+    # train_ids, test_ids = split_train_test_ptids(y, 0.2)
+    # # with open('./data/train_test_ptids.pickle', 'wb') as f:
+    # #     pickle.dump([train_ids, test_ids], f)
+    # # f.close()
+    # # pd.Series(train_ids).to_csv('./data/train_ids.csv', index=False)
+    # # pd.Series(test_ids).to_csv('./data/test_ids.csv', index=False)
+    # # # # get counts and do preliminary feature selection
+    # # # counts_x, counts_y, features = feature_selection_prelim(counts, 50)
+    # # # ============== Baseline 1: frequency =====================================
+    # # # use actual ratio in training and testing:
+    # #
+    # # counts_x = counts[counts.columns[:-1]]
+    # # counts_y = counts['response']
+    # # features0 = counts.columns.tolist()[:-1]
+    # # train_x0, train_y0, test_x0, test_y0 = split_train_test_sets(train_ids, test_ids, counts_x, counts_y)
+    # # clf0, features_wts0, results_by_f0, results_by_auc0 = make_prediction_and_tuning(train_x0, train_y0, test_x0, test_y0, features0, [1000, 15, 2, 'rf'])
+    # # clf0, features_wts0, results_by_f0, results_by_auc0 = make_prediction_and_tuning(train_x0, train_y0, test_x0, test_y0, features0, [0.01, 15, 2, 'lr'])
+    # # # auc: 0.575, 0.629
+    # # # ============= baseline 2: frequency in sub-window ===================================
+    # # # every season: get the counts and then append
+    # # counts_sub_dm = get_counts_subwindow(data_dm3, 1, prelim_features, 3)
+    # # counts_sub_control = get_counts_subwindow(data_control3, 0, prelim_features, 3)
+    # # counts_sub = counts_sub_dm.append(counts_sub_control).fillna(0)
+    # # counts_sub.to_csv('./data/counts_sub_by3month.csv')
+    # #
+    # # # counts_sub_dm = get_counts_subwindow(data_dm3, 1, prelim_features, 2)
+    # # # counts_sub_control = get_counts_subwindow(data_control3, 0, prelim_features, 2)
+    # # # counts_sub = counts_sub_dm.append(counts_sub_control).fillna(0)
+    # # # counts_sub.to_csv('./data/counts_sub_by2month.csv')
+    # # #
+    # # # counts_sub_dm = get_counts_subwindow(data_dm3, 1, prelim_features, 1)
+    # # # counts_sub_control = get_counts_subwindow(data_control3, 0, prelim_features, 1)
+    # # # counts_sub = counts_sub_dm.append(counts_sub_control).fillna(0)
+    # # # counts_sub.to_csv('./data/counts_sub_by1month.csv')
+    # # #
+    # # # counts_sub_dm = get_counts_subwindow(data_dm3, 1, prelim_features, 6)
+    # # # counts_sub_control = get_counts_subwindow(data_control3, 0, prelim_features, 6)
+    # # # counts_sub = counts_sub_dm.append(counts_sub_control).fillna(0)
+    # # # counts_sub.to_csv('./data/counts_sub_by6month.csv')
+    # #
+    # # counts_sub_x = counts_sub[counts_sub.columns[:-1]]
+    # # counts_sub_y = counts_sub['response']
+    # # features1 = counts_sub.columns.tolist()[:-1]
+    # # train_x1, train_y1, test_x1, test_y1 = split_train_test_sets(train_ids, test_ids, counts_sub_x, counts_sub_y)
+    # # clf1, features_wts1, results_by_f1, results_by_auc1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features1, [1000, 15, 2, 'rf'])
+    # # clf1, features_wts1, results_by_f1, results_by_auc1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features1, [0.01, 15, 2, 'lr'])
+    # #
+    # # # ============== baseline 3: mining sequence patterns =============================================
+    # # # get the sequence by sub-windows
+    # # seq_dm = create_sequence(data_dm4, 'dm_train')
+    # # seq_control = create_sequence(data_control4, 'control_train')
+    # # # load the selected features using sequential pattern mining SPADE
+    # # features2_dm = pd.read_csv('./data/result_dm.txt', delimiter=' -1', header=None)
+    # # # features2_control = pd.read_csv('./data/result_control.txt', delimiter=' -1', header=None)
+    # # # merge the features selected to get the selected single features
+    # # features2a = features2_dm[0].values.tolist()[:-2] + ['167', '663']
+    # # features2a_names = ['cat' + i for i in features2a] + ['response']
+    # # counts_bps = counts[features2a_names]
+    # #
+    # # cooccur_list = [[258, 259], [53, 98], [204, 211]]
+    # # mvisit_list = [259, 211]
+    # # counts_bpsb = get_seq_item_counts(seq_dm, seq_control, cooccur_list, mvisit_list)
+    # # counts_bps = pd.concat([counts_bpsb, counts], axis=1).fillna(0)
+    # # counts_bps.to_csv('./data/counts_bps.csv')
+    # #
+    # # counts_bps_y = counts_bps['response']
+    # # counts_bps_x = counts_bps
+    # # del counts_bps_x['response']
+    # # features2 = counts_bps_x.columns.tolist()
+    # # train_x2, train_y2, test_x2, test_y2 = split_train_test_sets(train_ids, test_ids, counts_bps_x, counts_bps_y)
+    # # clf2, features_wts2, results_by_f2, results_by_auc2 = make_prediction_and_tuning(train_x2, train_y2, test_x2, test_y2, features2, [1000, 15, 2, 'rf'])
+    # # clf2, features_wts2, results_by_f2, results_by_auc2 = make_prediction_and_tuning(train_x2, train_y2, test_x2, test_y2, features2, [0.01, 15, 2, 'lr'])
+    # #
+    # # # ============== another baseline 4: transitions ====================================================
+    # counts_trans = get_transition_counts(data_dm4, data_control4, prelim_features)
+    # counts_trans = pd.concat([counts_trans, counts], axis=1).fillna(0)
+    # counts_trans.to_csv('./data/counts_trans.csv')
+    # #
+    # # counts_trans_x = counts_trans[counts_trans.columns[:-1]]
+    # # counts_trans_y = counts_trans['response']
+    # # features4 = counts_trans.columns.tolist()[:-1]
+    # # train_x4, train_y4, test_x4, test_y4 = split_train_test_sets(train_ids, test_ids, counts_trans_x, counts_trans_y)
+    # # clf4, features_wts4, results_by_f4, results_by_auc4 = make_prediction_and_tuning(train_x4, train_y4, test_x4, test_y4, features4, [1000, 15, 2, 'rf'])
+    # # clf4, features_wts4, results_by_f4, results_by_auc4 = make_prediction_and_tuning(train_x4, train_y4, test_x4, test_y4, features4, [0.01, 15, 2, 'lr'])
+    # #
+    # # # ============= Proposed: frequency in sub-window and selected by sgl===================================
+    # # # train_ids = pd.read_csv('./data/train_ids.csv', header=None, dtype=object)
+    # # # train_ids = train_ids.values.flatten()
+    # # # test_ids = pd.read_csv('./data/test_ids.csv', header=None, dtype=object)
+    # # # test_ids = test_ids.values.flatten()
+    # #
+    # # counts_sub = pd.read_csv('./data/counts_sub_by3month.csv')
+    # # counts_sub.index = counts_sub['ptid'].astype(str)
+    # # del counts_sub['ptid']
+    # # data_cols = counts_sub.columns
+    # # alphas = np.arange(0, 1.1, 0.1)
+    # # for a in alphas:
+    # #     print('When alpha = %.1f:' % a)
+    # #     features3_all = pd.read_csv('./data/sgl_coefs_4group_alpha' + str(int(a * 10)) + '_v2.csv')
+    # #     del features3_all['Unnamed: 0']
+    # #     feature_names_sgl = []
+    # #     for i in features3_all.columns:
+    # #         # print('The %i-th lambda:' % i)
+    # #         features3_inds = features3_all[i]
+    # #         features3 = [(data_cols[j], features3_inds.loc[j]) for j in features3_inds.index if features3_inds.loc[j] != 0]
+    # #         features3 = sorted(features3, key=itemgetter(1), reverse=True)
+    # #         feature_names_sgl.append(features3)
+    # #         features3_pos = [(data_cols[j], features3_inds.loc[j]) for j in features3_inds.index if features3_inds.loc[j] > 0]
+    # #         if len(features3) > 0:
+    # #             print('%i features are selected in SGL, %i are positive' % (len(features3), len(features3_pos)))
+    # #             # counts_sgl_x = counts_sub[features3]
+    # #             # counts_sgl_y = counts_sub['response']
+    # #             # train_x3, train_y3, test_x3, test_y3 = split_train_test_sets(train_ids, test_ids, counts_sgl_x, counts_sgl_y)
+    # #             # clf3, features_wts3, results_by_f3, results_by_auc3 = make_prediction_and_tuning(train_x3, train_y3, test_x3, test_y3, features3, [1000, 15, 2, 'rf'])
+    # #             # clf3, features_wts3, results_by_f3, results_by_auc3 = make_prediction_and_tuning(train_x3, train_y3, test_x3, test_y3, features3, [0.01, 15, 2, 'lr'])
+    # #         else:
+    # #             print('No feature is selected in SGL!')
+    # # a = 0.8
+    # # features3_all = pd.read_csv('./data/sgl_coefs_4group_alpha' + str(int(a * 10)) + '_v2.csv')
+    # # del features3_all['Unnamed: 0']
+    # # i = features3_all.columns[5]
+    # # features3_inds = features3_all[i]
+    # # features3 = [data_cols[j] for j in features3_inds.index if features3_inds.loc[j] != 0]
+    # # counts_sgl_x = counts_sub[features3]
+    # # counts_sgl_y = counts_sub['response']
+    # # train_x3, train_y3, test_x3, test_y3 = split_train_test_sets(train_ids, test_ids, counts_sgl_x, counts_sgl_y)
+    # # clf3, features_wts3, results_by_f3, results_by_auc3 = make_prediction_and_tuning(train_x3, train_y3, test_x3, test_y3, features3, [1000, 15, 2, 'rf'])
+    # # clf3, features_wts3, results_by_f3, results_by_auc3 = make_prediction_and_tuning(train_x3, train_y3, test_x3, test_y3, features3, [0.01, 15, 2, 'lr'])
+    # #
+    # # features3 = [(data_cols[j], features3_inds.loc[j]) for j in features3_inds.index if features3_inds.loc[j] != 0]
+    # # features3 = sorted(features3, key=itemgetter(1), reverse=True)
+    #
+    # with open('./data/train_test_ptids.pickle', 'rb') as f:
+    #     train_ids, test_ids = pickle.load(f)
+    #
+    #
+    # # ======================================= collect prediction results =============================
+    #
+    # counts = pd.read_csv('./data/dm_control_counts.csv')
+    # counts.index = counts['ptid'].astype(str)
+    # del counts['ptid']
     # counts_x = counts[counts.columns[:-1]]
     # counts_y = counts['response']
     # features0 = counts.columns.tolist()[:-1]
     # train_x0, train_y0, test_x0, test_y0 = split_train_test_sets(train_ids, test_ids, counts_x, counts_y)
-    # clf0, features_wts0, results_by_f0, results_by_auc0 = make_prediction_and_tuning(train_x0, train_y0, test_x0, test_y0, features0, [1000, 15, 2, 'rf'])
-    # clf0, features_wts0, results_by_f0, results_by_auc0 = make_prediction_and_tuning(train_x0, train_y0, test_x0, test_y0, features0, [0.01, 15, 2, 'lr'])
-    # # auc: 0.575, 0.629
-    # # ============= baseline 2: frequency in sub-window ===================================
-    # # every season: get the counts and then append
-    # counts_sub_dm = get_counts_subwindow(data_dm3, 1, prelim_features, 3)
-    # counts_sub_control = get_counts_subwindow(data_control3, 0, prelim_features, 3)
-    # counts_sub = counts_sub_dm.append(counts_sub_control).fillna(0)
-    # counts_sub.to_csv('./data/counts_sub_by3month.csv')
-    #
-    # # counts_sub_dm = get_counts_subwindow(data_dm3, 1, prelim_features, 2)
-    # # counts_sub_control = get_counts_subwindow(data_control3, 0, prelim_features, 2)
-    # # counts_sub = counts_sub_dm.append(counts_sub_control).fillna(0)
-    # # counts_sub.to_csv('./data/counts_sub_by2month.csv')
-    # #
-    # # counts_sub_dm = get_counts_subwindow(data_dm3, 1, prelim_features, 1)
-    # # counts_sub_control = get_counts_subwindow(data_control3, 0, prelim_features, 1)
-    # # counts_sub = counts_sub_dm.append(counts_sub_control).fillna(0)
-    # # counts_sub.to_csv('./data/counts_sub_by1month.csv')
-    # #
-    # # counts_sub_dm = get_counts_subwindow(data_dm3, 1, prelim_features, 6)
-    # # counts_sub_control = get_counts_subwindow(data_control3, 0, prelim_features, 6)
-    # # counts_sub = counts_sub_dm.append(counts_sub_control).fillna(0)
-    # # counts_sub.to_csv('./data/counts_sub_by6month.csv')
-    #
-    # counts_sub_x = counts_sub[counts_sub.columns[:-1]]
-    # counts_sub_y = counts_sub['response']
-    # features1 = counts_sub.columns.tolist()[:-1]
-    # train_x1, train_y1, test_x1, test_y1 = split_train_test_sets(train_ids, test_ids, counts_sub_x, counts_sub_y)
-    # clf1, features_wts1, results_by_f1, results_by_auc1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features1, [1000, 15, 2, 'rf'])
-    # clf1, features_wts1, results_by_f1, results_by_auc1 = make_prediction_and_tuning(train_x1, train_y1, test_x1, test_y1, features1, [0.01, 15, 2, 'lr'])
-    #
-    # # ============== baseline 3: mining sequence patterns =============================================
-    # # get the sequence by sub-windows
-    # seq_dm = create_sequence(data_dm4, 'dm_train')
-    # seq_control = create_sequence(data_control4, 'control_train')
-    # # load the selected features using sequential pattern mining SPADE
-    # features2_dm = pd.read_csv('./data/result_dm.txt', delimiter=' -1', header=None)
-    # # features2_control = pd.read_csv('./data/result_control.txt', delimiter=' -1', header=None)
-    # # merge the features selected to get the selected single features
-    # features2a = features2_dm[0].values.tolist()[:-2] + ['167', '663']
-    # features2a_names = ['cat' + i for i in features2a] + ['response']
-    # counts_bps = counts[features2a_names]
-    #
-    # cooccur_list = [[258, 259], [53, 98], [204, 211]]
-    # mvisit_list = [259, 211]
-    # counts_bpsb = get_seq_item_counts(seq_dm, seq_control, cooccur_list, mvisit_list)
-    # counts_bps = pd.concat([counts_bpsb, counts], axis=1).fillna(0)
-    # counts_bps.to_csv('./data/counts_bps.csv')
-    #
-    # counts_bps_y = counts_bps['response']
-    # counts_bps_x = counts_bps
-    # del counts_bps_x['response']
-    # features2 = counts_bps_x.columns.tolist()
-    # train_x2, train_y2, test_x2, test_y2 = split_train_test_sets(train_ids, test_ids, counts_bps_x, counts_bps_y)
-    # clf2, features_wts2, results_by_f2, results_by_auc2 = make_prediction_and_tuning(train_x2, train_y2, test_x2, test_y2, features2, [1000, 15, 2, 'rf'])
-    # clf2, features_wts2, results_by_f2, results_by_auc2 = make_prediction_and_tuning(train_x2, train_y2, test_x2, test_y2, features2, [0.01, 15, 2, 'lr'])
-    #
-    # # ============== another baseline 4: transitions ====================================================
-    counts_trans = get_transition_counts(data_dm4, data_control4, prelim_features)
-    counts_trans = pd.concat([counts_trans, counts], axis=1).fillna(0)
-    counts_trans.to_csv('./data/counts_trans.csv')
-    #
-    # counts_trans_x = counts_trans[counts_trans.columns[:-1]]
-    # counts_trans_y = counts_trans['response']
-    # features4 = counts_trans.columns.tolist()[:-1]
-    # train_x4, train_y4, test_x4, test_y4 = split_train_test_sets(train_ids, test_ids, counts_trans_x, counts_trans_y)
-    # clf4, features_wts4, results_by_f4, results_by_auc4 = make_prediction_and_tuning(train_x4, train_y4, test_x4, test_y4, features4, [1000, 15, 2, 'rf'])
-    # clf4, features_wts4, results_by_f4, results_by_auc4 = make_prediction_and_tuning(train_x4, train_y4, test_x4, test_y4, features4, [0.01, 15, 2, 'lr'])
-    #
-    # # ============= Proposed: frequency in sub-window and selected by sgl===================================
-    # # train_ids = pd.read_csv('./data/train_ids.csv', header=None, dtype=object)
-    # # train_ids = train_ids.values.flatten()
-    # # test_ids = pd.read_csv('./data/test_ids.csv', header=None, dtype=object)
-    # # test_ids = test_ids.values.flatten()
     #
     # counts_sub = pd.read_csv('./data/counts_sub_by3month.csv')
     # counts_sub.index = counts_sub['ptid'].astype(str)
     # del counts_sub['ptid']
-    # data_cols = counts_sub.columns
-    # alphas = np.arange(0, 1.1, 0.1)
-    # for a in alphas:
-    #     print('When alpha = %.1f:' % a)
-    #     features3_all = pd.read_csv('./data/sgl_coefs_4group_alpha' + str(int(a * 10)) + '_v2.csv')
-    #     del features3_all['Unnamed: 0']
-    #     feature_names_sgl = []
-    #     for i in features3_all.columns:
-    #         # print('The %i-th lambda:' % i)
-    #         features3_inds = features3_all[i]
-    #         features3 = [(data_cols[j], features3_inds.loc[j]) for j in features3_inds.index if features3_inds.loc[j] != 0]
-    #         features3 = sorted(features3, key=itemgetter(1), reverse=True)
-    #         feature_names_sgl.append(features3)
-    #         features3_pos = [(data_cols[j], features3_inds.loc[j]) for j in features3_inds.index if features3_inds.loc[j] > 0]
-    #         if len(features3) > 0:
-    #             print('%i features are selected in SGL, %i are positive' % (len(features3), len(features3_pos)))
-    #             # counts_sgl_x = counts_sub[features3]
-    #             # counts_sgl_y = counts_sub['response']
-    #             # train_x3, train_y3, test_x3, test_y3 = split_train_test_sets(train_ids, test_ids, counts_sgl_x, counts_sgl_y)
-    #             # clf3, features_wts3, results_by_f3, results_by_auc3 = make_prediction_and_tuning(train_x3, train_y3, test_x3, test_y3, features3, [1000, 15, 2, 'rf'])
-    #             # clf3, features_wts3, results_by_f3, results_by_auc3 = make_prediction_and_tuning(train_x3, train_y3, test_x3, test_y3, features3, [0.01, 15, 2, 'lr'])
-    #         else:
-    #             print('No feature is selected in SGL!')
+    # counts_sub_x = counts_sub[counts_sub.columns[:-1]]
+    # counts_sub_y = counts_sub['response']
+    # features1 = counts_sub.columns.tolist()[:-1]
+    # train_x1, train_y1, test_x1, test_y1 = split_train_test_sets(train_ids, test_ids, counts_sub_x, counts_sub_y)
+    #
+    # counts_bps = pd.read_csv('./data/counts_bps.csv')
+    # counts_bps.columns = ['ptid'] + list(counts_bps.columns[1:])
+    # counts_bps.index = counts_bps['ptid'].astype(str)
+    # del counts_bps['ptid']
+    # counts_bps_x = counts_bps[counts_bps.columns[:-1]]
+    # counts_bps_y = counts_bps['response']
+    # features2 = counts_bps.columns.tolist()[:-1]
+    # train_x2, train_y2, test_x2, test_y2 = split_train_test_sets(train_ids, test_ids, counts_bps_x, counts_bps_y)
+    #
+    # counts_trans = pd.read_csv('./data/counts_trans.csv')
+    # counts_trans = counts_trans.fillna(0.0)
+    # counts_trans.columns = ['ptid'] + list(counts_trans.columns[1:])
+    # counts_trans.index = counts_trans['ptid'].astype(str)
+    # del counts_trans['ptid']
+    # # counts_trans_x = counts_trans[counts_trans.columns[:-1]]
+    # counts_trans_x = counts_trans[counts_trans.columns[:-1]]
+    # counts_trans_y = counts_trans['response']
+    # features4 = counts_trans.columns.tolist()[:-1]
+    # with open('./data/train_test_ptids_trans.pickle', 'rb') as f:
+    #     train_ids_4, test_ids_4 = pickle.load(f)
+    # train_x4, train_y4, test_x4, test_y4 = split_train_test_sets(train_ids_4, test_ids_4, counts_trans_x, counts_trans_y)
+    #
     # a = 0.8
     # features3_all = pd.read_csv('./data/sgl_coefs_4group_alpha' + str(int(a * 10)) + '_v2.csv')
     # del features3_all['Unnamed: 0']
     # i = features3_all.columns[5]
     # features3_inds = features3_all[i]
+    # data_cols = features1
     # features3 = [data_cols[j] for j in features3_inds.index if features3_inds.loc[j] != 0]
     # counts_sgl_x = counts_sub[features3]
     # counts_sgl_y = counts_sub['response']
     # train_x3, train_y3, test_x3, test_y3 = split_train_test_sets(train_ids, test_ids, counts_sgl_x, counts_sgl_y)
-    # clf3, features_wts3, results_by_f3, results_by_auc3 = make_prediction_and_tuning(train_x3, train_y3, test_x3, test_y3, features3, [1000, 15, 2, 'rf'])
-    # clf3, features_wts3, results_by_f3, results_by_auc3 = make_prediction_and_tuning(train_x3, train_y3, test_x3, test_y3, features3, [0.01, 15, 2, 'lr'])
-    #
-    # features3 = [(data_cols[j], features3_inds.loc[j]) for j in features3_inds.index if features3_inds.loc[j] != 0]
-    # features3 = sorted(features3, key=itemgetter(1), reverse=True)
-
-    with open('./data/train_test_ptids.pickle', 'rb') as f:
-        train_ids, test_ids = pickle.load(f)
-
-
-    # ======================================= collect prediction results =============================
-
-    counts = pd.read_csv('./data/dm_control_counts.csv')
-    counts.index = counts['ptid'].astype(str)
-    del counts['ptid']
-    counts_x = counts[counts.columns[:-1]]
-    counts_y = counts['response']
-    features0 = counts.columns.tolist()[:-1]
-    train_x0, train_y0, test_x0, test_y0 = split_train_test_sets(train_ids, test_ids, counts_x, counts_y)
-
-    counts_sub = pd.read_csv('./data/counts_sub_by3month.csv')
-    counts_sub.index = counts_sub['ptid'].astype(str)
-    del counts_sub['ptid']
-    counts_sub_x = counts_sub[counts_sub.columns[:-1]]
-    counts_sub_y = counts_sub['response']
-    features1 = counts_sub.columns.tolist()[:-1]
-    train_x1, train_y1, test_x1, test_y1 = split_train_test_sets(train_ids, test_ids, counts_sub_x, counts_sub_y)
-
-    counts_bps = pd.read_csv('./data/counts_bps.csv')
-    counts_bps.columns = ['ptid'] + list(counts_bps.columns[1:])
-    counts_bps.index = counts_bps['ptid'].astype(str)
-    del counts_bps['ptid']
-    counts_bps_x = counts_bps[counts_bps.columns[:-1]]
-    counts_bps_y = counts_bps['response']
-    features2 = counts_bps.columns.tolist()[:-1]
-    train_x2, train_y2, test_x2, test_y2 = split_train_test_sets(train_ids, test_ids, counts_bps_x, counts_bps_y)
-
-    counts_trans = pd.read_csv('./data/counts_trans.csv')
-    counts_trans = counts_trans.fillna(0.0)
-    counts_trans.columns = ['ptid'] + list(counts_trans.columns[1:])
-    counts_trans.index = counts_trans['ptid'].astype(str)
-    del counts_trans['ptid']
-    # counts_trans_x = counts_trans[counts_trans.columns[:-1]]
-    counts_trans_x = counts_trans[counts_trans.columns[:-1]]
-    counts_trans_y = counts_trans['response']
-    features4 = counts_trans.columns.tolist()[:-1]
-    with open('./data/train_test_ptids_trans.pickle', 'rb') as f:
-        train_ids_4, test_ids_4 = pickle.load(f)
-    train_x4, train_y4, test_x4, test_y4 = split_train_test_sets(train_ids_4, test_ids_4, counts_trans_x, counts_trans_y)
-
-    a = 0.8
-    features3_all = pd.read_csv('./data/sgl_coefs_4group_alpha' + str(int(a * 10)) + '_v2.csv')
-    del features3_all['Unnamed: 0']
-    i = features3_all.columns[5]
-    features3_inds = features3_all[i]
-    data_cols = features1
-    features3 = [data_cols[j] for j in features3_inds.index if features3_inds.loc[j] != 0]
-    counts_sgl_x = counts_sub[features3]
-    counts_sgl_y = counts_sub['response']
-    train_x3, train_y3, test_x3, test_y3 = split_train_test_sets(train_ids, test_ids, counts_sgl_x, counts_sgl_y)
-
-
-    # get the trans
-    test_proba0a = make_predictions(train_x0, train_y0, test_x0, [1000, 15, 'rf'])
-    test_proba0b = make_predictions(train_x0, train_y0, test_x0, [1000, 15, 'gbt'])
-    test_proba0c = make_predictions(train_x0, train_y0, test_x0, [0.01, 15, 'lr'])
-
-    test_proba1a = make_predictions(train_x1, train_y1, test_x1, [1000, 15, 'rf'])
-    test_proba1b = make_predictions(train_x1, train_y1, test_x1, [1000, 15, 'gbt'])
-    test_proba1c = make_predictions(train_x1, train_y1, test_x1, [0.01, 15, 'lr'])
-
-    test_proba2a = make_predictions(train_x2, train_y2, test_x2, [1000, 15, 'rf'])
-    test_proba2b = make_predictions(train_x2, train_y2, test_x2, [1000, 15, 'gbt'])
-    test_proba2c = make_predictions(train_x2, train_y2, test_x2, [0.01, 15, 'lr'])
-
-    test_proba3a = make_predictions(train_x4, train_y4, test_x4, [1000, 15, 'rf'])
-    test_proba3b = make_predictions(train_x4, train_y4, test_x4, [1000, 15, 'gbt'])
-    test_proba3c = make_predictions(train_x4, train_y4, test_x4, [0.01, 15, 'lr'])
-
-    test_proba4a = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'rf'])
-    test_proba4b = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'gbt'])
-    test_proba4c = make_predictions(train_x3, train_y3, test_x3, [0.01, 15, 'lr'])
-
-    test_proba = pd.DataFrame([test_proba0a, test_proba0b, test_proba0c, test_y0.values.tolist(),
-                               test_proba1a, test_proba1b, test_proba1c, test_y1.values.tolist(),
-                               test_proba2a, test_proba2b, test_proba2c, test_y2.values.tolist(),
-                               test_proba3a, test_proba3b, test_proba3c, test_y4.values.tolist(),
-                               test_proba4a, test_proba4b, test_proba4c, test_y3.values.tolist()])
-    test_proba = test_proba.transpose()
-    test_proba.columns = ['b1_rf', 'b1_gbt', 'b1_lasso', 'b1_response', 'b2_rf', 'b2_gbt', 'b2_lasso', 'b2_response',
-                          'b3_rf', 'b3_gbt', 'b3_lasso', 'b3_response', 'b4_rf', 'b4_gbt', 'b4_lasso', 'b4_response',
-                          'b5_rf', 'b5_gbt', 'b5_lasso', 'b5_response']
-    test_proba.to_csv('./data/test_proba_v5.csv', index=False)
-
-    def calculate_fscores_bootstraps(test_proba, thres, y):
-        res = [1 if p >= thres else 0 for p in test_proba]
-        f2s = []
-        for p in range(50):
-            random.seed(p)
-            sp = random.choices(list(zip(res, y)), k=int(len(y)))
-            sp_pred = [v[0] for v in sp]
-            sp_true = [v[1] for v in sp]
-            f2 = metrics.fbeta_score(sp_true, sp_pred, average='binary', beta=2)
-            f2s.append(f2)
-        avg = np.mean(f2s)
-        std = np.std(f2s)
-        return tuple((avg, std))
-
-    cols = [['b1_rf', 'b1_gbt', 'b1_lasso', 'b1_response', 0.47, 0.11, 0.11],
-            ['b3_rf', 'b3_gbt', 'b3_lasso', 'b3_response', 0.47, 0.11, 0.11],
-            # ['b4_rf', 'b4_gbt', 'b4_lasso', 'b4_response', 0.51, 0.11, 0.11],
-            ['b5_rf', 'b5_gbt', 'b5_lasso', 'b5_response', 0.41, 0.15, 0.11]]
-
-    fs = []
-    for i in cols:
-        results_rf = calculate_fscores_bootstraps(test_proba[i[0]].values, i[4], test_proba[i[3]].values)
-        results_gbt = calculate_fscores_bootstraps(test_proba[i[1]].values, i[5], test_proba[i[3]].values)
-        results_lr = calculate_fscores_bootstraps(test_proba[i[2]].values, i[6], test_proba[i[3]].values)
-        fs.append([results_lr, results_gbt, results_rf])
-
-    results_rf = calculate_fscores_bootstraps(test_proba3a, 0.51, test_y4.values.tolist())
-    results_gbt = calculate_fscores_bootstraps(test_proba3b, 0.11, test_y4.values.tolist())
-    results_lr = calculate_fscores_bootstraps(test_proba3c, 0.11, test_y4.values.tolist())
-
-    #
-    # data_dm4[data_dm4['ptid'] == '769052'].to_csv('./data/example_dmpt.csv') # rf predicted proba: 0.782
-    # data_control4[data_control4['ptid'] =='1819093'].to_csv('./data/example_controlpt.csv') # rf predicted proba: 0.033
-    #
-    # data['adm_day'] = data['adm_date'].apply(lambda x: int(x / 60 / 24))
-    # data['adm_month'] = data['adm_day'].apply(lambda x: int(x / 30))
-    # del data['rank']
-    # del data['dis_date']
-    # del data['adm_date']
-    # analysis on example patient
-    # import pandas as pd
-    # import pickle
-    # test_proba = pd.read_csv('./data/test_proba_v3.csv')
-    #
-    # with open('./data/train_test_ptids.pickle', 'rb') as f:
-    #     train_ids, test_ids = pickle.load(f)
-    #
-    # test_proba['ptid'] = test_ids
-    # test_proba.sort(['b5_rf', 'b5_lasso'], ascending=[1, 1], inplace=True)
-    #
-    # with open('./data/visits_v4.pickle', 'rb') as f:
-    #     visits = pickle.load(f)
-    #
-    # visits.columns = ['ptid', 'vid', 'IPorOP', 'adm_date', 'dis_date', 'rank']
-    # with open('./data/dxs_data_v2.pickle', 'rb') as f:
-    #     data_dx = pickle.load(f)
     #
     #
-    # dxgrps, dxgrps_dict, dxgrps_dict2 = dx2dxcat()
-    # data_dx2 = process_dxs(data_dx, dxgrps_dict, dxgrps_dict2)
-    # data_dx2.head()
+    # # get the trans
+    # test_proba0a = make_predictions(train_x0, train_y0, test_x0, [1000, 15, 'rf'])
+    # test_proba0b = make_predictions(train_x0, train_y0, test_x0, [1000, 15, 'gbt'])
+    # test_proba0c = make_predictions(train_x0, train_y0, test_x0, [0.01, 15, 'lr'])
     #
-    # data = merge_visit_and_dx(data_dx2,
-    #                           visits)
+    # test_proba1a = make_predictions(train_x1, train_y1, test_x1, [1000, 15, 'rf'])
+    # test_proba1b = make_predictions(train_x1, train_y1, test_x1, [1000, 15, 'gbt'])
+    # test_proba1c = make_predictions(train_x1, train_y1, test_x1, [0.01, 15, 'lr'])
     #
-    # # exm1 = data[data['ptid']=='1094444']
-    # # exm1 = data[data['ptid']=='750517']
-    # exm1 = data[data['ptid']=='1407189']
-    # exm1['adm_day'] = exm1['adm_date'].apply(lambda x: int(x / 60 / 24))
-    # exm1['adm_month'] = exm1['adm_day'].apply(lambda x: int(x / 30))
-    # del exm1['rank']
-    # del exm1['dis_date']
-    # del exm1['adm_date']
-
+    # test_proba2a = make_predictions(train_x2, train_y2, test_x2, [1000, 15, 'rf'])
+    # test_proba2b = make_predictions(train_x2, train_y2, test_x2, [1000, 15, 'gbt'])
+    # test_proba2c = make_predictions(train_x2, train_y2, test_x2, [0.01, 15, 'lr'])
+    #
+    # test_proba3a = make_predictions(train_x4, train_y4, test_x4, [1000, 15, 'rf'])
+    # test_proba3b = make_predictions(train_x4, train_y4, test_x4, [1000, 15, 'gbt'])
+    # test_proba3c = make_predictions(train_x4, train_y4, test_x4, [0.01, 15, 'lr'])
+    #
+    # test_proba4a = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'rf'])
+    # test_proba4b = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'gbt'])
+    # test_proba4c = make_predictions(train_x3, train_y3, test_x3, [0.01, 15, 'lr'])
+    #
+    # test_proba = pd.DataFrame([test_proba0a, test_proba0b, test_proba0c, test_y0.values.tolist(),
+    #                            test_proba1a, test_proba1b, test_proba1c, test_y1.values.tolist(),
+    #                            test_proba2a, test_proba2b, test_proba2c, test_y2.values.tolist(),
+    #                            test_proba3a, test_proba3b, test_proba3c, test_y4.values.tolist(),
+    #                            test_proba4a, test_proba4b, test_proba4c, test_y3.values.tolist()])
+    # test_proba = test_proba.transpose()
+    # test_proba.columns = ['b1_rf', 'b1_gbt', 'b1_lasso', 'b1_response', 'b2_rf', 'b2_gbt', 'b2_lasso', 'b2_response',
+    #                       'b3_rf', 'b3_gbt', 'b3_lasso', 'b3_response', 'b4_rf', 'b4_gbt', 'b4_lasso', 'b4_response',
+    #                       'b5_rf', 'b5_gbt', 'b5_lasso', 'b5_response']
+    # test_proba.to_csv('./data/test_proba_v5.csv', index=False)
+    #
+    # def calculate_fscores_bootstraps(test_proba, thres, y):
+    #     res = [1 if p >= thres else 0 for p in test_proba]
+    #     f2s = []
+    #     for p in range(50):
+    #         random.seed(p)
+    #         sp = random.choices(list(zip(res, y)), k=int(len(y)))
+    #         sp_pred = [v[0] for v in sp]
+    #         sp_true = [v[1] for v in sp]
+    #         f2 = metrics.fbeta_score(sp_true, sp_pred, average='binary', beta=2)
+    #         f2s.append(f2)
+    #     avg = np.mean(f2s)
+    #     std = np.std(f2s)
+    #     return tuple((avg, std))
+    #
+    # cols = [['b1_rf', 'b1_gbt', 'b1_lasso', 'b1_response', 0.47, 0.11, 0.11],
+    #         ['b3_rf', 'b3_gbt', 'b3_lasso', 'b3_response', 0.47, 0.11, 0.11],
+    #         # ['b4_rf', 'b4_gbt', 'b4_lasso', 'b4_response', 0.51, 0.11, 0.11],
+    #         ['b5_rf', 'b5_gbt', 'b5_lasso', 'b5_response', 0.41, 0.15, 0.11]]
+    #
+    # fs = []
+    # for i in cols:
+    #     results_rf = calculate_fscores_bootstraps(test_proba[i[0]].values, i[4], test_proba[i[3]].values)
+    #     results_gbt = calculate_fscores_bootstraps(test_proba[i[1]].values, i[5], test_proba[i[3]].values)
+    #     results_lr = calculate_fscores_bootstraps(test_proba[i[2]].values, i[6], test_proba[i[3]].values)
+    #     fs.append([results_lr, results_gbt, results_rf])
+    #
+    # results_rf = calculate_fscores_bootstraps(test_proba3a, 0.51, test_y4.values.tolist())
+    # results_gbt = calculate_fscores_bootstraps(test_proba3b, 0.11, test_y4.values.tolist())
+    # results_lr = calculate_fscores_bootstraps(test_proba3c, 0.11, test_y4.values.tolist())
+    #
+    # #
+    # # data_dm4[data_dm4['ptid'] == '769052'].to_csv('./data/example_dmpt.csv') # rf predicted proba: 0.782
+    # # data_control4[data_control4['ptid'] =='1819093'].to_csv('./data/example_controlpt.csv') # rf predicted proba: 0.033
+    # #
+    # # data['adm_day'] = data['adm_date'].apply(lambda x: int(x / 60 / 24))
+    # # data['adm_month'] = data['adm_day'].apply(lambda x: int(x / 30))
+    # # del data['rank']
+    # # del data['dis_date']
+    # # del data['adm_date']
+    # # analysis on example patient
+    # # import pandas as pd
+    # # import pickle
+    # # test_proba = pd.read_csv('./data/test_proba_v3.csv')
+    # #
+    # # with open('./data/train_test_ptids.pickle', 'rb') as f:
+    # #     train_ids, test_ids = pickle.load(f)
+    # #
+    # # test_proba['ptid'] = test_ids
+    # # test_proba.sort(['b5_rf', 'b5_lasso'], ascending=[1, 1], inplace=True)
+    # #
+    # # with open('./data/visits_v4.pickle', 'rb') as f:
+    # #     visits = pickle.load(f)
+    # #
+    # # visits.columns = ['ptid', 'vid', 'IPorOP', 'adm_date', 'dis_date', 'rank']
+    # # with open('./data/dxs_data_v2.pickle', 'rb') as f:
+    # #     data_dx = pickle.load(f)
+    # #
+    # #
+    # # dxgrps, dxgrps_dict, dxgrps_dict2 = dx2dxcat()
+    # # data_dx2 = process_dxs(data_dx, dxgrps_dict, dxgrps_dict2)
+    # # data_dx2.head()
+    # #
+    # # data = merge_visit_and_dx(data_dx2,
+    # #                           visits)
+    # #
+    # # # exm1 = data[data['ptid']=='1094444']
+    # # # exm1 = data[data['ptid']=='750517']
+    # # exm1 = data[data['ptid']=='1407189']
+    # # exm1['adm_day'] = exm1['adm_date'].apply(lambda x: int(x / 60 / 24))
+    # # exm1['adm_month'] = exm1['adm_day'].apply(lambda x: int(x / 30))
+    # # del exm1['rank']
+    # # del exm1['dis_date']
+    # # del exm1['adm_date']
+    #

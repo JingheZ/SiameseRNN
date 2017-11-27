@@ -350,22 +350,22 @@ if __name__ == '__main__':
     f.close()
     data_dx.to_csv('./data/dxs_data.csv', index=False)
 
-    with open('./data/med_orders.pickle', 'wb') as f:
-        pickle.dump(data_med[['ptid', 'vid', 'Med_Pharm_Cls', 'anon_adm_date']], f)
-    f.close()
-    data_med[['ptid', 'vid', 'Med_Pharm_Cls', 'anon_adm_date']].to_csv('./data/med_orders.csv', index=False)
-
-    with open('./data/proc_orders.pickle', 'wb') as f:
-        pickle.dump(data_proc[['ptid', 'vid', 'PROC_ID', 'anon_adm_date']], f)
-    f.close()
-    data_proc[['ptid', 'vid', 'PROC_ID', 'anon_adm_date']].to_csv('./data/proc_orders.csv', index=False)
-    print('Done!')
+    # with open('./data/med_orders.pickle', 'wb') as f:
+    #     pickle.dump(data_med[['ptid', 'vid', 'Med_Pharm_Cls', 'anon_adm_date']], f)
+    # f.close()
+    # data_med[['ptid', 'vid', 'Med_Pharm_Cls', 'anon_adm_date']].to_csv('./data/med_orders.csv', index=False)
+    #
+    # with open('./data/proc_orders.pickle', 'wb') as f:
+    #     pickle.dump(data_proc[['ptid', 'vid', 'PROC_ID', 'anon_adm_date']], f)
+    # f.close()
+    # data_proc[['ptid', 'vid', 'PROC_ID', 'anon_adm_date']].to_csv('./data/proc_orders.csv', index=False)
+    # print('Done!')
 
     # ================================ load data back and analyze the visit in orders but not appearing in dxs ======
-    with open('./data/dxs_data.pickle', 'rb') as f:
-        data_dx = pickle.load(f)
-    f.close()
-    dxs_visits = data_dx[['ptid', 'vid']].drop_duplicates()
+    # with open('./data/dxs_data.pickle', 'rb') as f:
+    #     data_dx = pickle.load(f)
+    # f.close()
+    # dxs_visits = data_dx[['ptid', 'vid']].drop_duplicates()
 
     with open('./data/orders_visit_info.pickle', 'rb') as f:
         visit_info_orders = pickle.load(f)
@@ -384,14 +384,14 @@ if __name__ == '__main__':
     # so just need to remove these 3 patients from med and proc order data
 
     visit_info_orders_updated = visit_info_orders[~visit_info_orders['ptid'].isin(pts_with_visits_not_in_dxs)]
-    with open('./data/orders_visit_info_updated.pickle', 'wb') as f:
-        pickle.dump(visit_info_orders_updated, f)
-    f.close()
+    # with open('./data/orders_visit_info_updated.pickle', 'wb') as f:
+    #     pickle.dump(visit_info_orders_updated, f)
+    # f.close()
 
     # ================================ Analyze sequence lengths and how many visits before hospitalization ==========
-    with open('./data/orders_visit_info_updated.pickle', 'rb') as f:
-        visit_info_orders_updated = pickle.load(f)
-    f.close()
+    # with open('./data/orders_visit_info_updated.pickle', 'rb') as f:
+    #     visit_info_orders_updated = pickle.load(f)
+    # f.close()
     del visit_info_orders_updated['timeline']
     # remove patients with negative visit discharge
     visits = visit_info_orders_updated
@@ -435,220 +435,226 @@ if __name__ == '__main__':
     # with open('./data/visits_v3.pickle', 'rb') as f:
     #     visits_v3 = pickle.load(f)
     # f.close()
-
-    with open('./data/visits_v2.pickle', 'rb') as f:
-        visits_v2 = pickle.load(f)
-    f.close()
+    #
+    # with open('./data/visits_v2.pickle', 'rb') as f:
+    #     visits_v2 = pickle.load(f)
+    # f.close()
     # get all patients who have a 1.5 year history
     visits_v3 = visits_v2[visits_v2['anon_dis_date_y'] >= 1.5 * 360 * 24 * 60]
     visits_v3_ids = set(visits_v3['ptid'].values) # 103363 pts
     visits_v4 = visits_v2[visits_v2['ptid'].isin(visits_v3_ids)]
     visits_v4 = visits_v4[visits_v4['anon_adm_date_y'] >= 1.5 * 360 * 24 * 60]
-    IPvisits = visits_v4[visits_v4['cdrIPorOP'] == 'IP'] # 3677 patients with inhospital visits
-    pos_ids = list(set(IPvisits['ptid'].values)) # 10416 pts
-    neg_ids = list(visits_v3_ids.difference(set(pos_ids))) # 92947
+    with open('./data/visits_v4.pickle', 'wb') as f:
+        pickle.dump(visits_v4, f)
+    f.close()
+
+    # IPvisits = visits_v4[visits_v4['cdrIPorOP'] == 'IP'] # 3677 patients with inhospital visits
+    # pos_ids = list(set(IPvisits['ptid'].values)) # 10416 pts
+    # neg_ids = list(visits_v3_ids.difference(set(pos_ids))) # 92947
 
     # ====================== Remove the unused pts from the orders and dx data =====================
-    with open('./data/dxs_data.pickle', 'rb') as f:
-        data_dx = pickle.load(f)
-    f.close()
+    # with open('./data/dxs_data.pickle', 'rb') as f:
+    #     data_dx = pickle.load(f)
+    # f.close()
 
-    with open('./data/med_orders.pickle', 'rb') as f:
-        data_med = pickle.load(f)
-    f.close()
-
-    with open('./data/proc_orders.pickle', 'rb') as f:
-        data_proc = pickle.load(f)
-    f.close()
-    ptids = pos_ids + neg_ids
+    # with open('./data/med_orders.pickle', 'rb') as f:
+    #     data_med = pickle.load(f)
+    # f.close()
+    #
+    # with open('./data/proc_orders.pickle', 'rb') as f:
+    #     data_proc = pickle.load(f)
+    # f.close()
+    # ptids = pos_ids + neg_ids
+    # data_dx.columns = ['ptid', 'vid', 'itemid', 'pdx']
+    # data_dx = data_dx[data_dx['ptid'].isin(ptids)]
+    #
     data_dx.columns = ['ptid', 'vid', 'itemid', 'pdx']
-    data_dx = data_dx[data_dx['ptid'].isin(ptids)]
-
-    # dxgrps, dxgrps_dict, dxgrps_dict2 = dx2dxcat()
-    # data_dx2 = process_dxs(data_dx, dxgrps_dict, dxgrps_dict2)
+    dxgrps, dxgrps_dict, dxgrps_dict2 = dx2dxcat()
+    data_dx2 = process_dxs(data_dx, dxgrps_dict, dxgrps_dict2)
     data_dx['dxcat'] = data_dx['itemid'].apply(lambda x: 'dx' + str(x)).apply(lambda x: x.replace('.', ''))
+    #
+    # data_med.columns = ['ptid', 'vid', 'itemid', 'adm_date']
+    # data_med = data_med[data_med['ptid'].isin(ptids)]
+    #
+    # data_proc.columns = ['ptid', 'vid', 'itemid', 'adm_date']
+    # data_proc = data_proc[data_proc['ptid'].isin(ptids)]
+    # data_proc['itemid'] = data_proc['itemid'].apply(lambda x: 'p' + str(x))
 
-    data_med.columns = ['ptid', 'vid', 'itemid', 'adm_date']
-    data_med = data_med[data_med['ptid'].isin(ptids)]
-
-    data_proc.columns = ['ptid', 'vid', 'itemid', 'adm_date']
-    data_proc = data_proc[data_proc['ptid'].isin(ptids)]
-    data_proc['itemid'] = data_proc['itemid'].apply(lambda x: 'p' + str(x))
 
     with open('./data/dxs_data_v2.pickle', 'wb') as f:
         pickle.dump(data_dx, f)
     f.close()
     data_dx.to_csv('./data/dxs_data_v2.csv', index=False)
 
-    with open('./data/med_orders_v2.pickle', 'wb') as f:
-        pickle.dump(data_med[['ptid', 'vid', 'itemid']], f)
-    f.close()
-    data_med[['ptid', 'vid', 'itemid']].to_csv('./data/med_orders_v2.csv', index=False)
-
-    with open('./data/proc_orders_v2.pickle', 'wb') as f:
-        pickle.dump(data_proc[['ptid', 'vid', 'itemid']], f)
-    f.close()
-    data_proc[['ptid', 'vid', 'itemid']].to_csv('./data/proc_orders_v2.csv', index=False)
-
-    with open('./data/dxs_data_v2.pickle', 'rb') as f:
-        data_dx2 = pickle.load(f)
-    f.close()
-    with open('./data/med_orders_v2.pickle', 'rb') as f:
-        data_med = pickle.load(f)
-    f.close()
-    with open('./data/proc_orders_v2.pickle', 'rb') as f:
-        data_proc = pickle.load(f)
-    f.close()
-    # to merge dx, med, and proc info
-    data_dx3 = data_dx2[['ptid', 'vid', 'dxcat']].drop_duplicates()
-    data_dx3.columns = ['ptid', 'vid', 'itemid']
-    dt1 = pd.concat([data_dx3, data_med[['ptid', 'vid', 'itemid']].drop_duplicates(),
-                     data_proc[['ptid', 'vid', 'itemid']].drop_duplicates()], axis=0)
-
-    with open('./data/visits_v2.pickle', 'rb') as f:
-        visits_v2 = pickle.load(f)
-    f.close()
-
-    dt = pd.merge(left=dt1, right=visits_v2[['vid', 'cdrIPorOP', 'anon_adm_date_y']].drop_duplicates(),
-                  left_on='vid', right_on='vid', how='inner')
-
-    dt['adm_month'] = dt['anon_adm_date_y'].apply(lambda x: int(x/24/60/30))
-    with open('./data/clinical_events_hospitalization.pickle', 'wb') as f:
-        pickle.dump(dt, f)
-    f.close()
-
-    # # to exclude some inhospitalization
-    # with open('./data/clinical_events_hospitalization.pickle', 'rb') as f:
-    #     dt = pickle.load(f)
+    # with open('./data/med_orders_v2.pickle', 'wb') as f:
+    #     pickle.dump(data_med[['ptid', 'vid', 'itemid']], f)
     # f.close()
+    # data_med[['ptid', 'vid', 'itemid']].to_csv('./data/med_orders_v2.csv', index=False)
+    #
+    # with open('./data/proc_orders_v2.pickle', 'wb') as f:
+    #     pickle.dump(data_proc[['ptid', 'vid', 'itemid']], f)
+    # f.close()
+    # data_proc[['ptid', 'vid', 'itemid']].to_csv('./data/proc_orders_v2.csv', index=False)
     #
     # with open('./data/dxs_data_v2.pickle', 'rb') as f:
-    #     dxs = pickle.load(f)
+    #     data_dx2 = pickle.load(f)
     # f.close()
+    # with open('./data/med_orders_v2.pickle', 'rb') as f:
+    #     data_med = pickle.load(f)
+    # f.close()
+    # with open('./data/proc_orders_v2.pickle', 'rb') as f:
+    #     data_proc = pickle.load(f)
+    # f.close()
+    # # to merge dx, med, and proc info
+    # data_dx3 = data_dx2[['ptid', 'vid', 'dxcat']].drop_duplicates()
+    # data_dx3.columns = ['ptid', 'vid', 'itemid']
+    # dt1 = pd.concat([data_dx3, data_med[['ptid', 'vid', 'itemid']].drop_duplicates(),
+    #                  data_proc[['ptid', 'vid', 'itemid']].drop_duplicates()], axis=0)
     #
-    # dt2 = pd.merge(left=dt, right=dxs[['vid', 'pdx']],
+    # with open('./data/visits_v2.pickle', 'rb') as f:
+    #     visits_v2 = pickle.load(f)
+    # f.close()
+
+    # dt = pd.merge(left=dt1, right=visits_v2[['vid', 'cdrIPorOP', 'anon_adm_date_y']].drop_duplicates(),
     #               left_on='vid', right_on='vid', how='inner')
-    # dt2_ips = dt2[dt2['cdrIPorOP'] == 'IP']
-    # dt2_ips = dt2[~dt2['pdx'].isnull()]
-    # dxgrps0, dxgrps_dict0, dxgrps_dict20 = dx2dxcat()
-    # dt2_ips2 = process_pdxs(dt2_ips, dxgrps_dict0, dxgrps_dict20)
-    # # cts = dt2_ips2[['ptid', 'pdxcat']].drop_duplicates().groupby('pdxcat').count()
-    # # cts.reset_index(inplace=True)
-    # # cts.columns = ['pdxcat', 'ct']
-    # # cts = cts.sort(['ct'], ascending=[0])
-    # # # cts2 = cts[cts['pdxcat'].isin(['49', '50', '108', '127', '158'])]
-    # # cts['pdxcat'] = cts['pdxcat'].astype(int)
-    # # cts = cts[~cts['pdxcat'].between(176, 239)]
-    # # cts = cts[~cts['pdxcat'].between(2601, 2621)]
-    # # cts['pdxcat'] = cts['pdxcat'].astype(str)
-    # dt2_ips2['pdxcat'] = dt2_ips2['pdxcat'].astype(int)
-    # dt2_ips3 = dt2_ips2[dt2_ips2['pdxcat'].between(2601, 2621)] # E codes
-    # dt2_ips4 = dt2_ips2[dt2_ips2['pdxcat'].between(212, 240)] # dxs at birth, injuries, fractures, etc.
-    # dt2_ips5 = dt2_ips2[dt2_ips2['pdxcat'] == 196]
-    # unavoid_ip_ptids = set(dt2_ips3['ptid'].values).union(set(dt2_ips4['ptid'].values)).union(set(dt2_ips5['ptid'].values))
-    # # unavoid_ip_ptids = set(dt2_ips3['ptid'].values)
-    # other_ip_ids = set(dt2_ips2['ptid'].values).difference(unavoid_ip_ptids)
-    # final_pos_ids = set(other_ip_ids).intersection(set(pos_ids)) # 4,463
-    # final_neg_ids = set(neg_ids).difference(set(unavoid_ip_ptids)) # 72,677
     #
-    # with open('./data/hospitalization_data_pos_neg_ids.pickle', 'wb') as f:
-    #     pickle.dump([final_pos_ids, final_neg_ids], f)
-    # f.close()
-
-    with open('./data/hospitalization_data_pos_neg_ids_v0.pickle', 'wb') as f:
-        pickle.dump([pos_ids, neg_ids], f)
-    f.close()
-
-    dt = dt[['ptid', 'adm_month', 'itemid', 'cdrIPorOP']].drop_duplicates()
-    dt = dt.sort(['ptid', 'adm_month'], ascending=[1, 1])
-    dt_1yr = dt[dt['adm_month'].between(0, 11)]
-
-    with open('./data/hospitalization_data_1year.pickle', 'wb') as f:
-        pickle.dump(dt_1yr, f)
-    f.close()
-
-    # # get the primary dx of hospitalization of interest
-    # IPs = dt2_ips2[dt2_ips2['adm_month'] > 17]
-    # IP_adm = IPs[['ptid', 'adm_month']].drop_duplicates().groupby(['ptid']).min()
-    # IP_adm = IP_adm.reset_index()
-    # IP_adm_pdx = pd.merge(left=IPs[['ptid', 'adm_month', 'pdxcat']].drop_duplicates(), right=IP_adm,
-    #               left_on='ptid', right_on='ptid', how='inner')
-    # IP_adm_pdx = IP_adm_pdx[IP_adm_pdx['adm_month_x'] == IP_adm_pdx['adm_month_y']]
-    # del IP_adm_pdx['adm_month_y']
-    # IP_adm_pdx.columns = ['ptid', 'adm_month', 'pdxcat']
-    # with open('./data/IP_adm_month_pdx.pickle', 'wb') as f:
-    #     pickle.dump(IP_adm_pdx, f)
-    # f.close()
-
-    # prepare data for word embedding w2v
-    with open('./data/clinical_events_hospitalization.pickle', 'rb') as f:
-        data = pickle.load(f)
-    f.close()
-    data = data[['vid', 'itemid']].drop_duplicates()
-    docs = data.groupby('vid')['itemid'].apply(list)
-    docs = docs.reset_index()
-    docs['length'] = docs['itemid'].apply(lambda x: len(x))
-    docs['length'].describe() # 80% quantile is 10; 92.5% quantile is 20; 98.75% quantile is 100
-    # all itemids by visit
-    vts = docs['itemid'].values.tolist()
-
-    with open('./data/visit_items_for_w2v.pickle', 'wb') as f:
-        pickle.dump(vts, f)
-    f.close()
-
-    # with open('./data/hospitalization_data_pos_neg_ids.pickle', 'rb') as f:
-    #     pos_ids, neg_ids = pickle.load(f)
+    # dt['adm_month'] = dt['anon_adm_date_y'].apply(lambda x: int(x/24/60/30))
+    # with open('./data/clinical_events_hospitalization.pickle', 'wb') as f:
+    #     pickle.dump(dt, f)
     # f.close()
     #
-    # dt_pos = dt_1yr[dt_1yr['ptid'].isin(pos_ids)]
-    # dt_neg = dt_1yr[dt_1yr['ptid'].isin(neg_ids)]
+    # # # to exclude some inhospitalization
+    # # with open('./data/clinical_events_hospitalization.pickle', 'rb') as f:
+    # #     dt = pickle.load(f)
+    # # f.close()
+    # #
+    # # with open('./data/dxs_data_v2.pickle', 'rb') as f:
+    # #     dxs = pickle.load(f)
+    # # f.close()
+    # #
+    # # dt2 = pd.merge(left=dt, right=dxs[['vid', 'pdx']],
+    # #               left_on='vid', right_on='vid', how='inner')
+    # # dt2_ips = dt2[dt2['cdrIPorOP'] == 'IP']
+    # # dt2_ips = dt2[~dt2['pdx'].isnull()]
+    # # dxgrps0, dxgrps_dict0, dxgrps_dict20 = dx2dxcat()
+    # # dt2_ips2 = process_pdxs(dt2_ips, dxgrps_dict0, dxgrps_dict20)
+    # # # cts = dt2_ips2[['ptid', 'pdxcat']].drop_duplicates().groupby('pdxcat').count()
+    # # # cts.reset_index(inplace=True)
+    # # # cts.columns = ['pdxcat', 'ct']
+    # # # cts = cts.sort(['ct'], ascending=[0])
+    # # # # cts2 = cts[cts['pdxcat'].isin(['49', '50', '108', '127', '158'])]
+    # # # cts['pdxcat'] = cts['pdxcat'].astype(int)
+    # # # cts = cts[~cts['pdxcat'].between(176, 239)]
+    # # # cts = cts[~cts['pdxcat'].between(2601, 2621)]
+    # # # cts['pdxcat'] = cts['pdxcat'].astype(str)
+    # # dt2_ips2['pdxcat'] = dt2_ips2['pdxcat'].astype(int)
+    # # dt2_ips3 = dt2_ips2[dt2_ips2['pdxcat'].between(2601, 2621)] # E codes
+    # # dt2_ips4 = dt2_ips2[dt2_ips2['pdxcat'].between(212, 240)] # dxs at birth, injuries, fractures, etc.
+    # # dt2_ips5 = dt2_ips2[dt2_ips2['pdxcat'] == 196]
+    # # unavoid_ip_ptids = set(dt2_ips3['ptid'].values).union(set(dt2_ips4['ptid'].values)).union(set(dt2_ips5['ptid'].values))
+    # # # unavoid_ip_ptids = set(dt2_ips3['ptid'].values)
+    # # other_ip_ids = set(dt2_ips2['ptid'].values).difference(unavoid_ip_ptids)
+    # # final_pos_ids = set(other_ip_ids).intersection(set(pos_ids)) # 4,463
+    # # final_neg_ids = set(neg_ids).difference(set(unavoid_ip_ptids)) # 72,677
+    # #
+    # # with open('./data/hospitalization_data_pos_neg_ids.pickle', 'wb') as f:
+    # #     pickle.dump([final_pos_ids, final_neg_ids], f)
+    # # f.close()
     #
-    # counts_pos = get_counts_by_class(dt_pos, 1, 0.05 * len(pos_ids))
-    # counts_neg = get_counts_by_class(dt_neg, 0, 0.05 * len(neg_ids))
-    # counts = counts_pos.append(counts_neg).fillna(0)
-    # prelim_features = set(counts.columns[:-1])
-    #
-    # counts_sub_pos = get_counts_subwindow(dt_pos, 1, prelim_features, 3)
-    # counts_sub_neg = get_counts_subwindow(dt_neg, 0, prelim_features, 3)
-    # counts_sub = counts_sub_pos.append(counts_sub_neg).fillna(0)
-    #
-    # with open('./data/hospitalization_data_counts.pickle', 'wb') as f:
-    #     pickle.dump(counts, f)
+    # with open('./data/hospitalization_data_pos_neg_ids_v0.pickle', 'wb') as f:
+    #     pickle.dump([pos_ids, neg_ids], f)
     # f.close()
     #
-    # with open('./data/hospitalization_data_counts_sub.pickle', 'wb') as f:
-    #     pickle.dump(counts_sub, f)
+    # dt = dt[['ptid', 'adm_month', 'itemid', 'cdrIPorOP']].drop_duplicates()
+    # dt = dt.sort(['ptid', 'adm_month'], ascending=[1, 1])
+    # dt_1yr = dt[dt['adm_month'].between(0, 11)]
+    #
+    # with open('./data/hospitalization_data_1year.pickle', 'wb') as f:
+    #     pickle.dump(dt_1yr, f)
     # f.close()
-    # But need to work on the time window, to exclude some info before the prediction window
-    # also need to study the prediction window and how to structure it as a semi-supervised learning method
-
-    # To do:
-    # 1. extract the dxs, meds, procedures to learn a vector representation
-    # need to think about how to structure it since it is two-level: pt level and visit level
-    # think about GloVe which uses co-occurrence counts rather than orders,
-    # There are orders between visits, and no orders within visits
-    # One solution: make each visit as a document to learn code vectors, do not consider patients
-    # The other solution is consider the visits by patients
-
-
-    # get the CCS categories for dx and proc codes
-    with open('./data/all_procs.pickle', 'rb') as f:
-        all_procs = pickle.load(f)
-    f.close()
-
-    with open('./data/all_dx_and_meds.pickle', 'rb') as f:
-        all_dxs, all_meds = pickle.load(f)
-    f.close()
-
-    dxgrps, dxgrps_dict, dxgrps_dict2 = dx2dxcat()
-    dx_df = process_dxs(all_dxs, dxgrps_dict, dxgrps_dict2)
-    procgrps, all_procs, proc_df = proc2proccat(all_procs)
-
-    with open('./data/ccs_codes_dx_proc_med.pickle', 'wb') as f:
-        pickle.dump([dx_df, proc_df, all_meds], f)
-    f.close()
-
-    item_cats = get_all_item_categories(dx_df, proc_df, all_meds)
-    with open('./data/ccs_codes_all_item_categories.pickle', 'wb') as f:
-        pickle.dump(item_cats, f)
-    f.close()
+    #
+    # # # get the primary dx of hospitalization of interest
+    # # IPs = dt2_ips2[dt2_ips2['adm_month'] > 17]
+    # # IP_adm = IPs[['ptid', 'adm_month']].drop_duplicates().groupby(['ptid']).min()
+    # # IP_adm = IP_adm.reset_index()
+    # # IP_adm_pdx = pd.merge(left=IPs[['ptid', 'adm_month', 'pdxcat']].drop_duplicates(), right=IP_adm,
+    # #               left_on='ptid', right_on='ptid', how='inner')
+    # # IP_adm_pdx = IP_adm_pdx[IP_adm_pdx['adm_month_x'] == IP_adm_pdx['adm_month_y']]
+    # # del IP_adm_pdx['adm_month_y']
+    # # IP_adm_pdx.columns = ['ptid', 'adm_month', 'pdxcat']
+    # # with open('./data/IP_adm_month_pdx.pickle', 'wb') as f:
+    # #     pickle.dump(IP_adm_pdx, f)
+    # # f.close()
+    #
+    # # prepare data for word embedding w2v
+    # with open('./data/clinical_events_hospitalization.pickle', 'rb') as f:
+    #     data = pickle.load(f)
+    # f.close()
+    # data = data[['vid', 'itemid']].drop_duplicates()
+    # docs = data.groupby('vid')['itemid'].apply(list)
+    # docs = docs.reset_index()
+    # docs['length'] = docs['itemid'].apply(lambda x: len(x))
+    # docs['length'].describe() # 80% quantile is 10; 92.5% quantile is 20; 98.75% quantile is 100
+    # # all itemids by visit
+    # vts = docs['itemid'].values.tolist()
+    #
+    # with open('./data/visit_items_for_w2v.pickle', 'wb') as f:
+    #     pickle.dump(vts, f)
+    # f.close()
+    #
+    # # with open('./data/hospitalization_data_pos_neg_ids.pickle', 'rb') as f:
+    # #     pos_ids, neg_ids = pickle.load(f)
+    # # f.close()
+    # #
+    # # dt_pos = dt_1yr[dt_1yr['ptid'].isin(pos_ids)]
+    # # dt_neg = dt_1yr[dt_1yr['ptid'].isin(neg_ids)]
+    # #
+    # # counts_pos = get_counts_by_class(dt_pos, 1, 0.05 * len(pos_ids))
+    # # counts_neg = get_counts_by_class(dt_neg, 0, 0.05 * len(neg_ids))
+    # # counts = counts_pos.append(counts_neg).fillna(0)
+    # # prelim_features = set(counts.columns[:-1])
+    # #
+    # # counts_sub_pos = get_counts_subwindow(dt_pos, 1, prelim_features, 3)
+    # # counts_sub_neg = get_counts_subwindow(dt_neg, 0, prelim_features, 3)
+    # # counts_sub = counts_sub_pos.append(counts_sub_neg).fillna(0)
+    # #
+    # # with open('./data/hospitalization_data_counts.pickle', 'wb') as f:
+    # #     pickle.dump(counts, f)
+    # # f.close()
+    # #
+    # # with open('./data/hospitalization_data_counts_sub.pickle', 'wb') as f:
+    # #     pickle.dump(counts_sub, f)
+    # # f.close()
+    # # But need to work on the time window, to exclude some info before the prediction window
+    # # also need to study the prediction window and how to structure it as a semi-supervised learning method
+    #
+    # # To do:
+    # # 1. extract the dxs, meds, procedures to learn a vector representation
+    # # need to think about how to structure it since it is two-level: pt level and visit level
+    # # think about GloVe which uses co-occurrence counts rather than orders,
+    # # There are orders between visits, and no orders within visits
+    # # One solution: make each visit as a document to learn code vectors, do not consider patients
+    # # The other solution is consider the visits by patients
+    #
+    #
+    # # get the CCS categories for dx and proc codes
+    # with open('./data/all_procs.pickle', 'rb') as f:
+    #     all_procs = pickle.load(f)
+    # f.close()
+    #
+    # with open('./data/all_dx_and_meds.pickle', 'rb') as f:
+    #     all_dxs, all_meds = pickle.load(f)
+    # f.close()
+    #
+    # dxgrps, dxgrps_dict, dxgrps_dict2 = dx2dxcat()
+    # dx_df = process_dxs(all_dxs, dxgrps_dict, dxgrps_dict2)
+    # procgrps, all_procs, proc_df = proc2proccat(all_procs)
+    #
+    # with open('./data/ccs_codes_dx_proc_med.pickle', 'wb') as f:
+    #     pickle.dump([dx_df, proc_df, all_meds], f)
+    # f.close()
+    #
+    # item_cats = get_all_item_categories(dx_df, proc_df, all_meds)
+    # with open('./data/ccs_codes_all_item_categories.pickle', 'wb') as f:
+    #     pickle.dump(item_cats, f)
+    # f.close()

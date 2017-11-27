@@ -1,4 +1,7 @@
-# install.packages('SGL')
+# # install.packages('SGL')
+# install.packages('pROC')
+# install.packages('caret')
+# install.packages('glmnet')
 library(SGL)
 library(pROC)
 library(caret)
@@ -85,14 +88,16 @@ evaluate_performance_sgl <- function(clf, test, y_test, l) {
 
 # 
 # #====================== evaluate baselines ==========================================
-dt <- read.csv('./data/test_proba_v3.csv')
+dt <- read.csv('./data/test_proba_v5.csv')
 # baselin 1 - freq
 # threshold tuned by F2 score: RF: 0.47; Lasso: 0.11
 rocobj1a <- roc(dt$b1_response, dt$b1_rf) # 0.5992
 ci.auc(rocobj1a, conf.level = 0.95, method = 'bootstrap', boot.n = 100)
 ci.thresholds(rocobj1a, conf.level = 0.95, method = 'bootstrap', boot.n = 50, thresholds = 0.47)
-rocobj1b <- roc(dt$b1_response, dt$b1_lr) # 0.6638
+rocobj1b <- roc(dt$b1_response, dt$b1_gbt) # 0.670
+rocobj1b
 ci.auc(rocobj1b, conf.level = 0.95, method = 'bootstrap', boot.n = 50)
+ci.thresholds(rocobj1b, conf.level = 0.95, method = 'bootstrap', boot.n = 50, thresholds = 0.11)
 rocobj1c <- roc(dt$b1_response, dt$b1_lasso) # 0.6398
 ci.auc(rocobj1c, conf.level = 0.95, method = 'bootstrap', boot.n = 50)
 ci.thresholds(rocobj1c, conf.level = 0.95, method = 'bootstrap', boot.n = 50, thresholds = 0.11)
@@ -114,6 +119,12 @@ ci.auc(rocobj3a, conf.level = 0.95, method = 'bootstrap', boot.n = 50)
 ci.thresholds(rocobj3a, conf.level = 0.95, method = 'bootstrap', boot.n = 50, thresholds = 0.47)
 ci.thresholds(rocobj3c, conf.level = 0.95, method = 'bootstrap', boot.n = 50, thresholds = 0.11)
 
+rocobj3b <- roc(dt$b3_response, dt$b3_gbt) # 0.699
+rocobj3b
+ci.auc(rocobj3b, conf.level = 0.95, method = 'bootstrap', boot.n = 50)
+ci.thresholds(rocobj3b, conf.level = 0.95, method = 'bootstrap', boot.n = 50, thresholds = 0.11)
+
+
 # baselin 4 - transition counts
 # threshold tuned by F2 score: RF: 0.47; Lasso: 0.11
 rocobj4a <- roc(dt$b4_response, dt$b4_rf) # 0.5585
@@ -122,6 +133,12 @@ rocobj4c <- roc(dt$b4_response, dt$b4_lasso) # 0.5669
 ci.auc(rocobj4a, conf.level = 0.95, method = 'bootstrap', boot.n = 50)
 ci.thresholds(rocobj4a, conf.level = 0.95, method = 'bootstrap', boot.n = 50, thresholds = 0.51)
 ci.thresholds(rocobj4c, conf.level = 0.95, method = 'bootstrap', boot.n = 50, thresholds = 0.11)
+
+rocobj4b <- roc(dt$b4_response, dt$b4_gbt) # 0.656
+rocobj4b
+ci.auc(rocobj4b, conf.level = 0.95, method = 'bootstrap', boot.n = 50)
+ci.thresholds(rocobj4b, conf.level = 0.95, method = 'bootstrap', boot.n = 50, thresholds = 0.11)
+
 
 # Proposed
 # threshold tuned by F2 score: RF: 0.47; Lasso: 0.11
@@ -132,6 +149,10 @@ ci.auc(rocobj5a, conf.level = 0.95, method = 'bootstrap', boot.n = 50)
 ci.thresholds(rocobj5a, conf.level = 0.95, method = 'bootstrap', boot.n = 50, thresholds = 0.41)
 ci.thresholds(rocobj5c, conf.level = 0.95, method = 'bootstrap', boot.n = 50, thresholds = 0.15)
 
+rocobj5b <- roc(dt$b5_response, dt$b5_gbt) # 0.6638
+rocobj5b
+ci.auc(rocobj5b, conf.level = 0.95, method = 'bootstrap', boot.n = 50)
+ci.thresholds(rocobj5b, conf.level = 0.95, method = 'bootstrap', boot.n = 50, thresholds = 0.11)
 
 # ============== get example patient==============
 dt <- read.csv('./data/test_proba_v3.csv')
