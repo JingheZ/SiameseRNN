@@ -106,8 +106,8 @@ def process_dxs(data, dxgrps_dict, dxgrps_dict2):
 
 def merge_visit_and_dx(data_dx, visits):
     data = pd.merge(data_dx, visits, how='inner', left_on='vid', right_on='vid')
-    data = data[['ptid_x', 'vid', 'pdx', 'dxcat', 'adm_date', 'dis_date', 'rank', 'dx']]
-    data.columns = ['ptid', 'vid', 'pdx', 'dxcat', 'adm_date', 'dis_date', 'rank', 'dx']
+    data = data[['ptid_x', 'vid', 'pdx', 'dxcat', 'adm_date', 'dis_date', 'dx']]
+    data.columns = ['ptid', 'vid', 'pdx', 'dxcat', 'adm_date', 'dis_date', 'dx']
     data.sort(['ptid', 'adm_date'], ascending=[1, 1], inplace=True)
     return data
 
@@ -513,22 +513,22 @@ def get_transition_counts(dm, control, vars):
 
 if __name__ == '__main__':
     # ============================ DX Data =================================================
-    with open('./data/visits_v4.pickle', 'rb') as f:
+    with open('./data/visits_v2.pickle', 'rb') as f:
         visits = pickle.load(f)
-    f.close()
-    visits.columns = ['ptid', 'vid', 'IPorOP', 'adm_date', 'dis_date', 'rank']
+    # f.close()
+    visits.columns = ['ptid', 'vid', 'IPorOP', 'adm_date', 'dis_date']
     with open('./data/dxs_data_v2.pickle', 'rb') as f:
         data_dx = pickle.load(f)
-    f.close()
+    # f.close()
 
     dxgrps, dxgrps_dict, dxgrps_dict2 = dx2dxcat()
     data_dx2 = process_dxs(data_dx, dxgrps_dict, dxgrps_dict2)
     data_dx2.head()
 
     data = merge_visit_and_dx(data_dx2, visits)
-    with open('./data/data_all4comorbidity.pickle', 'wb') as f:
-        pickle.dump(data, f)
-    f.close()
+    # with open('./data/data_all4comorbidity.pickle', 'wb') as f:
+    #     pickle.dump(data, f)
+    # f.close()
     # find patients with diabetes: dxcat = '49' or '50'
     data_dm, ptids_dm = find_visit_gaps(data, ['49', '50'], 'dm')
     ptids_dm2 = find_patient_counts(data_dm)
@@ -594,6 +594,7 @@ if __name__ == '__main__':
     # counts.to_csv('./data/dm_control_counts.csv')
     # # get training and testing ptids
     y = counts['response']
+    print(len(y))
     train_ids, test_ids = split_train_test_ptids(y, 0.2)
     # with open('./data/train_test_ptids.pickle', 'wb') as f:
     #     pickle.dump([train_ids, test_ids], f)

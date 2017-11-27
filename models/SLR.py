@@ -757,47 +757,53 @@ if __name__ == '__main__':
     features2 = counts_bps.columns.tolist()[:-1]
     train_x2, train_y2, test_x2, test_y2 = split_train_test_sets(train_ids, test_ids, counts_bps_x, counts_bps_y)
 
-    counts_trans = pd.read_csv('./data/counts_trans.csv')
-    counts_trans.columns = ['ptid'] + list(counts_trans.columns[1:])
-    counts_trans.index = counts_trans['ptid'].astype(str)
-    del counts_trans['ptid']
-    counts_trans_x = counts_trans[counts_trans.columns[:-1]]
-    counts_trans_y = counts_trans['response']
-    features4 = counts_trans.columns.tolist()[:-1]
-    train_x4, train_y4, test_x4, test_y4 = split_train_test_sets(train_ids, test_ids, counts_trans_x, counts_trans_y)
-
-a = 0.8
-features3_all = pd.read_csv('./data/sgl_coefs_4group_alpha' + str(int(a * 10)) + '_v2.csv')
-del features3_all['Unnamed: 0']
-i = features3_all.columns[5]
-features3_inds = features3_all[i]
-data_cols = features1
-features3 = [data_cols[j] for j in features3_inds.index if features3_inds.loc[j] != 0]
-counts_sgl_x = counts_sub[features3]
-counts_sgl_y = counts_sub['response']
-train_x3, train_y3, test_x3, test_y3 = split_train_test_sets(train_ids, test_ids, counts_sgl_x, counts_sgl_y)
-
-
-# get the trans
-test_proba0a = make_predictions(train_x0, train_y0, test_x0, [1000, 15, 'rf'])
-test_proba0b = make_predictions(train_x0, train_y0, test_x0, [1000, 15, 'gbt'])
-test_proba0c = make_predictions(train_x0, train_y0, test_x0, [0.01, 15, 'lr'])
-
-test_proba1a = make_predictions(train_x1, train_y1, test_x1, [1000, 15, 'rf'])
-test_proba1b = make_predictions(train_x1, train_y1, test_x1, [1000, 15, 'gbt'])
-test_proba1c = make_predictions(train_x1, train_y1, test_x1, [0.01, 15, 'lr'])
-
-test_proba2a = make_predictions(train_x2, train_y2, test_x2, [1000, 15, 'rf'])
-test_proba2b = make_predictions(train_x2, train_y2, test_x2, [1000, 15, 'gbt'])
-test_proba2c = make_predictions(train_x2, train_y2, test_x2, [0.01, 15, 'lr'])
+counts_trans = pd.read_csv('./data/counts_trans.csv')
+counts_trans = counts_trans.fillna(0.0)
+counts_trans.columns = ['ptid'] + list(counts_trans.columns[1:])
+counts_trans.index = counts_trans['ptid'].astype(str)
+del counts_trans['ptid']
+# counts_trans_x = counts_trans[counts_trans.columns[:-1]]
+counts_trans_x = counts_trans[counts_trans.columns[:-1]]
+counts_trans_y = counts_trans['response']
+features4 = counts_trans.columns.tolist()[:-1]
+train_x4, train_y4, test_x4, test_y4 = split_train_test_sets(train_ids, test_ids, counts_trans_x, counts_trans_y)
 
 test_proba3a = make_predictions(train_x4, train_y4, test_x4, [1000, 15, 'rf'])
 test_proba3b = make_predictions(train_x4, train_y4, test_x4, [1000, 15, 'gbt'])
 test_proba3c = make_predictions(train_x4, train_y4, test_x4, [0.01, 15, 'lr'])
 
-test_proba4a = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'rf'])
-test_proba4b = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'gbt'])
-test_proba4c = make_predictions(train_x3, train_y3, test_x3, [0.01, 15, 'lr'])
+    a = 0.8
+    features3_all = pd.read_csv('./data/sgl_coefs_4group_alpha' + str(int(a * 10)) + '_v2.csv')
+    del features3_all['Unnamed: 0']
+    i = features3_all.columns[5]
+    features3_inds = features3_all[i]
+    data_cols = features1
+    features3 = [data_cols[j] for j in features3_inds.index if features3_inds.loc[j] != 0]
+    counts_sgl_x = counts_sub[features3]
+    counts_sgl_y = counts_sub['response']
+    train_x3, train_y3, test_x3, test_y3 = split_train_test_sets(train_ids, test_ids, counts_sgl_x, counts_sgl_y)
+
+
+    # get the trans
+    test_proba0a = make_predictions(train_x0, train_y0, test_x0, [1000, 15, 'rf'])
+    test_proba0b = make_predictions(train_x0, train_y0, test_x0, [1000, 15, 'gbt'])
+    test_proba0c = make_predictions(train_x0, train_y0, test_x0, [0.01, 15, 'lr'])
+
+    test_proba1a = make_predictions(train_x1, train_y1, test_x1, [1000, 15, 'rf'])
+    test_proba1b = make_predictions(train_x1, train_y1, test_x1, [1000, 15, 'gbt'])
+    test_proba1c = make_predictions(train_x1, train_y1, test_x1, [0.01, 15, 'lr'])
+
+    test_proba2a = make_predictions(train_x2, train_y2, test_x2, [1000, 15, 'rf'])
+    test_proba2b = make_predictions(train_x2, train_y2, test_x2, [1000, 15, 'gbt'])
+    test_proba2c = make_predictions(train_x2, train_y2, test_x2, [0.01, 15, 'lr'])
+
+    test_proba3a = make_predictions(train_x4, train_y4, test_x4, [1000, 15, 'rf'])
+    test_proba3b = make_predictions(train_x4, train_y4, test_x4, [1000, 15, 'gbt'])
+    test_proba3c = make_predictions(train_x4, train_y4, test_x4, [0.01, 15, 'lr'])
+
+    test_proba4a = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'rf'])
+    test_proba4b = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'gbt'])
+    test_proba4c = make_predictions(train_x3, train_y3, test_x3, [0.01, 15, 'lr'])
 
 test_proba = pd.DataFrame([test_proba0a, test_proba0b, test_proba0c, test_y0.values.tolist(),
                            test_proba1a, test_proba1b, test_proba1c, test_y1.values.tolist(),
