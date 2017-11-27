@@ -462,26 +462,6 @@ def viz_samples(data, response, s):
     return df
 
 
-def make_predictions(train_x, train_y, test_x, param):
-    if param[2] == 'rf':
-        clf = RandomForestClassifier(n_estimators=param[0], criterion='entropy', n_jobs=param[1], random_state=0, class_weight='balanced')
-        # clf = LogisticRegression(penalty='l1', C=param[0], n_jobs=param[1], random_state=0)
-        clf.fit(train_x, train_y)
-        pred_test = clf.predict_proba(test_x)
-        test_pred_proba = [i[1] for i in pred_test]
-    elif param[2] == 'lr':
-        clf = LogisticRegression(penalty='l1', C=param[0], n_jobs=param[1], random_state=0)
-        clf.fit(train_x, train_y)
-        pred_test = clf.predict_proba(test_x)
-        test_pred_proba = [i[1] for i in pred_test]
-    else:
-        clf = GradientBoostingClassifier(n_estimators=param[0], learning_rate=1.0, max_depth = 1, random_state = 0)
-        clf.fit(train_x, train_y)
-        pred_test = clf.predict_proba(test_x)
-        test_pred_proba = [i[1] for i in pred_test]
-    return test_pred_proba
-
-
 def get_transition_counts(dm, control, vars):
     dm = create_subwindows(dm, 0)
     control = create_subwindows(control, 0)
@@ -757,21 +737,18 @@ if __name__ == '__main__':
     features2 = counts_bps.columns.tolist()[:-1]
     train_x2, train_y2, test_x2, test_y2 = split_train_test_sets(train_ids, test_ids, counts_bps_x, counts_bps_y)
 
-counts_trans = pd.read_csv('./data/counts_trans.csv')
-counts_trans = counts_trans.fillna(0.0)
-counts_trans.columns = ['ptid'] + list(counts_trans.columns[1:])
-counts_trans.index = counts_trans['ptid'].astype(str)
-del counts_trans['ptid']
-# counts_trans_x = counts_trans[counts_trans.columns[:-1]]
-counts_trans_x = counts_trans[counts_trans.columns[:-1]]
-counts_trans_y = counts_trans['response']
-features4 = counts_trans.columns.tolist()[:-1]
-
-train_x4, train_y4, test_x4, test_y4 = split_train_test_sets(train_ids_4, test_ids_4, counts_trans_x, counts_trans_y)
-
-test_proba3a = make_predictions(train_x4, train_y4, test_x4, [1000, 15, 'rf'])
-test_proba3b = make_predictions(train_x4, train_y4, test_x4, [1000, 15, 'gbt'])
-test_proba3c = make_predictions(train_x4, train_y4, test_x4, [0.01, 15, 'lr'])
+    counts_trans = pd.read_csv('./data/counts_trans.csv')
+    counts_trans = counts_trans.fillna(0.0)
+    counts_trans.columns = ['ptid'] + list(counts_trans.columns[1:])
+    counts_trans.index = counts_trans['ptid'].astype(str)
+    del counts_trans['ptid']
+    # counts_trans_x = counts_trans[counts_trans.columns[:-1]]
+    counts_trans_x = counts_trans[counts_trans.columns[:-1]]
+    counts_trans_y = counts_trans['response']
+    features4 = counts_trans.columns.tolist()[:-1]
+    with open('./data/train_test_ptids_trans.pickle', 'rb') as f:
+        train_ids_4, test_ids_4 = pickle.load(f)
+    train_x4, train_y4, test_x4, test_y4 = split_train_test_sets(train_ids_4, test_ids_4, counts_trans_x, counts_trans_y)
 
     a = 0.8
     features3_all = pd.read_csv('./data/sgl_coefs_4group_alpha' + str(int(a * 10)) + '_v2.csv')
@@ -806,53 +783,46 @@ test_proba3c = make_predictions(train_x4, train_y4, test_x4, [0.01, 15, 'lr'])
     test_proba4b = make_predictions(train_x3, train_y3, test_x3, [1000, 15, 'gbt'])
     test_proba4c = make_predictions(train_x3, train_y3, test_x3, [0.01, 15, 'lr'])
 
-test_proba = pd.DataFrame([test_proba0a, test_proba0b, test_proba0c, test_y0.values.tolist(),
-                           test_proba1a, test_proba1b, test_proba1c, test_y1.values.tolist(),
-                           test_proba2a, test_proba2b, test_proba2c, test_y2.values.tolist(),
-                           test_proba3a, test_proba3b, test_proba3c, test_y4.values.tolist(),
-                           test_proba4a, test_proba4b, test_proba4c, test_y3.values.tolist()])
-test_proba = test_proba.transpose()
-test_proba.columns = ['b1_rf', 'b1_gbt', 'b1_lasso', 'b1_response', 'b2_rf', 'b2_gbt', 'b2_lasso', 'b2_response',
-                      'b3_rf', 'b3_gbt', 'b3_lasso', 'b3_response', 'b4_rf', 'b4_gbt', 'b4_lasso', 'b4_response',
-                      'b5_rf', 'b5_gbt', 'b5_lasso', 'b5_response']
-test_proba.to_csv('./data/test_proba_v4.csv', index=False)
-    #
-    # # calculate F1 score
-    # test_proba = pd.read_csv('./data/test_proba_v4.csv')
-    # cols = [['b1_rf', 'b1_gbt', 'b1_lasso', 'b1_response', 0.47, 0.11],
-    #         ['b3_rf', 'b3_gbt', 'b3_lasso', 'b3_response', 0.47, 0.11],
-    #         ['b4_rf', 'b4_gbt', 'b4_lasso', 'b4_response', 0.51, 0.11],
-    #         ['b5_rf', 'b5_gbt', 'b5_lasso', 'b5_response', 0.41, 0.15]]
-    # # f1s = []
-    # # for i in cols:
-    # #     res_rf1 = [1 if p >= i[3] else 0 for p in test_proba[i[0]].values]
-    # #     res_rf0 = [1 if p < i[3] else 0 for p in test_proba[i[0]].values]
-    # #     f1_rf1 = metrics.fbeta_score(test_proba[i[2]].values, res_rf1, beta=3)
-    # #     f1_rf0 = metrics.fbeta_score(test_proba[i[2]].values, res_rf0, beta=3)
-    # #     res_lr = [1 if p >= i[4] else 0 for p in test_proba[i[1]].values]
-    # #     f1_lr = metrics.fbeta_score(test_proba[i[2]].values, res_lr, beta=3)
-    # #     f1s.append(((f1_lr1+f1_lr0)/2, f1_lr))
-    #
-    # def calculate_fscores_bootstraps(test_proba, thres, y):
-    #     res = [1 if p >= thres else 0 for p in test_proba]
-    #     f2s = []
-    #     for p in range(50):
-    #         random.seed(p)
-    #         sp = random.choices(list(zip(res, y)), k=int(len(y)))
-    #         sp_pred = [v[0] for v in sp]
-    #         sp_true = [v[1] for v in sp]
-    #         f2 = metrics.fbeta_score(sp_true, sp_pred, average='binary', beta=2)
-    #         f2s.append(f2)
-    #     avg = np.mean(f2s)
-    #     std = np.std(f2s)
-    #     return tuple((avg, std))
-    #
-    # fs = []
-    # for i in cols:
-    #     results_rf = calculate_fscores_bootstraps(test_proba[i[0]].values, i[3], test_proba[i[2]].values)
-    #     results_lr = calculate_fscores_bootstraps(test_proba[i[1]].values, i[4], test_proba[i[2]].values)
-    #     fs.append([results_lr, results_rf])
+    test_proba = pd.DataFrame([test_proba0a, test_proba0b, test_proba0c, test_y0.values.tolist(),
+                               test_proba1a, test_proba1b, test_proba1c, test_y1.values.tolist(),
+                               test_proba2a, test_proba2b, test_proba2c, test_y2.values.tolist(),
+                               test_proba3a, test_proba3b, test_proba3c, test_y4.values.tolist(),
+                               test_proba4a, test_proba4b, test_proba4c, test_y3.values.tolist()])
+    test_proba = test_proba.transpose()
+    test_proba.columns = ['b1_rf', 'b1_gbt', 'b1_lasso', 'b1_response', 'b2_rf', 'b2_gbt', 'b2_lasso', 'b2_response',
+                          'b3_rf', 'b3_gbt', 'b3_lasso', 'b3_response', 'b4_rf', 'b4_gbt', 'b4_lasso', 'b4_response',
+                          'b5_rf', 'b5_gbt', 'b5_lasso', 'b5_response']
+    test_proba.to_csv('./data/test_proba_v5.csv', index=False)
 
+    def calculate_fscores_bootstraps(test_proba, thres, y):
+        res = [1 if p >= thres else 0 for p in test_proba]
+        f2s = []
+        for p in range(50):
+            random.seed(p)
+            sp = random.choices(list(zip(res, y)), k=int(len(y)))
+            sp_pred = [v[0] for v in sp]
+            sp_true = [v[1] for v in sp]
+            f2 = metrics.fbeta_score(sp_true, sp_pred, average='binary', beta=2)
+            f2s.append(f2)
+        avg = np.mean(f2s)
+        std = np.std(f2s)
+        return tuple((avg, std))
+
+    cols = [['b1_rf', 'b1_gbt', 'b1_lasso', 'b1_response', 0.47, 0.11, 0.11],
+            ['b3_rf', 'b3_gbt', 'b3_lasso', 'b3_response', 0.47, 0.11, 0.11],
+            # ['b4_rf', 'b4_gbt', 'b4_lasso', 'b4_response', 0.51, 0.11, 0.11],
+            ['b5_rf', 'b5_gbt', 'b5_lasso', 'b5_response', 0.41, 0.15, 0.11]]
+
+    fs = []
+    for i in cols:
+        results_rf = calculate_fscores_bootstraps(test_proba[i[0]].values, i[4], test_proba[i[3]].values)
+        results_gbt = calculate_fscores_bootstraps(test_proba[i[1]].values, i[5], test_proba[i[3]].values)
+        results_lr = calculate_fscores_bootstraps(test_proba[i[2]].values, i[6], test_proba[i[3]].values)
+        fs.append([results_lr, results_gbt, results_rf])
+
+    results_rf = calculate_fscores_bootstraps(test_proba3a, 0.51, test_y4.values.tolist())
+    results_gbt = calculate_fscores_bootstraps(test_proba3b, 0.11, test_y4.values.tolist())
+    results_lr = calculate_fscores_bootstraps(test_proba3c, 0.11, test_y4.values.tolist())
 
     #
     # data_dm4[data_dm4['ptid'] == '769052'].to_csv('./data/example_dmpt.csv') # rf predicted proba: 0.782

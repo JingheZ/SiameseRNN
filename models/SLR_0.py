@@ -475,7 +475,7 @@ def make_predictions(train_x, train_y, test_x, param):
         pred_test = clf.predict_proba(test_x)
         test_pred_proba = [i[1] for i in pred_test]
     else:
-        clf = GradientBoostingClassifier(n_estimators=param[0], learning_rate=1.0, max_depth = 1, random_state = 0)
+        clf = GradientBoostingClassifier(n_estimators=param[0], learning_rate=0.1, max_depth = 1, random_state = 0)
         clf.fit(train_x, train_y)
         pred_test = clf.predict_proba(test_x)
         test_pred_proba = [i[1] for i in pred_test]
