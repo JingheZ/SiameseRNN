@@ -766,7 +766,8 @@ del counts_trans['ptid']
 counts_trans_x = counts_trans[counts_trans.columns[:-1]]
 counts_trans_y = counts_trans['response']
 features4 = counts_trans.columns.tolist()[:-1]
-train_x4, train_y4, test_x4, test_y4 = split_train_test_sets(train_ids, test_ids, counts_trans_x, counts_trans_y)
+
+train_x4, train_y4, test_x4, test_y4 = split_train_test_sets(train_ids_4, test_ids_4, counts_trans_x, counts_trans_y)
 
 test_proba3a = make_predictions(train_x4, train_y4, test_x4, [1000, 15, 'rf'])
 test_proba3b = make_predictions(train_x4, train_y4, test_x4, [1000, 15, 'gbt'])

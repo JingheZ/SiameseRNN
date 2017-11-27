@@ -596,9 +596,9 @@ if __name__ == '__main__':
     y = counts['response']
     print(len(y))
     train_ids, test_ids = split_train_test_ptids(y, 0.2)
-    # with open('./data/train_test_ptids.pickle', 'wb') as f:
-    #     pickle.dump([train_ids, test_ids], f)
-    # f.close()
+    with open('./data/train_test_ptids_trans.pickle', 'wb') as f:
+        pickle.dump([train_ids, test_ids], f)
+    f.close()
     # pd.Series(train_ids).to_csv('./data/train_ids.csv', index=False)
     # pd.Series(test_ids).to_csv('./data/test_ids.csv', index=False)
     # # # get counts and do preliminary feature selection
